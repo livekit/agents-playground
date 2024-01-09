@@ -12,6 +12,11 @@ Docs for how to get started with LiveKit agents at [https://docs.livekit.io/agen
 
 The repo containing the (server side) agent implementations (including example agents): [https://github.com/livekit/agents](https://github.com/livekit/agents)
 
+## Try out a live version
+
+You can try out the agent playground at [https://livekit-agent-playground.vercel.app](https://livekit-agent-playground.vercel.app).
+This will connect you to our example agent [KITT](https://github.com/livekit/agents/tree/main/examples/kitt).
+
 ## Setting up the playground locally
 
 1. Install dependencies
