@@ -1,0 +1,56 @@
+import { useEffect, useRef, useState } from "react";
+import { ChatMessage } from "@/components/chat/ChatMessage";
+import { ChatMessageInput } from "@/components/chat/ChatMessageInput";
+
+const inputHeight = 48;
+
+export type ChatMessageType = {
+  name: string;
+  message: string;
+  isSelf: boolean;
+};
+
+type ChatTileProps = {
+  messages: ChatMessageType[];
+  accentColor: string;
+  onSend: (message: string) => void;
+};
+
+export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [containerRef, messages]);
+
+  return (
+    <div className="flex flex-col gap-4 w-full h-full">
+      <div
+        ref={containerRef}
+        className="overflow-y-auto"
+        style={{
+          height: `calc(100% - ${inputHeight}px)`,
+        }}
+      >
+        <div className="flex flex-col min-h-full justify-end gap-6">
+          {messages.map((message, index) => (
+            <ChatMessage
+              key={index}
+              name={message.name}
+              message={message.message}
+              isSelf={message.isSelf}
+              accentColor={accentColor}
+            />
+          ))}
+        </div>
+      </div>
+      <ChatMessageInput
+        height={inputHeight}
+        placeholder="Type a message"
+        accentColor={accentColor}
+        onSend={onSend}
+      />
+    </div>
+  );
+};
