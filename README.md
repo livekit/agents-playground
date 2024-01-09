@@ -1,28 +1,42 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+<!--BEGIN_BANNER_IMAGE-->
+  <!--END_BANNER_IMAGE-->
 
-## Getting Started
+# LiveKit Agent Playground
 
-First, run the development server:
+<!--BEGIN_DESCRIPTION-->
+<!--END_DESCRIPTION-->
+
+## Docs and references
+
+Docs for how to get started with LiveKit agents at [https://docs.livekit.io/agents](https://docs.livekit.io/agents)
+
+The repo containing the (server side) agent implementations (including example agents): [https://github.com/livekit/agents](https://github.com/livekit/agents)
+
+## Setting up the playground locally
+
+1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+  npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Copy and rename the `.env.example` file to `.env.local` and fill in the necessary environment variables.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+```
+LIVEKIT_API_KEY=<your API KEY>
+LIVEKIT_API_SECRET=<Your API Secret>
+NEXT_PUBLIC_LIVEKIT_URL=wss://<Your Cloud URL>
+```
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+3. Run the development server:
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+```bash
+  npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. If you haven't done so yet, start your agent (with the same project variables as in step 2.)
+6. Connect to a room and see your agent connecting to the playground
 
 ## Features
 
@@ -32,22 +46,14 @@ This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-opti
 
 ## Notes
 
-- Update `.env` to include
-
-```
-LIVEKIT_API_KEY=<your API KEY>
-LIVEKIT_API_SECRET=<Your API Secret>
-LIVEKIT_URL=<Your Cloud URL>
-NEXT_PUBLIC_LIVEKIT_URL=<Your Cloud URL>
-```
-
 - This playground is currently work in progress. There are known layout/responsive bugs and some features are under tested.
-- The playground was tested against the kitt example in `https://github.com/livekit/python-agents`.
-- Feel free to ask questions, request features at #team-agents.
-- Feel free to add features yourself if there's something you want to see
+- The playground was tested against the kitt example in `https://github.com/livekit/agents`.
+- Feel free to ask questions, request features in our [community slack](https://livekit.io/join-slack).
 
 ## Known issues
 
-- "Disconnect" in header is not yet functional
 - Layout can break on smaller screens.
 - Mobile device sizes not supported currently
+
+<!--BEGIN_REPO_NAV-->
+<!--END_REPO_NAV-->
