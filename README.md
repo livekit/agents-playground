@@ -8,10 +8,8 @@
 
 # LiveKit Agent Playground
 
-<!--BEGIN_DESCRIPTION-->
-The Agent Playground is designed for quickly prototyping with server side agents built with [LiveKit Agents Framework](https://github.com/livekit/agents). Easily tap into LiveKit WebRTC sessions and process or generate audio, video, and data streams.
-The playground includes components to fully interact with any LiveKit agent, through video, audio and chat.
-<!--END_DESCRIPTION-->
+<!--BEGIN_DESCRIPTION-->Use this SDK to add real-time video, audio and data features to your The Agent Playground is designed for quickly prototyping with server side agents built with [LiveKit Agents Framework](https://github.com/livekit/agents). Easily tap into LiveKit WebRTC sessions and process or generate audio, video, and data streams.
+  The playground includes components to fully interact with any LiveKit agent, through video, audio and chat. app. By connecting to a self- or cloud-hosted <a href="https://livekit.io/">LiveKit</a> server, you can quickly build applications like interactive live streaming or video calls with just a few lines of code.<!--END_DESCRIPTION-->
 
 ## Docs and references
 
