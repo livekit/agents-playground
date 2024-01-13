@@ -1,12 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": ["config:recommended"],
   "packageRules": [
     {
       "matchSourceUrlPrefixes": ["https://github.com/livekit/"],
-      "rangeStrategy": "replace",
       "matchUpdateTypes": ["patch", "minor"],
       "groupName": "LiveKit dependencies (non-major)",
       "automerge": true
@@ -19,4 +16,3 @@
     }
   ]
 }
-
