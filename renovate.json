@@ -1,0 +1,18 @@
+{
+  "extends": ["config:base"],
+  "packageRules": [
+    {
+      "matchSourceUrlPrefixes": ["https://github.com/livekit/"],
+      "rangeStrategy": "replace",
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "LiveKit dependencies (non-major)",
+      "automerge": true
+    },
+    {
+      "schedule": "before 6am on the first day of the month",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "devDependencies (non-major)"
+    }
+  ]
+}
