@@ -1,11 +1,11 @@
 import { useWindowResize } from "@/hooks/useWindowResize";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ChatMessageInput = {
   placeholder: string;
   accentColor: string;
   height: number;
-  onSend: (message: string) => void;
+  onSend?: (message: string) => void;
 };
 
 export const ChatMessageInput = ({
@@ -23,14 +23,17 @@ export const ChatMessageInput = ({
   const [isTyping, setIsTyping] = useState(false);
   const [inputHasFocus, setInputHasFocus] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
+    if (!onSend) {
+      return;
+    }
     if (message === "") {
       return;
     }
 
     onSend(message);
     setMessage("");
-  };
+  }, [onSend, message]);
 
   useEffect(() => {
     setIsTyping(true);
@@ -105,6 +108,7 @@ export const ChatMessageInput = ({
           {message.replaceAll(" ", "\u00a0")}
         </span>
         <button
+          disabled={message.length === 0 || !onSend}
           onClick={handleSend}
           className={`text-xs uppercase text-${accentColor}-500 hover:bg-${accentColor}-950 p-2 rounded-md opacity-${
             message.length > 0 ? 100 : 25

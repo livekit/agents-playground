@@ -1,20 +1,21 @@
-import Head from "next/head";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Inter } from "next/font/google";
 import { generateRandomAlphanumeric } from "@/lib/util";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   useToken,
 } from "@livekit/components-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Inter } from "next/font/google";
+import Head from "next/head";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground, {
+  PlaygroundMeta,
   PlaygroundOutputs,
 } from "@/components/playground/Playground";
-import { useAppConfig } from "@/hooks/useAppConfig";
-import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 const themeColors = [
   "cyan",
@@ -39,10 +40,9 @@ export default function Home() {
     process.env.NEXT_PUBLIC_LIVEKIT_URL
   );
   const [customToken, setCustomToken] = useState<string>();
+  const [metadata, setMetadata] = useState<PlaygroundMeta[]>([]);
 
-  const [roomName, setRoomName] = useState(
-    [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join("-")
-  );
+  const [roomName, setRoomName] = useState(createRoomName());
 
   const tokenOptions = useMemo(() => {
     return {
@@ -53,11 +53,24 @@ export default function Home() {
   // set a new room name each time the user disconnects so that a new token gets fetched behind the scenes for a different room
   useEffect(() => {
     if (shouldConnect === false) {
-      setRoomName(
-        [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join("-")
-      );
+      setRoomName(createRoomName());
     }
   }, [shouldConnect]);
+
+  useEffect(() => {
+    const md: PlaygroundMeta[] = [];
+    if (liveKitUrl && liveKitUrl !== process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+      md.push({ name: "LiveKit URL", value: liveKitUrl });
+    }
+    if (!customToken && tokenOptions.userInfo?.identity) {
+      md.push({ name: "Room Name", value: roomName });
+      md.push({
+        name: "Participant Identity",
+        value: tokenOptions.userInfo.identity,
+      });
+    }
+    setMetadata(md);
+  }, [liveKitUrl, roomName, tokenOptions, customToken]);
 
   const token = useToken("/api/token", roomName, tokenOptions);
   const appConfig = useAppConfig();
@@ -132,7 +145,7 @@ export default function Home() {
               themeColors={themeColors}
               defaultColor={appConfig?.theme_color ?? "cyan"}
               onConnect={handleConnect}
-              metadata={[{ name: "Room Name", value: roomName }]}
+              metadata={metadata}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -146,5 +159,11 @@ export default function Home() {
         )}
       </main>
     </>
+  );
+}
+
+function createRoomName() {
+  return [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join(
+    "-"
   );
 }

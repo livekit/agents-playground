@@ -1,23 +1,10 @@
 "use client";
 
-import {
-  VideoTrack,
-  useConnectionState,
-  useDataChannel,
-  useLocalParticipant,
-  useRemoteParticipants,
-  useRoomContext,
-  useTracks,
-} from "@livekit/components-react";
-import {
-  ConnectionState,
-  DataPacket_Kind,
-  LocalParticipant,
-  Track,
-} from "livekit-client";
-import { ColorPicker } from "@/components/colorPicker/ColorPicker";
-import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
+import { ChatMessageType, ChatTile } from "@/components/chat/ChatTile";
+import { ColorPicker } from "@/components/colorPicker/ColorPicker";
+import { AudioInputTile } from "@/components/config/AudioInputTile";
+import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
 import { NameValueRow } from "@/components/config/NameValueRow";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
@@ -25,17 +12,39 @@ import {
   PlaygroundTabbedTile,
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
-import { QRCodeSVG } from "qrcode.react";
-import { AudioInputTile } from "@/components/config/AudioInputTile";
-import { ChatMessageType, ChatTile } from "@/components/chat/ChatTile";
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
+import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
+import { AgentState } from "@/lib/types";
+import {
+  VideoTrack,
+  useChat,
+  useConnectionState,
+  useDataChannel,
+  useEnsureRoom,
+  useLocalParticipant,
+  useRemoteParticipants,
+  useTracks,
+} from "@livekit/components-react";
+import {
+  ConnectionState,
+  LocalParticipant,
+  ParticipantEvent,
+  RemoteParticipant,
+  RoomEvent,
+  Track,
+} from "livekit-client";
+import { QRCodeSVG } from "qrcode.react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 export enum PlaygroundOutputs {
   Video,
   Audio,
   Chat,
+}
+
+export interface PlaygroundMeta {
+  name: string;
+  value: string;
 }
 
 export interface PlaygroundProps {
@@ -48,7 +57,7 @@ export interface PlaygroundProps {
   outputs?: PlaygroundOutputs[];
   showQR?: boolean;
   onConnect: (connect: boolean, opts?: { token: string; url: string }) => void;
-  metadata?: { name: string; value: string }[];
+  metadata?: PlaygroundMeta[];
 }
 
 const headerHeight = 56;
@@ -65,15 +74,17 @@ export default function Playground({
   onConnect,
   metadata,
 }: PlaygroundProps) {
-  const [agentState, setAgentState] = useState<
-    "listening" | "speaking" | "thinking" | "offline"
-  >("offline");
-
-  const [userState, setUserState] = useState<"silent" | "speaking">("silent");
+  const [agentState, setAgentState] = useState<AgentState>("offline");
   const [themeColor, setThemeColor] = useState(defaultColor);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
-  const localParticipant = useLocalParticipant();
-  const roomContext = useRoomContext();
+  const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
+  const { localParticipant } = useLocalParticipant();
+  const room = useEnsureRoom();
+  const participants = useRemoteParticipants({
+    updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
+  });
+  const agentParticipant = participants.find((p) => p.isAgent);
+  const { send: sendChat, chatMessages } = useChat();
   const visualizerState = useMemo(() => {
     if (agentState === "thinking") {
       return "thinking";
@@ -118,38 +129,92 @@ export default function Playground({
     20
   );
 
-  const isAgentConnected = !!useRemoteParticipants().find((p) => p.isAgent);
-
   useEffect(() => {
-    if (isAgentConnected && agentState === "offline") {
-      setAgentState("listening");
-    } else if (!isAgentConnected) {
-      setAgentState("offline");
+    if (!agentParticipant || !room) {
+      return;
     }
-  }, [isAgentConnected, agentState]);
+    const metadataChanged = () => {
+      let agentMd: any = {};
+      if (agentParticipant.metadata) {
+        agentMd = JSON.parse(agentParticipant.metadata);
+      }
+      if (agentMd.agent_state) {
+        setAgentState(agentMd.agent_state);
+      } else {
+        setAgentState("starting");
+      }
+    };
+    const disconnected = (p: RemoteParticipant) => {
+      if (agentParticipant.identity === p.identity) {
+        setAgentState("offline");
+      }
+    };
+    agentParticipant.on(
+      ParticipantEvent.ParticipantMetadataChanged,
+      metadataChanged
+    );
+    room.on(RoomEvent.ParticipantDisconnected, disconnected);
+    return () => {
+      agentParticipant.off(
+        ParticipantEvent.ParticipantMetadataChanged,
+        metadataChanged
+      );
+      room.off(RoomEvent.ParticipantDisconnected, disconnected);
+    };
+  }, [agentParticipant, room]);
+
+  const isAgentConnected = agentState !== "offline";
 
   const onDataReceived = useCallback(
     (msg: any) => {
-      const decoded = JSON.parse(new TextDecoder("utf-8").decode(msg.payload));
-      if (decoded.type === "state") {
-        const { agent_state, user_state } = decoded;
-        setAgentState(agent_state);
-        setUserState(user_state);
-      } else if (decoded.type === "transcription") {
-        setMessages([
-          ...messages,
-          { name: "You", message: decoded.text, isSelf: true },
-        ]);
-      } else if (decoded.type === "agent_chat_message") {
-        setMessages([
-          ...messages,
-          { name: "Agent", message: decoded.text, isSelf: false },
+      if (msg.topic === "transcription") {
+        const decoded = JSON.parse(
+          new TextDecoder("utf-8").decode(msg.payload)
+        );
+        let timestamp = new Date().getTime();
+        if ("timestamp" in decoded && decoded.timestamp > 0) {
+          timestamp = decoded.timestamp;
+        }
+        setTranscripts([
+          ...transcripts,
+          {
+            name: "You",
+            message: decoded.text,
+            timestamp: timestamp,
+            isSelf: true,
+          },
         ]);
       }
-      console.log("data received", decoded, msg.from);
     },
-    [messages]
+    [transcripts]
   );
+
+  // combine transcripts and chat together
+  useEffect(() => {
+    const allMessages = [...transcripts];
+    for (const msg of chatMessages) {
+      const isAgent = msg.from?.identity === agentParticipant?.identity;
+      const isSelf = msg.from?.identity === localParticipant?.identity;
+      let name = msg.from?.name;
+      if (!name) {
+        if (isAgent) {
+          name = "Agent";
+        } else if (isSelf) {
+          name = "You";
+        } else {
+          name = "Unknown";
+        }
+      }
+      allMessages.push({
+        name,
+        message: msg.message,
+        timestamp: msg?.timestamp,
+        isSelf: isSelf,
+      });
+    }
+    allMessages.sort((a, b) => a.timestamp - b.timestamp);
+    setMessages(allMessages);
+  }, [transcripts, chatMessages, localParticipant, agentParticipant]);
 
   useDataChannel(onDataReceived);
 
@@ -201,32 +266,10 @@ export default function Playground({
       <ChatTile
         messages={messages}
         accentColor={themeColor}
-        onSend={(message) => {
-          if (roomContext.state === ConnectionState.Disconnected) {
-            return;
-          }
-          setMessages([
-            ...messages,
-            { name: "You", message: message, isSelf: true },
-          ]);
-          const data = {
-            type: "user_chat_message",
-            text: message,
-          };
-          const encoder = new TextEncoder();
-          localParticipant.localParticipant?.publishData(
-            encoder.encode(JSON.stringify(data)),
-            DataPacket_Kind.RELIABLE
-          );
-        }}
+        onSend={sendChat}
       />
     );
-  }, [
-    localParticipant.localParticipant,
-    messages,
-    roomContext.state,
-    themeColor,
-  ]);
+  }, [messages, themeColor, sendChat]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -239,10 +282,6 @@ export default function Playground({
 
         <ConfigurationPanelItem title="Settings">
           <div className="flex flex-col gap-2">
-            <NameValueRow
-              name="Agent URL"
-              value={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-            />
             {metadata?.map((data, index) => (
               <NameValueRow
                 key={data.name + index}
@@ -296,13 +335,6 @@ export default function Playground({
               }
               valueColor={
                 agentState === "speaking" ? `${themeColor}-500` : "gray-500"
-              }
-            />
-            <NameValueRow
-              name="User status"
-              value={userState}
-              valueColor={
-                userState === "silent" ? "gray-500" : `${themeColor}-500`
               }
             />
           </div>
@@ -359,7 +391,6 @@ export default function Playground({
     roomState,
     themeColor,
     themeColors,
-    userState,
     showQR,
   ]);
 
