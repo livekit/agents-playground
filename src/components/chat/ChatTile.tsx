@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatMessageInput } from "@/components/chat/ChatMessageInput";
+import { useEffect, useRef } from "react";
 
 const inputHeight = 48;
 
@@ -8,12 +8,13 @@ export type ChatMessageType = {
   name: string;
   message: string;
   isSelf: boolean;
+  timestamp: number;
 };
 
 type ChatTileProps = {
   messages: ChatMessageType[];
   accentColor: string;
-  onSend: (message: string) => void;
+  onSend?: (message: string) => Promise<void>;
 };
 
 export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {

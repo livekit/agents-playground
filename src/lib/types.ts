@@ -14,3 +14,10 @@ export interface TokenResult {
   identity: string;
   accessToken: string;
 }
+
+export type AgentState =
+  | "listening"
+  | "speaking"
+  | "thinking"
+  | "offline"
+  | "starting";
