@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
+  StartAudio,
   useToken,
 } from "@livekit/components-react";
 
@@ -135,6 +136,7 @@ export default function Home() {
               metadata={[{ name: "Room Name", value: roomName }]}
             />
             <RoomAudioRenderer />
+            <StartAudio label="Click to enable audio playback" />
           </LiveKitRoom>
         ) : (
           <PlaygroundConnect
