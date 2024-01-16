@@ -95,8 +95,14 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>{appConfig.title}</title>
-        <meta name="description" content={appConfig.description} />
+        <title>{appConfig?.title ?? "LiveKit Agents Playground"}</title>
+        <meta
+          name="description"
+          content={
+            appConfig?.description ??
+            "Quickly prototype and test your multimodal agents"
+          }
+        />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
