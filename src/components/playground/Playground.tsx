@@ -20,16 +20,15 @@ import {
   useChat,
   useConnectionState,
   useDataChannel,
-  useEnsureRoom,
   useLocalParticipant,
+  useParticipantInfo,
+  useRemoteParticipant,
   useRemoteParticipants,
   useTracks,
 } from "@livekit/components-react";
 import {
   ConnectionState,
   LocalParticipant,
-  ParticipantEvent,
-  RemoteParticipant,
   RoomEvent,
   Track,
 } from "livekit-client";
@@ -79,11 +78,12 @@ export default function Playground({
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
-  const room = useEnsureRoom();
+
   const participants = useRemoteParticipants({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
   });
   const agentParticipant = participants.find((p) => p.isAgent);
+
   const { send: sendChat, chatMessages } = useChat();
   const visualizerState = useMemo(() => {
     if (agentState === "thinking") {
@@ -130,38 +130,20 @@ export default function Playground({
   );
 
   useEffect(() => {
-    if (!agentParticipant || !room) {
+    if (!agentParticipant) {
+      setAgentState("offline");
       return;
     }
-    const metadataChanged = () => {
-      let agentMd: any = {};
-      if (agentParticipant.metadata) {
-        agentMd = JSON.parse(agentParticipant.metadata);
-      }
-      if (agentMd.agent_state) {
-        setAgentState(agentMd.agent_state);
-      } else {
-        setAgentState("starting");
-      }
-    };
-    const disconnected = (p: RemoteParticipant) => {
-      if (agentParticipant.identity === p.identity) {
-        setAgentState("offline");
-      }
-    };
-    agentParticipant.on(
-      ParticipantEvent.ParticipantMetadataChanged,
-      metadataChanged
-    );
-    room.on(RoomEvent.ParticipantDisconnected, disconnected);
-    return () => {
-      agentParticipant.off(
-        ParticipantEvent.ParticipantMetadataChanged,
-        metadataChanged
-      );
-      room.off(RoomEvent.ParticipantDisconnected, disconnected);
-    };
-  }, [agentParticipant, room]);
+    let agentMd: any = {};
+    if (agentParticipant.metadata) {
+      agentMd = JSON.parse(agentParticipant.metadata);
+    }
+    if (agentMd.agent_state) {
+      setAgentState(agentMd.agent_state);
+    } else {
+      setAgentState("starting");
+    }
+  }, [agentParticipant, agentParticipant?.metadata]);
 
   const isAgentConnected = agentState !== "offline";
 
