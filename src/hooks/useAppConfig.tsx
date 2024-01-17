@@ -1,5 +1,4 @@
 import jsYaml from "js-yaml";
-import { useEffect, useState } from "react";
 
 const APP_CONFIG = process.env.NEXT_PUBLIC_APP_CONFIG;
 
@@ -22,8 +21,8 @@ export type AppConfig = {
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
-  title: "Agent Playground",
-  description: "A playground for testing LiveKit agents",
+  title: "Agents Playground",
+  description: "A playground for testing LiveKit Agents",
   theme_color: "cyan",
   outputs: {
     audio: true,
@@ -38,20 +37,16 @@ const defaultConfig: AppConfig = {
 };
 
 export const useAppConfig = (): AppConfig => {
-  const [config, setConfig] = useState<any>(null);
-  useEffect(() => {
+  if (APP_CONFIG) {
     try {
-      if (APP_CONFIG) {
-        const parsedConfig = jsYaml.load(APP_CONFIG);
-        setConfig(parsedConfig);
-        console.log("parsedConfig:", parsedConfig);
-      } else {
-        setConfig(defaultConfig);
-      }
-    } catch (error) {
-      console.error("Error parsing NEXT_PUBLIC_APP_CONFIG:", error);
+      const parsedConfig = jsYaml.load(APP_CONFIG);
+      console.log("parsedConfig:", parsedConfig);
+      return parsedConfig as AppConfig;
+    } catch (e) {
+      console.error("Error parsing app config:", e);
+      return defaultConfig;
     }
-  }, []);
-
-  return config;
+  } else {
+    return defaultConfig;
+  }
 };
