@@ -1,5 +1,6 @@
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatMessageInput } from "@/components/chat/ChatMessageInput";
+import { ChatMessage as ComponentsChatMessage } from "@livekit/components-react";
 import { useEffect, useRef } from "react";
 
 const inputHeight = 48;
@@ -14,7 +15,7 @@ export type ChatMessageType = {
 type ChatTileProps = {
   messages: ChatMessageType[];
   accentColor: string;
-  onSend?: (message: string) => Promise<void>;
+  onSend?: (message: string) => Promise<ComponentsChatMessage>;
 };
 
 export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
