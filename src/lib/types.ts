@@ -16,6 +16,7 @@ export interface TokenResult {
 }
 
 export type AgentState =
+  | "idle"
   | "listening"
   | "speaking"
   | "thinking"

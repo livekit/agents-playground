@@ -72,11 +72,11 @@ export const AgentMultibandAudioVisualizer = ({
       {summedFrequencies.map((frequency, index) => {
         const isCenter = index === Math.floor(summedFrequencies.length / 2);
 
-        let color = accentColor;
+        let color = `${accentColor}-${accentShade}`;
         let shadow = `shadow-lg-${accentColor}`;
         let transform;
 
-        if (state === "listening") {
+        if (state === "listening" || state === "idle") {
           color = isCenter ? `${accentColor}-${accentShade}` : "gray-950";
           shadow = !isCenter ? "" : shadow;
           transform = !isCenter ? "scale(1.0)" : "scale(1.2)";
