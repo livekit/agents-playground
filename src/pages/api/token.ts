@@ -64,7 +64,7 @@ export default async function handleToken(
       canSubscribe: true,
     };
 
-    const token = createToken({ identity, name, metadata }, grant);
+    const token = await createToken({ identity, name, metadata }, grant);
     const result: TokenResult = {
       identity,
       accessToken: token,
