@@ -159,6 +159,7 @@ export default function Home() {
               defaultColor={appConfig?.theme_color ?? "cyan"}
               onConnect={handleConnect}
               metadata={metadata}
+              videoFit={appConfig?.video_fit ?? "cover"}
             />
             <RoomAudioRenderer />
             <StartAudio label="Click to enable audio playback" />

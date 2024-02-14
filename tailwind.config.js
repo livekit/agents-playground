@@ -37,6 +37,8 @@ const safelist = [
   'bg-black',
   'bg-white',
   'transparent',
+  'object-cover',
+  'object-contain',
   ...shadowNames,
   ...textShadowNames,
   ...shades.flatMap(shade => [
