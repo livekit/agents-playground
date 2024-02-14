@@ -57,6 +57,7 @@ export interface PlaygroundProps {
   showQR?: boolean;
   onConnect: (connect: boolean, opts?: { token: string; url: string }) => void;
   metadata?: PlaygroundMeta[];
+  videoFit?: "contain" | "cover";
 }
 
 const headerHeight = 56;
@@ -72,6 +73,7 @@ export default function Playground({
   defaultColor,
   onConnect,
   metadata,
+  videoFit,
 }: PlaygroundProps) {
   const [agentState, setAgentState] = useState<AgentState>("offline");
   const [themeColor, setThemeColor] = useState(defaultColor);
@@ -201,12 +203,13 @@ export default function Playground({
   useDataChannel(onDataReceived);
 
   const videoTileContent = useMemo(() => {
+    const videoFitClassName = `object-${videoFit}`;
     return (
       <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
         {agentVideoTrack ? (
           <VideoTrack
             trackRef={agentVideoTrack}
-            className="absolute top-1/2 -translate-y-1/2 object-cover object-position-center w-full h-full"
+            className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
           />
         ) : (
           <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
@@ -216,7 +219,7 @@ export default function Playground({
         )}
       </div>
     );
-  }, [agentVideoTrack]);
+  }, [agentVideoTrack, videoFit]);
 
   const audioTileContent = useMemo(() => {
     return (

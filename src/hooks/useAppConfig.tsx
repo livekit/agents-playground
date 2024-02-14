@@ -7,6 +7,7 @@ export type AppConfig = {
   description: string;
   github_link?: string;
   theme_color?: string;
+  video_fit?: "cover" | "contain";
   outputs: {
     audio: boolean;
     video: boolean;
@@ -24,6 +25,7 @@ const defaultConfig: AppConfig = {
   title: "Agents Playground",
   description: "A playground for testing LiveKit Agents",
   theme_color: "cyan",
+  video_fit: "cover",
   outputs: {
     audio: true,
     video: true,
