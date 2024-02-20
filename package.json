@@ -9,11 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@livekit/components-react": "^1.5.1",
+    "@livekit/components-react": "^2.0.0",
     "framer-motion": "^10.16.16",
     "js-yaml": "^4.1.0",
-    "livekit-client": "^1.15.4",
-    "livekit-server-sdk": "^2.0.0",
+    "livekit-client": "^2.0.2",
+    "livekit-server-sdk": "^2.0.3",
     "next": "^14.0.4",
     "qrcode.react": "^3.1.0",
     "react": "^18",
