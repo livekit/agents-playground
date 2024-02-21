@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@livekit/components-react": "^2.0.0",
-    "framer-motion": "^10.16.16",
+    "framer-motion": "^11.0.0",
     "js-yaml": "^4.1.0",
     "livekit-client": "^2.0.2",
     "livekit-server-sdk": "^2.0.3",
