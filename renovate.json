@@ -3,16 +3,16 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
-      "matchSourceUrlPrefixes": ["https://github.com/livekit/"],
-      "matchUpdateTypes": ["patch", "minor"],
-      "groupName": "LiveKit dependencies (non-major)",
-      "automerge": true
-    },
-    {
       "schedule": "before 6am on the first day of the month",
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["patch", "minor"],
       "groupName": "devDependencies (non-major)"
+    },
+    {
+      "matchSourceUrlPrefixes": ["https://github.com/livekit/"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "LiveKit dependencies (non-major)",
+      "automerge": true
     }
   ]
 }
