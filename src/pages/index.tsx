@@ -10,13 +10,14 @@ import { Inter } from "next/font/google";
 import Head from "next/head";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { PlaygroundConnect } from "@/components/PlaygroundConnect";
+import { PlaygroundConnect } from "@/components/connect/PlaygroundConnect";
 import Playground, {
   PlaygroundMeta,
   PlaygroundOutputs,
 } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { ConnectionDetailsGeneratorProvider } from "@/hooks/useConnectionDetailsGenerator";
 
 const themeColors = [
   "cyan",
