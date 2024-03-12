@@ -12,7 +12,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-function TokenGeneratorProvider({tokenGenerator, children}: Props) {
+export function TokenGeneratorProvider({tokenGenerator, children}: Props) {
   const [connectionDetails, setConnectionDetails] = React.useState<
     { token: string; url: string } | undefined
   >(undefined);
@@ -29,7 +29,7 @@ function TokenGeneratorProvider({tokenGenerator, children}: Props) {
   );
 }
 
-function useTokenGenerator() {
+export function useTokenGenerator() {
   const context = React.useContext(TokenGeneratorContext);
   if (!context) {
     throw new Error("useTokenGenerator must be used within a TokenGeneratorProvider");
