@@ -17,7 +17,7 @@ import Playground, {
 } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { useAppConfig } from "@/hooks/useAppConfig";
-import { ConnectionDetailsGeneratorProvider } from "@/hooks/useConnectionDetailsGenerator";
+import { ConnectionDetailsGeneratorProvider, useConnectionDetailsGenerator } from "@/hooks/useConnectionDetailsGenerator";
 
 const themeColors = [
   "cyan",
@@ -38,6 +38,8 @@ export default function Home() {
     type: ToastType;
   } | null>(null);
   const [shouldConnect, setShouldConnect] = useState(false);
+  const { generateConnectionDetails, connectionDetails } =
+    useConnectionDetailsGenerator();
   const [liveKitUrl, setLiveKitUrl] = useState(
     process.env.NEXT_PUBLIC_LIVEKIT_URL
   );

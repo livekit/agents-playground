@@ -12,7 +12,7 @@ type ConnectionDetailsGeneratorData = {
   setOverrideUrl: (url: string | undefined) => void;
 };
 
-const TokenGeneratorContext = React.createContext<ConnectionDetailsGeneratorData | undefined>(undefined);
+const ConnectionDetailsGeneratorContext = React.createContext<ConnectionDetailsGeneratorData | undefined>(undefined);
 
 type Props = {
   connectionDetailsGenerator:
@@ -52,7 +52,7 @@ export function ConnectionDetailsGeneratorProvider({connectionDetailsGenerator, 
   }, [_connectionDetails]);
 
   return (
-    <TokenGeneratorContext.Provider
+    <ConnectionDetailsGeneratorContext.Provider
       value={{
         connectionDetails,
         overrideToken,
@@ -64,14 +64,16 @@ export function ConnectionDetailsGeneratorProvider({connectionDetailsGenerator, 
       }}
     >
       {children}
-    </TokenGeneratorContext.Provider>
+    </ConnectionDetailsGeneratorContext.Provider>
   );
 }
 
-export function useTokenGenerator() {
-  const context = React.useContext(TokenGeneratorContext);
+export function useConnectionDetailsGenerator() {
+  const context = React.useContext(ConnectionDetailsGeneratorContext);
   if (!context) {
-    throw new Error("useTokenGenerator must be used within a TokenGeneratorProvider");
+    throw new Error(
+      "useConnectionDetailsGenerator must be used within a ConnectionDetailsGeneratorProvider"
+    );
   }
   return context;
 }
