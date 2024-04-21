@@ -13,6 +13,7 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
+import { useSettings } from "@/hooks/useAppConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { AgentState } from "@/lib/types";
 import {
@@ -21,9 +22,8 @@ import {
   useConnectionState,
   useDataChannel,
   useLocalParticipant,
-  useParticipantInfo,
-  useRemoteParticipant,
   useRemoteParticipants,
+  useRoomContext,
   useTracks,
 } from "@livekit/components-react";
 import {
@@ -48,38 +48,28 @@ export interface PlaygroundMeta {
 
 export interface PlaygroundProps {
   logo?: ReactNode;
-  title?: string;
-  githubLink?: string;
-  description?: ReactNode;
   themeColors: string[];
-  defaultColor: string;
-  outputs?: PlaygroundOutputs[];
-  showQR?: boolean;
   onConnect: (connect: boolean, opts?: { token: string; url: string }) => void;
   metadata?: PlaygroundMeta[];
-  videoFit?: "contain" | "cover";
 }
 
 const headerHeight = 56;
 
 export default function Playground({
   logo,
-  title,
-  githubLink,
-  description,
-  outputs,
-  showQR,
   themeColors,
-  defaultColor,
   onConnect,
   metadata,
-  videoFit,
 }: PlaygroundProps) {
+  const [settings, setSettings] = useSettings();
   const [agentState, setAgentState] = useState<AgentState>("offline");
-  const [themeColor, setThemeColor] = useState(defaultColor);
+  const [themeColor, setThemeColor] = useState<string>(
+    () => settings.theme_color ?? "cyan"
+  );
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
+  const [outputs, setOutputs] = useState<PlaygroundOutputs[]>([]);
 
   const participants = useRemoteParticipants({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
@@ -87,17 +77,29 @@ export default function Playground({
   const agentParticipant = participants.find((p) => p.isAgent);
 
   const { send: sendChat, chatMessages } = useChat();
-  const visualizerState = useMemo(() => {
-    if (agentState === "thinking") {
-      return "thinking";
-    } else if (agentState === "speaking") {
-      return "talking";
-    }
-    return "idle";
-  }, [agentState]);
-
+  const room = useRoomContext();
   const roomState = useConnectionState();
   const tracks = useTracks();
+
+  useEffect(() => {
+    const outputs = [
+      settings.outputs.audio && PlaygroundOutputs.Audio,
+      settings.outputs.video && PlaygroundOutputs.Video,
+      settings.outputs.chat && PlaygroundOutputs.Chat,
+    ].filter((item) => typeof item !== "boolean") as PlaygroundOutputs[];
+    setOutputs(outputs);
+
+    if (settings.theme_color) {
+      setThemeColor(settings.theme_color);
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    if (roomState === ConnectionState.Connected) {
+      room.localParticipant.setCameraEnabled(settings.inputs.camera);
+      room.localParticipant.setMicrophoneEnabled(settings.inputs.mic);
+    }
+  }, [settings, room, roomState]);
 
   const agentAudioTrack = tracks.find(
     (trackRef) =>
@@ -203,7 +205,7 @@ export default function Playground({
   useDataChannel(onDataReceived);
 
   const videoTileContent = useMemo(() => {
-    const videoFitClassName = `object-${videoFit}`;
+    const videoFitClassName = `object-${settings.video_fit || "cover"}`;
     return (
       <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
         {agentVideoTrack ? (
@@ -219,7 +221,7 @@ export default function Playground({
         )}
       </div>
     );
-  }, [agentVideoTrack, videoFit]);
+  }, [agentVideoTrack, settings]);
 
   const audioTileContent = useMemo(() => {
     return (
@@ -259,9 +261,9 @@ export default function Playground({
   const settingsTileContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
-        {description && (
+        {settings.description && (
           <ConfigurationPanelItem title="Description">
-            {description}
+            {settings.description}
           </ConfigurationPanelItem>
         )}
 
@@ -351,12 +353,13 @@ export default function Playground({
               colors={themeColors}
               selectedColor={themeColor}
               onSelect={(color) => {
-                setThemeColor(color);
+                settings.theme_color = color;
+                setSettings({ ...settings });
               }}
             />
           </ConfigurationPanelItem>
         </div>
-        {showQR && (
+        {settings.show_qr && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
               <QRCodeSVG value={window.location.href} width="128" />
@@ -366,8 +369,9 @@ export default function Playground({
       </div>
     );
   }, [
+    settings,
+    setSettings,
     agentState,
-    description,
     isAgentConnected,
     localMicTrack,
     localMultibandVolume,
@@ -376,7 +380,6 @@ export default function Playground({
     roomState,
     themeColor,
     themeColors,
-    showQR,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
@@ -432,9 +435,9 @@ export default function Playground({
   return (
     <>
       <PlaygroundHeader
-        title={title}
+        title={settings.title}
         logo={logo}
-        githubLink={githubLink}
+        githubLink={settings.github_link}
         height={headerHeight}
         accentColor={themeColor}
         connectionState={roomState}

@@ -11,12 +11,9 @@ import Head from "next/head";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
-import Playground, {
-  PlaygroundMeta,
-  PlaygroundOutputs,
-} from "@/components/playground/Playground";
+import Playground, { PlaygroundMeta } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
-import { useAppConfig } from "@/hooks/useAppConfig";
+import { useSettings } from "@/hooks/useAppConfig";
 
 const themeColors = [
   "cyan",
@@ -74,12 +71,7 @@ export default function Home() {
   }, [liveKitUrl, roomName, tokenOptions, customToken]);
 
   const token = useToken("/api/token", roomName, tokenOptions);
-  const appConfig = useAppConfig();
-  const outputs = [
-    appConfig?.outputs.audio && PlaygroundOutputs.Audio,
-    appConfig?.outputs.video && PlaygroundOutputs.Video,
-    appConfig?.outputs.chat && PlaygroundOutputs.Chat,
-  ].filter((item) => typeof item !== "boolean") as PlaygroundOutputs[];
+  const [settings] = useSettings();
 
   const handleConnect = useCallback(
     (connect: boolean, opts?: { url: string; token: string }) => {
@@ -95,14 +87,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>{appConfig?.title ?? "LiveKit Agents Playground"}</title>
-        <meta
-          name="description"
-          content={
-            appConfig?.description ??
-            "Quickly prototype and test your multimodal agents"
-          }
-        />
+        <title>{settings.title}</title>
+        <meta name="description" content={settings.description} />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
@@ -141,8 +127,6 @@ export default function Home() {
             className="flex flex-col h-full w-full"
             serverUrl={liveKitUrl}
             token={customToken ?? token}
-            audio={appConfig?.inputs.mic}
-            video={appConfig?.inputs.camera}
             connect={shouldConnect}
             onError={(e) => {
               setToastMessage({ message: e.message, type: "error" });
@@ -150,16 +134,9 @@ export default function Home() {
             }}
           >
             <Playground
-              title={appConfig?.title}
-              githubLink={appConfig?.github_link}
-              outputs={outputs}
-              showQR={appConfig?.show_qr}
-              description={appConfig?.description}
               themeColors={themeColors}
-              defaultColor={appConfig?.theme_color ?? "cyan"}
               onConnect={handleConnect}
               metadata={metadata}
-              videoFit={appConfig?.video_fit ?? "cover"}
             />
             <RoomAudioRenderer />
             <StartAudio label="Click to enable audio playback" />

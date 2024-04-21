@@ -1,6 +1,8 @@
 import { Button } from "@/components/button/Button";
-import { ConnectionState } from "livekit-client";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
+import { useSettings } from "@/hooks/useAppConfig";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { ConnectionState } from "livekit-client";
 import { ReactNode } from "react";
 
 type PlaygroundHeader = {
@@ -22,6 +24,8 @@ export const PlaygroundHeader = ({
   onConnectClicked,
   connectionState,
 }: PlaygroundHeader) => {
+  const [settings, setSettings] = useSettings();
+
   return (
     <div
       className={`flex gap-4 pt-4 text-${accentColor}-500 justify-between items-center shrink-0`}
@@ -47,6 +51,39 @@ export const PlaygroundHeader = ({
             <GithubSVG />
           </a>
         )}
+        <DropdownMenu.Root modal={false}>
+          <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded bg-bg2 p-1 pr-2">
+            {/* Chevron icon down. */}
+            <div className="my-auto group-data-[state=open]:rotate-180">
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="fill-fg4 transition-colors group-hover:fill-fg1"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="m8 10.7.4-.3 4-4 .3-.4-.7-.7-.4.3L8 9.3 4.4 5.6 4 5.3l-.7.7.3.4 4 4 .4.3Z"
+                />
+              </svg>
+            </div>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className="z-50 flex w-60 flex-col gap-2 overflow-hidden rounded border border-separator1 bg-bg2 py-2 text-[13px]"
+              sideOffset={5}
+              collisionPadding={16}
+            >
+              <DropdownMenu.Label className="flex h-[2.125] max-w-full flex-row items-center gap-3 px-4 py-2 text-sm">
+                test-content
+              </DropdownMenu.Label>
+
+              <DropdownMenu.Separator className="h-[1px] bg-separator1" />
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
         <Button
           accentColor={
             connectionState === ConnectionState.Connected ? "red" : accentColor
