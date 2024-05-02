@@ -62,7 +62,6 @@ export default function Playground({
   metadata,
 }: PlaygroundProps) {
   const {config, setUserSettings} = useConfig();
-  console.log("Config", config);
   const [agentState, setAgentState] = useState<AgentState>("offline");
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);

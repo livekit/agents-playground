@@ -12,6 +12,16 @@ type SettingValue = {
 
 const settingsDropdown: SettingValue[] = [
   {
+    title: "Show chat",
+    type: "chat",
+    key: "N/A",
+  },
+  {
+    title: "---",
+    type: "separator",
+    key: "separator_1",
+  },
+  {
     title: "Show video",
     type: "outputs",
     key: "video",
@@ -21,15 +31,11 @@ const settingsDropdown: SettingValue[] = [
     type: "outputs",
     key: "audio",
   },
-  {
-    title: "Show chat",
-    type: "outputs",
-    key: "chat",
-  },
+
   {
     title: "---",
     type: "separator",
-    key: "separator",
+    key: "separator_2",
   },
   {
     title: "Enable camera",
@@ -67,6 +73,7 @@ export const SettingsDropdown = () => {
     if (setting.type === "separator" || setting.type === "theme_color") return;
     const newValue = !isEnabled(setting);
     const newSettings = {...config.user_settings}
+    console.log("Toggle setting", newValue, setting.type)
 
     if(setting.type === "chat") {
       newSettings.chat = newValue;

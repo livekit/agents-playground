@@ -31,8 +31,6 @@ for (const [name, color] of Object.entries(customColors)) {
   shadowNames.push(`hover:shadow-${name}`);
 }
 
-console.log(customShadows, textShadows);
-
 const safelist = [
   'bg-black',
   'bg-white',
@@ -49,8 +47,6 @@ const safelist = [
     ]),
   ]),
 ];
-
-console.log("Safe list", safelist);
 
 module.exports = {
   content: [

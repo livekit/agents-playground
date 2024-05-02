@@ -167,7 +167,6 @@ export const ConfigProvider = ({
     const cookieSettigs = getSettingsFromCookies();
     const urlSettings = getSettingsFromUrl();
 
-    console.log("Settings", cookieSettigs, urlSettings, appConfigFromSettings);
     if (urlSettings) {
       appConfigFromSettings.user_settings = urlSettings;
       setCookieSettings(urlSettings);
@@ -175,8 +174,6 @@ export const ConfigProvider = ({
       appConfigFromSettings.user_settings = cookieSettigs;
       setUrlSettings(cookieSettigs);
     }
-
-    console.log("App Config", appConfigFromSettings);
 
     return {...appConfigFromSettings};
   }, [
@@ -188,8 +185,15 @@ export const ConfigProvider = ({
   ]);
 
   const setUserSettings = useCallback((settings: UserSettings) => {
+    console.log("Set user settings", settings)
     setUrlSettings(settings);
     setCookieSettings(settings);
+    _setConfig((prev) => {
+      return {
+        ...prev,
+        user_settings: settings,
+      };
+    })
   }, [setCookieSettings, setUrlSettings]);
 
   const [config, _setConfig] = useState<AppConfig>(getConfig());
