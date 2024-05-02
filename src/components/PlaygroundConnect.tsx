@@ -1,17 +1,20 @@
+import { useConfig } from "@/hooks/useConfig";
 import { Button } from "./button/Button";
-import { useRef } from "react";
+import { useState } from "react";
+import { useTokenGenerator } from "@/hooks/useTokenGenerator";
 
 type PlaygroundConnectProps = {
   accentColor: string;
-  onConnectClicked: (url: string, roomToken: string) => void;
+  onConnectClicked: () => void;
 };
 
 export const PlaygroundConnect = ({
   accentColor,
   onConnectClicked,
 }: PlaygroundConnectProps) => {
-  const urlInput = useRef<HTMLInputElement>(null);
-  const tokenInput = useRef<HTMLTextAreaElement>(null);
+  const { setUserSettings, config } = useConfig();
+  const [url, setUrl] = useState(config.user_settings.ws_url)
+  const [token, setToken] = useState(config.user_settings.token)
 
   return (
     <div className="flex left-0 top-0 w-full h-full bg-black/80 items-center justify-center text-center">
@@ -25,12 +28,14 @@ export const PlaygroundConnect = ({
         </div>
         <div className="flex flex-col gap-2 my-4">
           <input
-            ref={urlInput}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
             className="text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
             placeholder="wss://url"
           ></input>
           <textarea
-            ref={tokenInput}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
             className="text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
             placeholder="room token..."
           ></textarea>
@@ -39,12 +44,11 @@ export const PlaygroundConnect = ({
           accentColor={accentColor}
           className="w-full"
           onClick={() => {
-            if (urlInput.current && tokenInput.current) {
-              onConnectClicked(
-                urlInput.current.value,
-                tokenInput.current.value
-              );
-            }
+            const newSettings = {...config.user_settings};
+            newSettings.ws_url = url;
+            newSettings.token = token;
+            setUserSettings(newSettings);
+            onConnectClicked();
           }}
         >
           Connect

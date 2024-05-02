@@ -50,7 +50,6 @@ export interface PlaygroundProps {
   logo?: ReactNode;
   themeColors: string[];
   onConnect: (connect: boolean, opts?: { token: string; url: string }) => void;
-  metadata?: PlaygroundMeta[];
 }
 
 const headerHeight = 56;
@@ -59,7 +58,6 @@ export default function Playground({
   logo,
   themeColors,
   onConnect,
-  metadata,
 }: PlaygroundProps) {
   const {config, setUserSettings} = useConfig();
   const [agentState, setAgentState] = useState<AgentState>("offline");
@@ -261,7 +259,7 @@ export default function Playground({
         )}
 
         <ConfigurationPanelItem title="Settings">
-          <div className="flex flex-col gap-2">
+          {/* <div className="flex flex-col gap-2">
             {metadata?.map((data, index) => (
               <NameValueRow
                 key={data.name + index}
@@ -269,7 +267,7 @@ export default function Playground({
                 value={data.value}
               />
             ))}
-          </div>
+          </div> */}
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">
@@ -372,7 +370,7 @@ export default function Playground({
     config.description,
     config.user_settings,
     config.show_qr,
-    metadata,
+    // metadata,
     roomState,
     isAgentConnected,
     agentState,

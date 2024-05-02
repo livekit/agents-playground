@@ -8,12 +8,14 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { Inter } from "next/font/google";
 import Head from "next/head";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground, { PlaygroundMeta } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
+import { Mode, TokenGeneratorProvider, useTokenGenerator } from "@/hooks/useTokenGenerator";
+import { useRef } from "react";
 
 const themeColors = [
   "cyan",
@@ -31,9 +33,11 @@ const inter = Inter({ subsets: ["latin"] });
 export default function Home() {
   return (
     <ConfigProvider>
-      <HomeInner />
+      <TokenGeneratorProvider>
+        <HomeInner />
+      </TokenGeneratorProvider>
     </ConfigProvider>
-  )
+  );
 }
 
 export function HomeInner() {
@@ -41,55 +45,17 @@ export function HomeInner() {
     message: string;
     type: ToastType;
   } | null>(null);
-  const [shouldConnect, setShouldConnect] = useState(false);
-  const [liveKitUrl, setLiveKitUrl] = useState(
-    process.env.NEXT_PUBLIC_LIVEKIT_URL
-  );
-  const [customToken, setCustomToken] = useState<string>();
-  const [metadata, setMetadata] = useState<PlaygroundMeta[]>([]);
+  const { shouldConnect, wsUrl, token, connect, disconnect } =
+    useTokenGenerator();
+  const lastMode = useRef<Mode | null>(null);
 
-  const [roomName, setRoomName] = useState(createRoomName());
-
-  const tokenOptions = useMemo(() => {
-    return {
-      userInfo: { identity: generateRandomAlphanumeric(16) },
-    };
-  }, []);
-
-  // set a new room name each time the user disconnects so that a new token gets fetched behind the scenes for a different room
-  useEffect(() => {
-    if (shouldConnect === false) {
-      setRoomName(createRoomName());
-    }
-  }, [shouldConnect]);
-
-  useEffect(() => {
-    const md: PlaygroundMeta[] = [];
-    if (liveKitUrl && liveKitUrl !== process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-      md.push({ name: "LiveKit URL", value: liveKitUrl });
-    }
-    if (!customToken && tokenOptions.userInfo?.identity) {
-      md.push({ name: "Room Name", value: roomName });
-      md.push({
-        name: "Participant Identity",
-        value: tokenOptions.userInfo.identity,
-      });
-    }
-    setMetadata(md);
-  }, [liveKitUrl, roomName, tokenOptions, customToken]);
-
-  const token = useToken("/api/token", roomName, tokenOptions);
   const {config} = useConfig();
 
   const handleConnect = useCallback(
-    (connect: boolean, opts?: { url: string; token: string }) => {
-      if (connect && opts) {
-        setLiveKitUrl(opts.url);
-        setCustomToken(opts.token);
-      }
-      setShouldConnect(connect);
+    (c: boolean, mode: Mode) => {
+      c ? connect(mode) : disconnect();
     },
-    []
+    [connect, disconnect]
   );
 
   return (
@@ -130,11 +96,11 @@ export function HomeInner() {
             </motion.div>
           )}
         </AnimatePresence>
-        {liveKitUrl ? (
+        {wsUrl ? (
           <LiveKitRoom
             className="flex flex-col h-full w-full"
-            serverUrl={liveKitUrl}
-            token={customToken ?? token}
+            serverUrl={wsUrl}
+            token={token}
             connect={shouldConnect}
             onError={(e) => {
               setToastMessage({ message: e.message, type: "error" });
@@ -143,8 +109,15 @@ export function HomeInner() {
           >
             <Playground
               themeColors={themeColors}
-              onConnect={handleConnect}
-              metadata={metadata}
+              onConnect={(c) => {
+                if(!lastMode.current) {
+                  console.error(
+                    "lastMode is null, this shouldn't happen in this case"
+                  );
+                  return;
+                }
+                handleConnect(c, lastMode.current);
+              }}
             />
             <RoomAudioRenderer />
             <StartAudio label="Click to enable audio playback" />
@@ -152,8 +125,9 @@ export function HomeInner() {
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={(url, token) => {
-              handleConnect(true, { url, token });
+            onConnectClicked={() => {
+              const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : "manual";
+              handleConnect(true, mode);
             }}
           />
         )}
