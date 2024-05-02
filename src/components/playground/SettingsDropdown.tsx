@@ -1,27 +1,29 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronIcon } from "./icons";
-import { useSettings } from "@/hooks/useAppConfig";
+import { useConfig } from "@/hooks/useConfig";
 
-type SettingType = {
+type SettingType = "inputs" | "outputs" | "chat" | "theme_color"
+
+type SettingValue = {
   title: string;
-  type: "input" | "output" | "separator";
+  type: SettingType | "separator";
   key: string;
 };
 
-const settingsDropdown: SettingType[] = [
+const settingsDropdown: SettingValue[] = [
   {
     title: "Show video",
-    type: "output",
+    type: "outputs",
     key: "video",
   },
   {
     title: "Show audio",
-    type: "output",
+    type: "outputs",
     key: "audio",
   },
   {
     title: "Show chat",
-    type: "output",
+    type: "outputs",
     key: "chat",
   },
   {
@@ -31,30 +33,49 @@ const settingsDropdown: SettingType[] = [
   },
   {
     title: "Enable camera",
-    type: "input",
+    type: "inputs",
     key: "camera",
   },
   {
     title: "Enable mic",
-    type: "input",
+    type: "inputs",
     key: "mic",
   },
 ];
 
 export const SettingsDropdown = () => {
-  const [settings, setSettings] = useSettings();
+  const {config, setUserSettings} = useConfig();
 
-  const isEnabled = (settingType: SettingType) => {
-    const initialKey = settingType.type === "input" ? "inputs" : "outputs";
-    return (settings as any)[initialKey][settingType.key] ?? false;
+  const isEnabled = (setting: SettingValue) => {
+    if (setting.type === "separator" || setting.type === "theme_color") return false;
+    if (setting.type === "chat") {
+      return config.user_settings[setting.type];
+    }
+
+    if(setting.type === "inputs") {
+      const key = setting.key as "camera" | "mic";
+      return config.user_settings.inputs[key];
+    } else if(setting.type === "outputs") {
+      const key = setting.key as "video" | "audio";
+      return config.user_settings.outputs[key];
+    }
+
+    return false;
   };
 
-  const toggleSetting = (settingType: SettingType) => {
-    const initialKey = settingType.type === "input" ? "inputs" : "outputs";
-    let newSettings = { ...(settings as any) };
-    let newSetting = !newSettings[initialKey][settingType.key];
-    newSettings[initialKey][settingType.key] = newSetting;
-    setSettings(newSettings);
+  const toggleSetting = (setting: SettingValue) => {
+    if (setting.type === "separator" || setting.type === "theme_color") return;
+    const newValue = !isEnabled(setting);
+    const newSettings = {...config.user_settings}
+
+    if(setting.type === "chat") {
+      newSettings.chat = newValue;
+    } else if(setting.type === "inputs") {
+      newSettings.inputs[setting.key as "camera" | "mic"] = newValue;
+    } else if(setting.type === "outputs") {
+      newSettings.outputs[setting.key as "video" | "audio"] = newValue;
+    }
+    setUserSettings(newSettings);
   };
 
   return (

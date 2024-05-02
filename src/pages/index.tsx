@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground, { PlaygroundMeta } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
-import { useSettings } from "@/hooks/useAppConfig";
+import { ConfigProvider, useConfig } from "@/hooks/useConfig";
 
 const themeColors = [
   "cyan",
@@ -29,6 +29,14 @@ const themeColors = [
 const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
+  return (
+    <ConfigProvider>
+      <HomeInner />
+    </ConfigProvider>
+  )
+}
+
+export function HomeInner() {
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: ToastType;
@@ -71,7 +79,7 @@ export default function Home() {
   }, [liveKitUrl, roomName, tokenOptions, customToken]);
 
   const token = useToken("/api/token", roomName, tokenOptions);
-  const [settings] = useSettings();
+  const {config} = useConfig();
 
   const handleConnect = useCallback(
     (connect: boolean, opts?: { url: string; token: string }) => {
@@ -87,8 +95,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>{settings.title}</title>
-        <meta name="description" content={settings.description} />
+        <title>{config.title}</title>
+        <meta name="description" content={config.description} />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"

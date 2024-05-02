@@ -13,7 +13,7 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
-import { useSettings } from "@/hooks/useAppConfig";
+import { useConfig } from "@/hooks/useConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { AgentState } from "@/lib/types";
 import {
@@ -61,11 +61,9 @@ export default function Playground({
   onConnect,
   metadata,
 }: PlaygroundProps) {
-  const [settings, setSettings] = useSettings();
+  const {config, setUserSettings} = useConfig();
+  console.log("Config", config);
   const [agentState, setAgentState] = useState<AgentState>("offline");
-  const [themeColor, setThemeColor] = useState<string>(
-    () => settings.theme_color ?? "cyan"
-  );
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
@@ -82,24 +80,15 @@ export default function Playground({
   const tracks = useTracks();
 
   useEffect(() => {
-    const outputs = [
-      settings.outputs.audio && PlaygroundOutputs.Audio,
-      settings.outputs.video && PlaygroundOutputs.Video,
-      settings.outputs.chat && PlaygroundOutputs.Chat,
-    ].filter((item) => typeof item !== "boolean") as PlaygroundOutputs[];
-    setOutputs(outputs);
-
-    if (settings.theme_color) {
-      setThemeColor(settings.theme_color);
-    }
-  }, [settings]);
-
-  useEffect(() => {
     if (roomState === ConnectionState.Connected) {
-      room.localParticipant.setCameraEnabled(settings.inputs.camera);
-      room.localParticipant.setMicrophoneEnabled(settings.inputs.mic);
+      room.localParticipant.setCameraEnabled(
+        config.user_settings.inputs.camera
+      );
+      room.localParticipant.setMicrophoneEnabled(
+        config.user_settings.inputs.mic
+      );
     }
-  }, [settings, room, roomState]);
+  }, [config, room, roomState]);
 
   const agentAudioTrack = tracks.find(
     (trackRef) =>
@@ -205,7 +194,7 @@ export default function Playground({
   useDataChannel(onDataReceived);
 
   const videoTileContent = useMemo(() => {
-    const videoFitClassName = `object-${settings.video_fit || "cover"}`;
+    const videoFitClassName = `object-${config.video_fit || "cover"}`;
     return (
       <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
         {agentVideoTrack ? (
@@ -221,7 +210,7 @@ export default function Playground({
         )}
       </div>
     );
-  }, [agentVideoTrack, settings]);
+  }, [agentVideoTrack, config]);
 
   const audioTileContent = useMemo(() => {
     return (
@@ -232,7 +221,7 @@ export default function Playground({
             barWidth={30}
             minBarHeight={30}
             maxBarHeight={150}
-            accentColor={themeColor}
+            accentColor={config.user_settings.theme_color}
             accentShade={500}
             frequencies={subscribedVolumes}
             borderRadius={12}
@@ -246,24 +235,29 @@ export default function Playground({
         )}
       </div>
     );
-  }, [agentAudioTrack, subscribedVolumes, themeColor, agentState]);
+  }, [
+    agentAudioTrack,
+    agentState,
+    config.user_settings.theme_color,
+    subscribedVolumes,
+  ]);
 
   const chatTileContent = useMemo(() => {
     return (
       <ChatTile
         messages={messages}
-        accentColor={themeColor}
+        accentColor={config.user_settings.theme_color}
         onSend={sendChat}
       />
     );
-  }, [messages, themeColor, sendChat]);
+  }, [config.user_settings.theme_color, messages, sendChat]);
 
   const settingsTileContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
-        {settings.description && (
+        {config.description && (
           <ConfigurationPanelItem title="Description">
-            {settings.description}
+            {config.description}
           </ConfigurationPanelItem>
         )}
 
@@ -291,7 +285,7 @@ export default function Playground({
               }
               valueColor={
                 roomState === ConnectionState.Connected
-                  ? `${themeColor}-500`
+                  ? `${config.user_settings.theme_color}-500`
                   : "gray-500"
               }
             />
@@ -306,7 +300,11 @@ export default function Playground({
                   "false"
                 )
               }
-              valueColor={isAgentConnected ? `${themeColor}-500` : "gray-500"}
+              valueColor={
+                isAgentConnected
+                  ? `${config.user_settings.theme_color}-500`
+                  : "gray-500"
+              }
             />
             <NameValueRow
               name="Agent status"
@@ -321,7 +319,9 @@ export default function Playground({
                 )
               }
               valueColor={
-                agentState === "speaking" ? `${themeColor}-500` : "gray-500"
+                agentState === "speaking"
+                  ? `${config.user_settings.theme_color}-500`
+                  : "gray-500"
               }
             />
           </div>
@@ -351,15 +351,16 @@ export default function Playground({
           <ConfigurationPanelItem title="Color">
             <ColorPicker
               colors={themeColors}
-              selectedColor={themeColor}
+              selectedColor={config.user_settings.theme_color}
               onSelect={(color) => {
-                settings.theme_color = color;
-                setSettings({ ...settings });
+                const userSettings = { ...config.user_settings };
+                userSettings.theme_color = color;
+                setUserSettings(userSettings);
               }}
             />
           </ConfigurationPanelItem>
         </div>
-        {settings.show_qr && (
+        {config.show_qr && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
               <QRCodeSVG value={window.location.href} width="128" />
@@ -369,17 +370,18 @@ export default function Playground({
       </div>
     );
   }, [
-    settings,
-    setSettings,
-    agentState,
-    isAgentConnected,
-    localMicTrack,
-    localMultibandVolume,
-    localVideoTrack,
+    config.description,
+    config.user_settings,
+    config.show_qr,
     metadata,
     roomState,
-    themeColor,
+    isAgentConnected,
+    agentState,
+    localVideoTrack,
+    localMicTrack,
+    localMultibandVolume,
     themeColors,
+    setUserSettings,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
@@ -435,18 +437,18 @@ export default function Playground({
   return (
     <>
       <PlaygroundHeader
-        title={settings.title}
+        title={config.title}
         logo={logo}
-        githubLink={settings.github_link}
+        githubLink={config.github_link}
         height={headerHeight}
-        accentColor={themeColor}
+        accentColor={config.user_settings.theme_color}
         connectionState={roomState}
         onConnectClicked={() =>
           onConnect(roomState === ConnectionState.Disconnected)
         }
       />
       <div
-        className={`flex gap-4 py-4 grow w-full selection:bg-${themeColor}-900`}
+        className={`flex gap-4 py-4 grow w-full selection:bg-${config.user_settings.theme_color}-900`}
         style={{ height: `calc(100% - ${headerHeight}px)` }}
       >
         <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
