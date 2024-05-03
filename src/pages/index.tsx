@@ -1,9 +1,7 @@
-import { generateRandomAlphanumeric } from "@/lib/util";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   StartAudio,
-  useToken,
 } from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inter } from "next/font/google";
@@ -16,6 +14,7 @@ import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
 import { Mode, TokenGeneratorProvider, useTokenGenerator } from "@/hooks/useTokenGenerator";
 import { useRef } from "react";
+import { useMemo } from "react";
 
 const themeColors = [
   "cyan",
@@ -47,7 +46,6 @@ export function HomeInner() {
   } | null>(null);
   const { shouldConnect, wsUrl, token, connect, disconnect } =
     useTokenGenerator();
-  const lastMode = useRef<Mode | null>(null);
 
   const {config} = useConfig();
 
@@ -57,6 +55,16 @@ export function HomeInner() {
     },
     [connect, disconnect]
   );
+
+  const showPG = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+      return true;
+    }
+    if(wsUrl) {
+      return true;
+    }
+    return false;
+  }, [wsUrl])
 
   return (
     <>
@@ -96,7 +104,7 @@ export function HomeInner() {
             </motion.div>
           )}
         </AnimatePresence>
-        {wsUrl ? (
+        {showPG ? (
           <LiveKitRoom
             className="flex flex-col h-full w-full"
             serverUrl={wsUrl}
@@ -110,13 +118,10 @@ export function HomeInner() {
             <Playground
               themeColors={themeColors}
               onConnect={(c) => {
-                if(!lastMode.current) {
-                  console.error(
-                    "lastMode is null, this shouldn't happen in this case"
-                  );
-                  return;
-                }
-                handleConnect(c, lastMode.current);
+                const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL
+                  ? "env"
+                  : "manual";
+                handleConnect(c, mode);
               }}
             />
             <RoomAudioRenderer />
@@ -133,11 +138,5 @@ export function HomeInner() {
         )}
       </main>
     </>
-  );
-}
-
-function createRoomName() {
-  return [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join(
-    "-"
   );
 }

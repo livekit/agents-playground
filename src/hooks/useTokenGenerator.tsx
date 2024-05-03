@@ -46,9 +46,9 @@ export const TokenGeneratorProvider = ({
           throw new Error("NEXT_PUBLIC_LIVEKIT_URL must be set in env mode");
         }
         const res = await fetch("/api/token");
-        const { token } = await res.json();
+        const { accessToken } = await res.json();
         setWsUrl(url);
-        setToken(token);
+        setToken(accessToken);
       } else if (mode === "manual") {
         setWsUrl(config.user_settings.ws_url);
         setToken(config.user_settings.token);

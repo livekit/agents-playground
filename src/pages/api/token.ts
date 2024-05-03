@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { generateRandomAlphanumeric } from "@/lib/util";
 
 import { AccessToken } from "livekit-server-sdk";
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
@@ -13,48 +14,19 @@ const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant) => {
   return at.toJwt();
 };
 
-const roomPattern = /\w{4}\-\w{4}/;
-
 export default async function handleToken(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
-    const { roomName, identity, name, metadata } = req.query;
-
-    if (typeof identity !== "string" || typeof roomName !== "string") {
-      res.statusMessage =
-        "identity and roomName have to be specified in the request";
-      res.status(403).end();
-      return;
-    }
-
     if (!apiKey || !apiSecret) {
       res.statusMessage = "Environment variables aren't set up correctly";
       res.status(500).end();
       return;
     }
 
-    if (Array.isArray(name)) {
-      throw Error("provide max one name");
-    }
-    if (Array.isArray(metadata)) {
-      throw Error("provide max one metadata string");
-    }
-
-    // enforce room name to be xxxx-xxxx
-    // this is simple & naive way to prevent user from guessing room names
-    // please use your own authentication mechanisms in your own app
-    if (!roomName.match(roomPattern)) {
-      res.statusMessage = "Invalid roomName";
-      res.status(400).end();
-      return;
-    }
-
-    // if (!userSession.isAuthenticated) {
-    //   res.status(403).end();
-    //   return;
-    // }
+    const roomName = `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
+    const identity = `identity-${generateRandomAlphanumeric(4)}`
 
     const grant: VideoGrant = {
       room: roomName,
@@ -64,7 +36,7 @@ export default async function handleToken(
       canSubscribe: true,
     };
 
-    const token = await createToken({ identity, name, metadata }, grant);
+    const token = await createToken({ identity }, grant);
     const result: TokenResult = {
       identity,
       accessToken: token,
