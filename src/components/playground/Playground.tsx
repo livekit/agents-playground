@@ -24,6 +24,7 @@ import {
   useLocalParticipant,
   useRemoteParticipants,
   useRoomContext,
+  useRoomInfo,
   useTracks,
 } from "@livekit/components-react";
 import {
@@ -60,6 +61,7 @@ export default function Playground({
   onConnect,
 }: PlaygroundProps) {
   const {config, setUserSettings} = useConfig();
+  const { name } = useRoomInfo();
   const [agentState, setAgentState] = useState<AgentState>("offline");
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
@@ -72,20 +74,15 @@ export default function Playground({
   const agentParticipant = participants.find((p) => p.isAgent);
 
   const { send: sendChat, chatMessages } = useChat();
-  const room = useRoomContext();
   const roomState = useConnectionState();
   const tracks = useTracks();
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
-      room.localParticipant.setCameraEnabled(
-        config.user_settings.inputs.camera
-      );
-      room.localParticipant.setMicrophoneEnabled(
-        config.user_settings.inputs.mic
-      );
+      localParticipant.setCameraEnabled(config.user_settings.inputs.camera);
+      localParticipant.setMicrophoneEnabled(config.user_settings.inputs.mic);
     }
-  }, [config, room, roomState]);
+  }, [config, localParticipant, roomState]);
 
   const agentAudioTrack = tracks.find(
     (trackRef) =>
@@ -259,15 +256,19 @@ export default function Playground({
         )}
 
         <ConfigurationPanelItem title="Settings">
-          {/* <div className="flex flex-col gap-2">
-            {metadata?.map((data, index) => (
+          {localParticipant && (
+            <div className="flex flex-col gap-2">
               <NameValueRow
-                key={data.name + index}
-                name={data.name}
-                value={data.value}
+                name="Room"
+                value={name}
+                valueColor={`${config.user_settings.theme_color}-500`}
               />
-            ))}
-          </div> */}
+              <NameValueRow
+                name="Participant"
+                value={localParticipant.identity}
+              />
+            </div>
+          )}
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">
