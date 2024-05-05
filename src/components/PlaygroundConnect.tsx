@@ -1,7 +1,6 @@
 import { useConfig } from "@/hooks/useConfig";
 import { Button } from "./button/Button";
 import { useState } from "react";
-import { useTokenGenerator } from "@/hooks/useTokenGenerator";
 
 type PlaygroundConnectProps = {
   accentColor: string;

@@ -4,6 +4,7 @@ import { getCookie, setCookie } from "cookies-next";
 import jsYaml from "js-yaml";
 import { useRouter } from "next/navigation";
 import React, { createContext, useCallback, useMemo, useState } from "react";
+import { useEffect } from "react";
 
 export type AppConfig = {
   title: string;
@@ -117,7 +118,7 @@ export const ConfigProvider = ({
     const ws_url = getCookie("lk_ws_url");
     const token = getCookie("lk_token");
 
-    if (!cam && !mic && !audio && !video && !chat) {
+    if (!cam && !mic && !audio && !video && !chat && !ws_url && !token) {
       return null;
     }
 
@@ -166,15 +167,21 @@ export const ConfigProvider = ({
     const appConfigFromSettings = appConfig;
     const cookieSettigs = getSettingsFromCookies();
     const urlSettings = getSettingsFromUrl();
-
-    if (urlSettings) {
-      appConfigFromSettings.user_settings = urlSettings;
-      setCookieSettings(urlSettings);
-    } else if (cookieSettigs) {
-      appConfigFromSettings.user_settings = cookieSettigs;
-      setUrlSettings(cookieSettigs);
+    if(!cookieSettigs) {
+      if(urlSettings) {
+        setCookieSettings(urlSettings);
+      }
     }
-
+    if(!urlSettings) {
+      if(cookieSettigs) {
+        setUrlSettings(cookieSettigs);
+      }
+    }
+    const newCookieSettings = getSettingsFromCookies();
+    if(!newCookieSettings) {
+      return appConfigFromSettings;
+    }
+    appConfigFromSettings.user_settings = newCookieSettings;
     return {...appConfigFromSettings};
   }, [
     appConfig,
@@ -185,7 +192,6 @@ export const ConfigProvider = ({
   ]);
 
   const setUserSettings = useCallback((settings: UserSettings) => {
-    console.log("Set user settings", settings)
     setUrlSettings(settings);
     setCookieSettings(settings);
     _setConfig((prev) => {
@@ -197,6 +203,11 @@ export const ConfigProvider = ({
   }, [setCookieSettings, setUrlSettings]);
 
   const [config, _setConfig] = useState<AppConfig>(getConfig());
+
+  // Run things client side because we use cookies
+  useEffect(() => {
+    _setConfig(getConfig());
+  }, [getConfig]);
 
   return (
     <ConfigContext.Provider value={{ config, setUserSettings }}>

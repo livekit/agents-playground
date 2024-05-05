@@ -73,7 +73,6 @@ export const SettingsDropdown = () => {
     if (setting.type === "separator" || setting.type === "theme_color") return;
     const newValue = !isEnabled(setting);
     const newSettings = {...config.user_settings}
-    console.log("Toggle setting", newValue, setting.type)
 
     if(setting.type === "chat") {
       newSettings.chat = newValue;
