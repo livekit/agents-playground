@@ -12,8 +12,8 @@ export const PlaygroundConnect = ({
   onConnectClicked,
 }: PlaygroundConnectProps) => {
   const { setUserSettings, config } = useConfig();
-  const [url, setUrl] = useState(config.user_settings.ws_url)
-  const [token, setToken] = useState(config.user_settings.token)
+  const [url, setUrl] = useState(config.settings.ws_url)
+  const [token, setToken] = useState(config.settings.token)
 
   return (
     <div className="flex left-0 top-0 w-full h-full bg-black/80 items-center justify-center text-center">
@@ -43,7 +43,7 @@ export const PlaygroundConnect = ({
           accentColor={accentColor}
           className="w-full"
           onClick={() => {
-            const newSettings = {...config.user_settings};
+            const newSettings = {...config.settings};
             newSettings.ws_url = url;
             newSettings.token = token;
             setUserSettings(newSettings);

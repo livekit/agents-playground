@@ -11,7 +11,7 @@ export type AppConfig = {
   description: string;
   github_link?: string;
   video_fit?: "cover" | "contain";
-  user_settings: UserSettings;
+  settings: UserSettings;
   show_qr?: boolean;
 };
 
@@ -35,7 +35,7 @@ const defaultConfig: AppConfig = {
   title: "LiveKit Agents Playground",
   description: "A playground for testing LiveKit Agents",
   video_fit: "cover",
-  user_settings: {
+  settings: {
     theme_color: "cyan",
     chat: true,
     inputs: {
@@ -181,7 +181,7 @@ export const ConfigProvider = ({
     if(!newCookieSettings) {
       return appConfigFromSettings;
     }
-    appConfigFromSettings.user_settings = newCookieSettings;
+    appConfigFromSettings.settings = newCookieSettings;
     return {...appConfigFromSettings};
   }, [
     appConfig,
@@ -197,7 +197,7 @@ export const ConfigProvider = ({
     _setConfig((prev) => {
       return {
         ...prev,
-        user_settings: settings,
+        settings: settings,
       };
     })
   }, [setCookieSettings, setUrlSettings]);

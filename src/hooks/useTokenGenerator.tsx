@@ -50,14 +50,14 @@ export const TokenGeneratorProvider = ({
         setWsUrl(url);
         setToken(accessToken);
       } else if (mode === "manual") {
-        setWsUrl(config.user_settings.ws_url);
-        setToken(config.user_settings.token);
+        setWsUrl(config.settings.ws_url);
+        setToken(config.settings.token);
       }
       setShouldConnect(true);
     },
     [
-      config.user_settings.token,
-      config.user_settings.ws_url,
+      config.settings.token,
+      config.settings.ws_url,
       generateConnectionDetails,
     ]
   );

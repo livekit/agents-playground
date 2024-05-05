@@ -55,15 +55,15 @@ export const SettingsDropdown = () => {
   const isEnabled = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color") return false;
     if (setting.type === "chat") {
-      return config.user_settings[setting.type];
+      return config.settings[setting.type];
     }
 
     if(setting.type === "inputs") {
       const key = setting.key as "camera" | "mic";
-      return config.user_settings.inputs[key];
+      return config.settings.inputs[key];
     } else if(setting.type === "outputs") {
       const key = setting.key as "video" | "audio";
-      return config.user_settings.outputs[key];
+      return config.settings.outputs[key];
     }
 
     return false;
@@ -72,7 +72,7 @@ export const SettingsDropdown = () => {
   const toggleSetting = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color") return;
     const newValue = !isEnabled(setting);
-    const newSettings = {...config.user_settings}
+    const newSettings = {...config.settings}
 
     if(setting.type === "chat") {
       newSettings.chat = newValue;

@@ -79,8 +79,8 @@ export default function Playground({
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
-      localParticipant.setCameraEnabled(config.user_settings.inputs.camera);
-      localParticipant.setMicrophoneEnabled(config.user_settings.inputs.mic);
+      localParticipant.setCameraEnabled(config.settings.inputs.camera);
+      localParticipant.setMicrophoneEnabled(config.settings.inputs.mic);
     }
   }, [config, localParticipant, roomState]);
 
@@ -215,7 +215,7 @@ export default function Playground({
             barWidth={30}
             minBarHeight={30}
             maxBarHeight={150}
-            accentColor={config.user_settings.theme_color}
+            accentColor={config.settings.theme_color}
             accentShade={500}
             frequencies={subscribedVolumes}
             borderRadius={12}
@@ -232,7 +232,7 @@ export default function Playground({
   }, [
     agentAudioTrack,
     agentState,
-    config.user_settings.theme_color,
+    config.settings.theme_color,
     subscribedVolumes,
   ]);
 
@@ -240,11 +240,11 @@ export default function Playground({
     return (
       <ChatTile
         messages={messages}
-        accentColor={config.user_settings.theme_color}
+        accentColor={config.settings.theme_color}
         onSend={sendChat}
       />
     );
-  }, [config.user_settings.theme_color, messages, sendChat]);
+  }, [config.settings.theme_color, messages, sendChat]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -261,7 +261,7 @@ export default function Playground({
               <NameValueRow
                 name="Room"
                 value={name}
-                valueColor={`${config.user_settings.theme_color}-500`}
+                valueColor={`${config.settings.theme_color}-500`}
               />
               <NameValueRow
                 name="Participant"
@@ -283,7 +283,7 @@ export default function Playground({
               }
               valueColor={
                 roomState === ConnectionState.Connected
-                  ? `${config.user_settings.theme_color}-500`
+                  ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
             />
@@ -300,7 +300,7 @@ export default function Playground({
               }
               valueColor={
                 isAgentConnected
-                  ? `${config.user_settings.theme_color}-500`
+                  ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
             />
@@ -318,7 +318,7 @@ export default function Playground({
               }
               valueColor={
                 agentState === "speaking"
-                  ? `${config.user_settings.theme_color}-500`
+                  ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
             />
@@ -349,9 +349,9 @@ export default function Playground({
           <ConfigurationPanelItem title="Color">
             <ColorPicker
               colors={themeColors}
-              selectedColor={config.user_settings.theme_color}
+              selectedColor={config.settings.theme_color}
               onSelect={(color) => {
-                const userSettings = { ...config.user_settings };
+                const userSettings = { ...config.settings };
                 userSettings.theme_color = color;
                 setUserSettings(userSettings);
               }}
@@ -369,7 +369,7 @@ export default function Playground({
     );
   }, [
     config.description,
-    config.user_settings,
+    config.settings,
     config.show_qr,
     // metadata,
     roomState,
@@ -439,14 +439,14 @@ export default function Playground({
         logo={logo}
         githubLink={config.github_link}
         height={headerHeight}
-        accentColor={config.user_settings.theme_color}
+        accentColor={config.settings.theme_color}
         connectionState={roomState}
         onConnectClicked={() =>
           onConnect(roomState === ConnectionState.Disconnected)
         }
       />
       <div
-        className={`flex gap-4 py-4 grow w-full selection:bg-${config.user_settings.theme_color}-900`}
+        className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
         style={{ height: `calc(100% - ${headerHeight}px)` }}
       >
         <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
