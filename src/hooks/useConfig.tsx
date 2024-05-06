@@ -109,34 +109,11 @@ export const ConfigProvider = ({
   }, [])
 
   const getSettingsFromCookies = useCallback(() => {
-    const cam = getCookie("lk_input_cam");
-    const mic = getCookie("lk_input_cam");
-    const audio = getCookie("lk_output_audio");
-    const video = getCookie("lk_output_video");
-    const chat = getCookie("lk_chat");
-    const theme_color = getCookie("lk_theme_color");
-    const ws_url = getCookie("lk_ws_url");
-    const token = getCookie("lk_token");
-
-    if (!cam && !mic && !audio && !video && !chat && !ws_url && !token) {
+    const jsonSettings = getCookie("lk_settings");
+    if (!jsonSettings) {
       return null;
     }
-
-    return {
-      chat: chat === "1",
-      theme_color,
-      inputs: {
-        camera: cam === "1",
-        mic: mic === "1",
-      },
-      outputs: {
-        audio: audio === "1",
-        video: video === "1",
-        chat: chat === "1",
-      },
-      ws_url: ws_url || "",
-      token: token || ""
-    } as UserSettings;
+    return JSON.parse(jsonSettings) as UserSettings;
   }, [])
 
   const setUrlSettings = useCallback((us: UserSettings) => {
@@ -153,14 +130,8 @@ export const ConfigProvider = ({
   }, [router])
 
   const setCookieSettings = useCallback((us: UserSettings) => {
-    setCookie("lk_input_cam", boolToString(us.inputs.camera));
-    setCookie("lk_input_mic", boolToString(us.inputs.mic));
-    setCookie("lk_output_audio", boolToString(us.outputs.audio));
-    setCookie("lk_output_video", boolToString(us.outputs.video));
-    setCookie("lk_chat", boolToString(us.chat));
-    setCookie("lk_theme_color", us.theme_color || "cyan");
-    setCookie("lk_ws_url", us.ws_url || "");
-    setCookie("lk_token", us.token || "");
+    const json = JSON.stringify(us);
+    setCookie("lk_settings", json);
   }, [])
 
   const getConfig = useCallback(() => {
