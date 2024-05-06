@@ -9,12 +9,13 @@ import Head from "next/head";
 import { useCallback, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
-import Playground, { PlaygroundMeta } from "@/components/playground/Playground";
+import Playground from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
-import { Mode, TokenGeneratorProvider, useTokenGenerator } from "@/hooks/useTokenGenerator";
-import { useRef } from "react";
+import { ConnectionProvider, useConnection } from "@/hooks/useConnection";
 import { useMemo } from "react";
+import { CLOUD_ENABLED } from "@/cloud/CloudConnect";
+import { useCloud } from "@/cloud/useCloud";
 
 const themeColors = [
   "cyan",
@@ -32,9 +33,9 @@ const inter = Inter({ subsets: ["latin"] });
 export default function Home() {
   return (
     <ConfigProvider>
-      <TokenGeneratorProvider>
+      <ConnectionProvider>
         <HomeInner />
-      </TokenGeneratorProvider>
+      </ConnectionProvider>
     </ConfigProvider>
   );
 }
@@ -45,13 +46,13 @@ export function HomeInner() {
     type: ToastType;
   } | null>(null);
   const { shouldConnect, wsUrl, token, connect, disconnect } =
-    useTokenGenerator();
+    useConnection();
   
   const {config} = useConfig();
 
   const handleConnect = useCallback(
-    (c: boolean, mode: Mode) => {
-      c ? connect(mode) : disconnect();
+    async (c: boolean) => {
+      c ? connect() : disconnect();
     },
     [connect, disconnect]
   );
@@ -118,10 +119,7 @@ export function HomeInner() {
             <Playground
               themeColors={themeColors}
               onConnect={(c) => {
-                const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL
-                  ? "env"
-                  : "manual";
-                handleConnect(c, mode);
+                handleConnect(c);
               }}
             />
             <RoomAudioRenderer />
@@ -131,8 +129,7 @@ export function HomeInner() {
           <PlaygroundConnect
             accentColor={themeColors[0]}
             onConnectClicked={() => {
-              const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : "manual";
-              handleConnect(true, mode);
+              handleConnect(true);
             }}
           />
         )}
