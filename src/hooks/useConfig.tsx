@@ -16,6 +16,7 @@ export type AppConfig = {
 };
 
 export type UserSettings = {
+  editable: boolean;
   theme_color: string;
   chat: boolean;
   inputs: {
@@ -36,6 +37,7 @@ const defaultConfig: AppConfig = {
   description: "A playground for testing LiveKit Agents",
   video_fit: "cover",
   settings: {
+    editable: true,
     theme_color: "cyan",
     chat: true,
     inputs: {
@@ -90,8 +92,13 @@ export const ConfigProvider = ({
     if (!window.location.hash) {
       return null;
     }
+    const appConfigFromSettings = appConfig;
+    if (appConfigFromSettings.settings.editable === false) {
+      return null
+    }
     const params = new URLSearchParams(window.location.hash.replace("#", ""));
     return {
+      editable: true,
       chat: params.get("chat") === "1",
       theme_color: params.get("theme_color"),
       inputs: {
@@ -106,15 +113,19 @@ export const ConfigProvider = ({
       ws_url: "",
       token: ""
     } as UserSettings;
-  }, [])
+  }, [appConfig])
 
   const getSettingsFromCookies = useCallback(() => {
+    const appConfigFromSettings = appConfig;
+    if (appConfigFromSettings.settings.editable === false) {
+      return null
+    }
     const jsonSettings = getCookie("lk_settings");
     if (!jsonSettings) {
       return null;
     }
     return JSON.parse(jsonSettings) as UserSettings;
-  }, [])
+  }, [appConfig])
 
   const setUrlSettings = useCallback((us: UserSettings) => {
     const obj = new URLSearchParams({
@@ -136,6 +147,9 @@ export const ConfigProvider = ({
 
   const getConfig = useCallback(() => {
     const appConfigFromSettings = appConfig;
+    if (appConfigFromSettings.settings.editable === false) {
+      return appConfigFromSettings;
+    }
     const cookieSettigs = getSettingsFromCookies();
     const urlSettings = getSettingsFromUrl();
     if(!cookieSettigs) {
@@ -163,6 +177,10 @@ export const ConfigProvider = ({
   ]);
 
   const setUserSettings = useCallback((settings: UserSettings) => {
+    const appConfigFromSettings = appConfig;
+    if (appConfigFromSettings.settings.editable === false) {
+      return
+    }
     setUrlSettings(settings);
     setCookieSettings(settings);
     _setConfig((prev) => {
@@ -171,7 +189,7 @@ export const ConfigProvider = ({
         settings: settings,
       };
     })
-  }, [setCookieSettings, setUrlSettings]);
+  }, [appConfig, setCookieSettings, setUrlSettings]);
 
   const [config, _setConfig] = useState<AppConfig>(getConfig());
 

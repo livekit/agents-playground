@@ -66,6 +66,9 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
 }) => {
   const contentPadding = 4;
   const [activeTab, setActiveTab] = useState(initialTab);
+  if(activeTab >= tabs.length) {
+    return null;
+  }
   return (
     <div
       className={`flex flex-col h-full border rounded-sm border-gray-800 text-gray-500 bg-${backgroundColor} ${className}`}

@@ -31,6 +31,7 @@ export const TokenGeneratorProvider = ({
   const [shouldConnect, setShouldConnect] = useState(false);
   const connect = useCallback(
     async (mode: Mode) => {
+      console.log("connecting", mode);
       if (mode === "cloud") {
         if (!generateConnectionDetails) {
           throw new Error(
