@@ -46,7 +46,7 @@ export function HomeInner() {
   } | null>(null);
   const { shouldConnect, wsUrl, token, connect, disconnect } =
     useTokenGenerator();
-
+  
   const {config} = useConfig();
 
   const handleConnect = useCallback(
