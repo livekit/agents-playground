@@ -36,12 +36,6 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
-export enum PlaygroundOutputs {
-  Video,
-  Audio,
-  Chat,
-}
-
 export interface PlaygroundMeta {
   name: string;
   value: string;
@@ -66,7 +60,6 @@ export default function Playground({
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
-  const [outputs, setOutputs] = useState<PlaygroundOutputs[]>([]);
 
   const participants = useRemoteParticipants({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
@@ -371,7 +364,8 @@ export default function Playground({
     config.description,
     config.settings,
     config.show_qr,
-    // metadata,
+    localParticipant,
+    name,
     roomState,
     isAgentConnected,
     agentState,
@@ -383,7 +377,7 @@ export default function Playground({
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
-  if (outputs?.includes(PlaygroundOutputs.Video)) {
+  if (config.settings.outputs.video) {
     mobileTabs.push({
       title: "Video",
       content: (
@@ -397,7 +391,7 @@ export default function Playground({
     });
   }
 
-  if (outputs?.includes(PlaygroundOutputs.Audio)) {
+  if (config.settings.outputs.audio) {
     mobileTabs.push({
       title: "Audio",
       content: (
@@ -411,7 +405,7 @@ export default function Playground({
     });
   }
 
-  if (outputs?.includes(PlaygroundOutputs.Chat)) {
+  if (config.settings.chat) {
     mobileTabs.push({
       title: "Chat",
       content: chatTileContent,
@@ -458,13 +452,12 @@ export default function Playground({
         </div>
         <div
           className={`flex-col grow basis-1/2 gap-4 h-full hidden lg:${
-            !outputs?.includes(PlaygroundOutputs.Audio) &&
-            !outputs?.includes(PlaygroundOutputs.Video)
+            !config.settings.outputs.audio && !config.settings.outputs.video
               ? "hidden"
               : "flex"
           }`}
         >
-          {outputs?.includes(PlaygroundOutputs.Video) && (
+          {config.settings.outputs.video && (
             <PlaygroundTile
               title="Video"
               className="w-full h-full grow"
@@ -473,7 +466,7 @@ export default function Playground({
               {videoTileContent}
             </PlaygroundTile>
           )}
-          {outputs?.includes(PlaygroundOutputs.Audio) && (
+          {config.settings.outputs.audio && (
             <PlaygroundTile
               title="Audio"
               className="w-full h-full grow"
@@ -484,7 +477,7 @@ export default function Playground({
           )}
         </div>
 
-        {outputs?.includes(PlaygroundOutputs.Chat) && (
+        {config.settings.chat && (
           <PlaygroundTile
             title="Chat"
             className="h-full grow basis-1/4 hidden lg:flex"
