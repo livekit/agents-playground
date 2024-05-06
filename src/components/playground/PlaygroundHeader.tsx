@@ -1,6 +1,7 @@
 import { Button } from "@/components/button/Button";
-import { ConnectionState } from "livekit-client";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
+import { SettingsDropdown } from "@/components/playground/SettingsDropdown";
+import { ConnectionState } from "livekit-client";
 import { ReactNode } from "react";
 
 type PlaygroundHeader = {
@@ -37,7 +38,7 @@ export const PlaygroundHeader = ({
           {title}
         </div>
       </div>
-      <div className="flex basis-1/3 justify-end items-center gap-4">
+      <div className="flex basis-1/3 justify-end items-center gap-2">
         {githubLink && (
           <a
             href={githubLink}
@@ -47,6 +48,7 @@ export const PlaygroundHeader = ({
             <GithubSVG />
           </a>
         )}
+        <SettingsDropdown />
         <Button
           accentColor={
             connectionState === ConnectionState.Connected ? "red" : accentColor

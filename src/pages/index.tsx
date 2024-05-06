@@ -1,22 +1,20 @@
-import { generateRandomAlphanumeric } from "@/lib/util";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   StartAudio,
-  useToken,
 } from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inter } from "next/font/google";
 import Head from "next/head";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
-import Playground, {
-  PlaygroundMeta,
-  PlaygroundOutputs,
-} from "@/components/playground/Playground";
+import Playground, { PlaygroundMeta } from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
-import { useAppConfig } from "@/hooks/useAppConfig";
+import { ConfigProvider, useConfig } from "@/hooks/useConfig";
+import { Mode, TokenGeneratorProvider, useTokenGenerator } from "@/hooks/useTokenGenerator";
+import { useRef } from "react";
+import { useMemo } from "react";
 
 const themeColors = [
   "cyan",
@@ -32,77 +30,47 @@ const themeColors = [
 const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
+  return (
+    <ConfigProvider>
+      <TokenGeneratorProvider>
+        <HomeInner />
+      </TokenGeneratorProvider>
+    </ConfigProvider>
+  );
+}
+
+export function HomeInner() {
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: ToastType;
   } | null>(null);
-  const [shouldConnect, setShouldConnect] = useState(false);
-  const [liveKitUrl, setLiveKitUrl] = useState(
-    process.env.NEXT_PUBLIC_LIVEKIT_URL
-  );
-  const [customToken, setCustomToken] = useState<string>();
-  const [metadata, setMetadata] = useState<PlaygroundMeta[]>([]);
+  const { shouldConnect, wsUrl, token, connect, disconnect } =
+    useTokenGenerator();
 
-  const [roomName, setRoomName] = useState(createRoomName());
-
-  const tokenOptions = useMemo(() => {
-    return {
-      userInfo: { identity: generateRandomAlphanumeric(16) },
-    };
-  }, []);
-
-  // set a new room name each time the user disconnects so that a new token gets fetched behind the scenes for a different room
-  useEffect(() => {
-    if (shouldConnect === false) {
-      setRoomName(createRoomName());
-    }
-  }, [shouldConnect]);
-
-  useEffect(() => {
-    const md: PlaygroundMeta[] = [];
-    if (liveKitUrl && liveKitUrl !== process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-      md.push({ name: "LiveKit URL", value: liveKitUrl });
-    }
-    if (!customToken && tokenOptions.userInfo?.identity) {
-      md.push({ name: "Room Name", value: roomName });
-      md.push({
-        name: "Participant Identity",
-        value: tokenOptions.userInfo.identity,
-      });
-    }
-    setMetadata(md);
-  }, [liveKitUrl, roomName, tokenOptions, customToken]);
-
-  const token = useToken("/api/token", roomName, tokenOptions);
-  const appConfig = useAppConfig();
-  const outputs = [
-    appConfig?.outputs.audio && PlaygroundOutputs.Audio,
-    appConfig?.outputs.video && PlaygroundOutputs.Video,
-    appConfig?.outputs.chat && PlaygroundOutputs.Chat,
-  ].filter((item) => typeof item !== "boolean") as PlaygroundOutputs[];
+  const {config} = useConfig();
 
   const handleConnect = useCallback(
-    (connect: boolean, opts?: { url: string; token: string }) => {
-      if (connect && opts) {
-        setLiveKitUrl(opts.url);
-        setCustomToken(opts.token);
-      }
-      setShouldConnect(connect);
+    (c: boolean, mode: Mode) => {
+      c ? connect(mode) : disconnect();
     },
-    []
+    [connect, disconnect]
   );
+
+  const showPG = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+      return true;
+    }
+    if(wsUrl) {
+      return true;
+    }
+    return false;
+  }, [wsUrl])
 
   return (
     <>
       <Head>
-        <title>{appConfig?.title ?? "LiveKit Agents Playground"}</title>
-        <meta
-          name="description"
-          content={
-            appConfig?.description ??
-            "Quickly prototype and test your multimodal agents"
-          }
-        />
+        <title>{config.title}</title>
+        <meta name="description" content={config.description} />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
@@ -136,13 +104,11 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
-        {liveKitUrl ? (
+        {showPG ? (
           <LiveKitRoom
             className="flex flex-col h-full w-full"
-            serverUrl={liveKitUrl}
-            token={customToken ?? token}
-            audio={appConfig?.inputs.mic}
-            video={appConfig?.inputs.camera}
+            serverUrl={wsUrl}
+            token={token}
             connect={shouldConnect}
             onError={(e) => {
               setToastMessage({ message: e.message, type: "error" });
@@ -150,16 +116,13 @@ export default function Home() {
             }}
           >
             <Playground
-              title={appConfig?.title}
-              githubLink={appConfig?.github_link}
-              outputs={outputs}
-              showQR={appConfig?.show_qr}
-              description={appConfig?.description}
               themeColors={themeColors}
-              defaultColor={appConfig?.theme_color ?? "cyan"}
-              onConnect={handleConnect}
-              metadata={metadata}
-              videoFit={appConfig?.video_fit ?? "cover"}
+              onConnect={(c) => {
+                const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL
+                  ? "env"
+                  : "manual";
+                handleConnect(c, mode);
+              }}
             />
             <RoomAudioRenderer />
             <StartAudio label="Click to enable audio playback" />
@@ -167,18 +130,13 @@ export default function Home() {
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={(url, token) => {
-              handleConnect(true, { url, token });
+            onConnectClicked={() => {
+              const mode = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : "manual";
+              handleConnect(true, mode);
             }}
           />
         )}
       </main>
     </>
-  );
-}
-
-function createRoomName() {
-  return [generateRandomAlphanumeric(4), generateRandomAlphanumeric(4)].join(
-    "-"
   );
 }
