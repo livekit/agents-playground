@@ -1,17 +1,19 @@
 "use client"
 
-import { CLOUD_ENABLED } from "@/cloud/CloudConnect";
 import { useCloud } from "@/cloud/useCloud";
 import React, { createContext, useState } from "react";
 import { useCallback } from "react";
 import { useConfig } from "./useConfig";
 
+export type ConnectionMode = "cloud" | "manual" | "env"
+
 type TokenGeneratorData = {
   shouldConnect: boolean;
   wsUrl: string;
   token: string;
+  mode: ConnectionMode;
   disconnect: () => Promise<void>;
-  connect: () => Promise<void>;
+  connect: (mode: ConnectionMode) => Promise<void>;
 };
 
 const ConnectionContext = createContext<TokenGeneratorData | undefined>(undefined);
@@ -26,16 +28,20 @@ export const ConnectionProvider = ({
   const [connectionDetails, setConnectionDetails] = useState<{
     wsUrl: string;
     token: string;
+    mode: ConnectionMode;
     shouldConnect: boolean;
-  }>({ wsUrl: "", token: "", shouldConnect: false });
+  }>({ wsUrl: "", token: "", shouldConnect: false, mode: "manual" });
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (mode: ConnectionMode) => {
     let token = "";
     let url = "";
-    if (CLOUD_ENABLED) {
+    if (mode === "cloud") {
       token = await generateToken();
       url = cloudWSUrl;
-    } else if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+    } else if (mode === "env") {
+      if(!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+        throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
+      }
       url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
       const {accessToken} = await fetch("/api/token").then((res) => res.json());
       token = accessToken;
@@ -43,7 +49,7 @@ export const ConnectionProvider = ({
       token = config.settings.token;
       url = config.settings.ws_url;
     }
-    setConnectionDetails({ wsUrl: url, token, shouldConnect: true });
+    setConnectionDetails({ wsUrl: url, token, shouldConnect: true, mode });
   }, [
     cloudWSUrl,
     config.settings.token,
@@ -61,6 +67,7 @@ export const ConnectionProvider = ({
         wsUrl: connectionDetails.wsUrl,
         token: connectionDetails.token,
         shouldConnect: connectionDetails.shouldConnect,
+        mode: connectionDetails.mode,
         connect,
         disconnect,
       }}

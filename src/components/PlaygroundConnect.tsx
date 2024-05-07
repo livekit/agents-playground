@@ -2,10 +2,11 @@ import { useConfig } from "@/hooks/useConfig";
 import { CLOUD_ENABLED, CloudConnect } from "../cloud/CloudConnect";
 import { Button } from "./button/Button";
 import { useState } from "react";
+import { ConnectionMode } from "@/hooks/useConnection";
 
 type PlaygroundConnectProps = {
   accentColor: string;
-  onConnectClicked: () => void;
+  onConnectClicked: (mode: ConnectionMode) => void;
 };
 
 const ConnectTab = ({ active, onClick, children }: any) => {
@@ -57,7 +58,7 @@ const TokenConnect = ({
             newSettings.ws_url = url;
             newSettings.token = token;
             setUserSettings(newSettings);
-            onConnectClicked();
+            onConnectClicked("manual");
           }}
         >
           Connect

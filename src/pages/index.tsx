@@ -12,10 +12,8 @@ import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
-import { ConnectionProvider, useConnection } from "@/hooks/useConnection";
+import { ConnectionMode, ConnectionProvider, useConnection } from "@/hooks/useConnection";
 import { useMemo } from "react";
-import { CLOUD_ENABLED } from "@/cloud/CloudConnect";
-import { useCloud } from "@/cloud/useCloud";
 
 const themeColors = [
   "cyan",
@@ -45,14 +43,14 @@ export function HomeInner() {
     message: string;
     type: ToastType;
   } | null>(null);
-  const { shouldConnect, wsUrl, token, connect, disconnect } =
+  const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
     useConnection();
   
   const {config} = useConfig();
 
   const handleConnect = useCallback(
-    async (c: boolean) => {
-      c ? connect() : disconnect();
+    async (c: boolean, mode: ConnectionMode) => {
+      c ? connect(mode) : disconnect();
     },
     [connect, disconnect]
   );
@@ -119,7 +117,8 @@ export function HomeInner() {
             <Playground
               themeColors={themeColors}
               onConnect={(c) => {
-                handleConnect(c);
+                const m = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : mode;
+                handleConnect(c, m);
               }}
             />
             <RoomAudioRenderer />
@@ -128,8 +127,8 @@ export function HomeInner() {
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={() => {
-              handleConnect(true);
+            onConnectClicked={(mode) => {
+              handleConnect(true, mode);
             }}
           />
         )}
