@@ -84,6 +84,7 @@ export const ConfigProvider = ({
 }) => {
   const appConfig = useAppConfig();
   const router = useRouter();
+  const [localColorOverride, setLocalColorOverride] = useState<string | null>(null);
 
   const getSettingsFromUrl = useCallback(() => {
     if(typeof window === 'undefined') {
@@ -147,31 +148,36 @@ export const ConfigProvider = ({
 
   const getConfig = useCallback(() => {
     const appConfigFromSettings = appConfig;
+
     if (appConfigFromSettings.settings.editable === false) {
+      if (localColorOverride) {
+        appConfigFromSettings.settings.theme_color = localColorOverride;
+      }
       return appConfigFromSettings;
     }
     const cookieSettigs = getSettingsFromCookies();
     const urlSettings = getSettingsFromUrl();
-    if(!cookieSettigs) {
-      if(urlSettings) {
+    if (!cookieSettigs) {
+      if (urlSettings) {
         setCookieSettings(urlSettings);
       }
     }
-    if(!urlSettings) {
-      if(cookieSettigs) {
+    if (!urlSettings) {
+      if (cookieSettigs) {
         setUrlSettings(cookieSettigs);
       }
     }
     const newCookieSettings = getSettingsFromCookies();
-    if(!newCookieSettings) {
+    if (!newCookieSettings) {
       return appConfigFromSettings;
     }
     appConfigFromSettings.settings = newCookieSettings;
-    return {...appConfigFromSettings};
+    return { ...appConfigFromSettings };
   }, [
     appConfig,
     getSettingsFromCookies,
     getSettingsFromUrl,
+    localColorOverride,
     setCookieSettings,
     setUrlSettings,
   ]);
@@ -179,6 +185,7 @@ export const ConfigProvider = ({
   const setUserSettings = useCallback((settings: UserSettings) => {
     const appConfigFromSettings = appConfig;
     if (appConfigFromSettings.settings.editable === false) {
+      setLocalColorOverride(settings.theme_color);
       return
     }
     setUrlSettings(settings);
