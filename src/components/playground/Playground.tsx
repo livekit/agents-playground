@@ -54,7 +54,7 @@ export default function Playground({
   themeColors,
   onConnect,
 }: PlaygroundProps) {
-  const {config, setUserSettings} = useConfig();
+  const { config, setUserSettings } = useConfig();
   const { name } = useRoomInfo();
   const [agentState, setAgentState] = useState<AgentState>("offline");
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -182,51 +182,88 @@ export default function Playground({
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "cover"}`;
+
+    const disconnectedContent = (
+      <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
+        No video track. Connect to get started.
+      </div>
+    );
+
+    const loadingContent = (
+      <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
+        <LoadingSVG />
+        Waiting for video track
+      </div>
+    );
+
+    const videoContent = (
+      <VideoTrack
+        trackRef={agentVideoTrack}
+        className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
+      />
+    );
+
+    let content = null;
+    if (roomState === ConnectionState.Disconnected) {
+      content = disconnectedContent;
+    } else if (agentVideoTrack) {
+      content = videoContent;
+    } else {
+      content = loadingContent;
+    }
+
     return (
       <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
-        {agentVideoTrack ? (
-          <VideoTrack
-            trackRef={agentVideoTrack}
-            className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
-            <LoadingSVG />
-            Waiting for video track
-          </div>
-        )}
+        {content}
       </div>
     );
-  }, [agentVideoTrack, config]);
+  }, [agentVideoTrack, config, roomState]);
 
   const audioTileContent = useMemo(() => {
-    return (
-      <div className="flex items-center justify-center w-full">
-        {agentAudioTrack ? (
-          <AgentMultibandAudioVisualizer
-            state={agentState}
-            barWidth={30}
-            minBarHeight={30}
-            maxBarHeight={150}
-            accentColor={config.settings.theme_color}
-            accentShade={500}
-            frequencies={subscribedVolumes}
-            borderRadius={12}
-            gap={16}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-gray-700 text-center w-full">
-            <LoadingSVG />
-            Waiting for audio track
-          </div>
-        )}
+    const disconnectedContent = (
+      <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full">
+        No audio track. Connect to get started.
       </div>
     );
+
+    const waitingContent = (
+      <div className="flex flex-col items-center gap-2 text-gray-700 text-center w-full">
+        <LoadingSVG />
+        Waiting for audio track
+      </div>
+    );
+
+    const visualizerContent = (
+      <div className="flex items-center justify-center w-full">
+        <AgentMultibandAudioVisualizer
+          state={agentState}
+          barWidth={30}
+          minBarHeight={30}
+          maxBarHeight={150}
+          accentColor={config.settings.theme_color}
+          accentShade={500}
+          frequencies={subscribedVolumes}
+          borderRadius={12}
+          gap={16}
+        />
+      </div>
+    );
+
+    if (roomState === ConnectionState.Disconnected) {
+      return disconnectedContent;
+    }
+
+    if (!agentAudioTrack) {
+      return waitingContent;
+    }
+
+    return visualizerContent;
   }, [
     agentAudioTrack,
     agentState,
     config.settings.theme_color,
     subscribedVolumes,
+    roomState,
   ]);
 
   const chatTileContent = useMemo(() => {
