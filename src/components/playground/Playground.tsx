@@ -15,7 +15,6 @@ import {
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
 import { useConfig } from "@/hooks/useConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
-import { AgentState } from "@/lib/types";
 import {
   VideoTrack,
   useChat,
@@ -56,7 +55,6 @@ export default function Playground({
 }: PlaygroundProps) {
   const { config, setUserSettings } = useConfig();
   const { name } = useRoomInfo();
-  const [agentState, setAgentState] = useState<AgentState>("offline");
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
@@ -65,6 +63,7 @@ export default function Playground({
     updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
   });
   const agentParticipant = participants.find((p) => p.isAgent);
+  const isAgentConnected = agentParticipant !== undefined;
 
   const { send: sendChat, chatMessages } = useChat();
   const roomState = useConnectionState();
@@ -108,24 +107,6 @@ export default function Playground({
     localMicTrack?.publication.track,
     20
   );
-
-  useEffect(() => {
-    if (!agentParticipant) {
-      setAgentState("offline");
-      return;
-    }
-    let agentMd: any = {};
-    if (agentParticipant.metadata) {
-      agentMd = JSON.parse(agentParticipant.metadata);
-    }
-    if (agentMd.agent_state) {
-      setAgentState(agentMd.agent_state);
-    } else {
-      setAgentState("starting");
-    }
-  }, [agentParticipant, agentParticipant?.metadata]);
-
-  const isAgentConnected = agentState !== "offline";
 
   const onDataReceived = useCallback(
     (msg: any) => {
@@ -233,10 +214,11 @@ export default function Playground({
       </div>
     );
 
+    // TODO: keep it in the speaking state until we come up with a better protocol for agent states
     const visualizerContent = (
       <div className="flex items-center justify-center w-full">
         <AgentMultibandAudioVisualizer
-          state={agentState}
+          state="speaking"
           barWidth={30}
           minBarHeight={30}
           maxBarHeight={150}
@@ -260,7 +242,6 @@ export default function Playground({
     return visualizerContent;
   }, [
     agentAudioTrack,
-    agentState,
     config.settings.theme_color,
     subscribedVolumes,
     roomState,
@@ -334,24 +315,6 @@ export default function Playground({
                   : "gray-500"
               }
             />
-            <NameValueRow
-              name="Agent status"
-              value={
-                agentState !== "offline" && agentState !== "speaking" ? (
-                  <div className="flex gap-2 items-center">
-                    <LoadingSVG diameter={12} strokeWidth={2} />
-                    {agentState}
-                  </div>
-                ) : (
-                  agentState
-                )
-              }
-              valueColor={
-                agentState === "speaking"
-                  ? `${config.settings.theme_color}-500`
-                  : "gray-500"
-              }
-            />
           </div>
         </ConfigurationPanelItem>
         {localVideoTrack && (
@@ -405,7 +368,6 @@ export default function Playground({
     name,
     roomState,
     isAgentConnected,
-    agentState,
     localVideoTrack,
     localMicTrack,
     localMultibandVolume,
