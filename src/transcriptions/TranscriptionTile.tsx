@@ -41,13 +41,21 @@ export function TranscriptionTile({
     agentMessages.segments.forEach((s) =>
       transcripts.set(
         s.id,
-        segmentToChatMessage(s, agentAudioTrack.participant)
+        segmentToChatMessage(
+          s,
+          transcripts.get(s.id),
+          agentAudioTrack.participant
+        )
       )
     );
     localMessages.segments.forEach((s) =>
       transcripts.set(
         s.id,
-        segmentToChatMessage(s, localParticipant.localParticipant)
+        segmentToChatMessage(
+          s,
+          transcripts.get(s.id),
+          localParticipant.localParticipant
+        )
       )
     );
 
@@ -70,7 +78,7 @@ export function TranscriptionTile({
       allMessages.push({
         name,
         message: msg.message,
-        timestamp: msg?.timestamp,
+        timestamp: msg.timestamp,
         isSelf: isSelf,
       });
     }
@@ -92,13 +100,14 @@ export function TranscriptionTile({
 
 function segmentToChatMessage(
   s: TranscriptionSegment,
+  existingMessage: ChatMessageType | undefined,
   participant: Participant
 ): ChatMessageType {
   const msg: ChatMessageType = {
-    message: s.text,
+    message: s.final ? s.text : `${s.text} ...`,
     name: participant instanceof LocalParticipant ? "You" : "Agent",
     isSelf: participant instanceof LocalParticipant,
-    timestamp: Date.now(),
+    timestamp: existingMessage?.timestamp ?? Date.now(),
   };
   return msg;
 }
