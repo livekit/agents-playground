@@ -15,14 +15,13 @@ import {
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
 import { useConfig } from "@/hooks/useConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
+import { TranscriptionTile } from "@/transcriptions/TranscriptionTile";
 import {
   VideoTrack,
-  useChat,
   useConnectionState,
   useDataChannel,
   useLocalParticipant,
   useRemoteParticipants,
-  useRoomContext,
   useRoomInfo,
   useTracks,
 } from "@livekit/components-react";
@@ -65,7 +64,6 @@ export default function Playground({
   const agentParticipant = participants.find((p) => p.isAgent);
   const isAgentConnected = agentParticipant !== undefined;
 
-  const { send: sendChat, chatMessages } = useChat();
   const roomState = useConnectionState();
   const tracks = useTracks();
 
@@ -131,33 +129,6 @@ export default function Playground({
     },
     [transcripts]
   );
-
-  // combine transcripts and chat together
-  useEffect(() => {
-    const allMessages = [...transcripts];
-    for (const msg of chatMessages) {
-      const isAgent = msg.from?.identity === agentParticipant?.identity;
-      const isSelf = msg.from?.identity === localParticipant?.identity;
-      let name = msg.from?.name;
-      if (!name) {
-        if (isAgent) {
-          name = "Agent";
-        } else if (isSelf) {
-          name = "You";
-        } else {
-          name = "Unknown";
-        }
-      }
-      allMessages.push({
-        name,
-        message: msg.message,
-        timestamp: msg?.timestamp,
-        isSelf: isSelf,
-      });
-    }
-    allMessages.sort((a, b) => a.timestamp - b.timestamp);
-    setMessages(allMessages);
-  }, [transcripts, chatMessages, localParticipant, agentParticipant]);
 
   useDataChannel(onDataReceived);
 
@@ -248,14 +219,16 @@ export default function Playground({
   ]);
 
   const chatTileContent = useMemo(() => {
-    return (
-      <ChatTile
-        messages={messages}
-        accentColor={config.settings.theme_color}
-        onSend={sendChat}
-      />
-    );
-  }, [config.settings.theme_color, messages, sendChat]);
+    if (agentAudioTrack) {
+      return (
+        <TranscriptionTile
+          agentAudioTrack={agentAudioTrack}
+          accentColor={config.settings.theme_color}
+        />
+      );
+    }
+    return <></>;
+  }, [config.settings.theme_color, agentAudioTrack]);
 
   const settingsTileContent = useMemo(() => {
     return (

@@ -9,12 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@livekit/components-react": "^2.1.1",
+    "@livekit/components-react": "^2.3.1",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "cookies-next": "^4.1.1",
     "framer-motion": "^10.16.16",
     "js-yaml": "^4.1.0",
-    "livekit-client": "^2.1.0",
+    "livekit-client": "^2.1.5",
     "livekit-server-sdk": "^2.1.2",
     "lodash": "^4.17.21",
     "next": "^14.0.4",
