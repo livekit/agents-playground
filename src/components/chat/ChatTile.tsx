@@ -35,16 +35,22 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
           height: `calc(100% - ${inputHeight}px)`,
         }}
       >
-        <div className="flex flex-col min-h-full justify-end gap-6">
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              name={message.name}
-              message={message.message}
-              isSelf={message.isSelf}
-              accentColor={accentColor}
-            />
-          ))}
+        <div className="flex flex-col min-h-full justify-end">
+          {messages.map((message, index, allMsg) => {
+            const hideName =
+              index >= 1 && allMsg[index - 1].name === message.name;
+
+            return (
+              <ChatMessage
+                key={index}
+                hideName={hideName}
+                name={message.name}
+                message={message.message}
+                isSelf={message.isSelf}
+                accentColor={accentColor}
+              />
+            );
+          })}
         </div>
       </div>
       <ChatMessageInput
