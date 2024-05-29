@@ -1,11 +1,56 @@
 /** @type {import('tailwindcss').Config} */
 
-const colors = require('tailwindcss/colors')
-const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
-const colorList = ['gray', 'green', 'cyan', 'amber', 'violet', 'blue', 'rose', 'pink', 'teal', "red"];
-const uiElements = ['bg', 'selection:bg', 'border', 'text', 'hover:bg', 'hover:border', 'hover:text', 'ring', 'focus:ring'];
+const colors = require("tailwindcss/colors");
+const shades = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+  "950",
+];
+const colorList = [
+  "gray",
+  "green",
+  "cyan",
+  "amber",
+  "violet",
+  "blue",
+  "rose",
+  "pink",
+  "teal",
+  "red",
+];
+const uiElements = [
+  "bg",
+  "selection:bg",
+  "border",
+  "text",
+  "hover:bg",
+  "hover:border",
+  "hover:text",
+  "ring",
+  "focus:ring",
+];
 const customColors = {
-  cyan: colors.cyan,
+  cyan: {
+    50: "#eef8ff",
+    100: "#daeeff",
+    200: "#bde1ff",
+    300: "#90d0ff",
+    400: "#47abff",
+    500: "#3594fc",
+    600: "#1f75f1",
+    700: "#175ede",
+    800: "#194db4",
+    900: "#1a438e",
+    950: "#152a56",
+  },
   green: colors.green,
   amber: colors.amber,
   violet: colors.violet,
@@ -14,7 +59,7 @@ const customColors = {
   pink: colors.pink,
   teal: colors.teal,
   red: colors.red,
-}
+};
 
 let customShadows = {};
 let shadowNames = [];
@@ -32,43 +77,39 @@ for (const [name, color] of Object.entries(customColors)) {
 }
 
 const safelist = [
-  'bg-black',
-  'bg-white',
-  'transparent',
-  'object-cover',
-  'object-contain',
+  "bg-black",
+  "bg-white",
+  "transparent",
+  "object-cover",
+  "object-contain",
   ...shadowNames,
   ...textShadowNames,
-  ...shades.flatMap(shade => [
-    ...colorList.flatMap(color => [
-      ...uiElements.flatMap(element => [
-        `${element}-${color}-${shade}`,
-      ]),
+  ...shades.flatMap((shade) => [
+    ...colorList.flatMap((color) => [
+      ...uiElements.flatMap((element) => [`${element}-${color}-${shade}`]),
     ]),
   ]),
 ];
 
 module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     colors: {
-      transparent: 'transparent',
-      current: 'currentColor',
+      transparent: "transparent",
+      current: "currentColor",
       black: colors.black,
       white: colors.white,
       gray: colors.neutral,
-      ...customColors
+      ...customColors,
     },
     extend: {
       dropShadow: {
-       ...textShadows,
+        ...textShadows,
       },
       boxShadow: {
         ...customShadows,
-      }
-    }
+      },
+    },
   },
   plugins: [],
   safelist,

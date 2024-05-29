@@ -12,7 +12,11 @@ import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
-import { ConnectionMode, ConnectionProvider, useConnection } from "@/hooks/useConnection";
+import {
+  ConnectionMode,
+  ConnectionProvider,
+  useConnection,
+} from "@/hooks/useConnection";
 import { useMemo } from "react";
 
 const themeColors = [
@@ -45,8 +49,8 @@ export function HomeInner() {
   } | null>(null);
   const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
     useConnection();
-  
-  const {config} = useConfig();
+
+  const { config } = useConfig();
 
   const handleConnect = useCallback(
     async (c: boolean, mode: ConnectionMode) => {
@@ -59,11 +63,11 @@ export function HomeInner() {
     if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
       return true;
     }
-    if(wsUrl) {
+    if (wsUrl) {
       return true;
     }
     return false;
-  }, [wsUrl])
+  }, [wsUrl]);
 
   return (
     <>
@@ -84,7 +88,7 @@ export function HomeInner() {
         <meta property="og:image:height" content="630" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="relative flex flex-col justify-center px-4 items-center h-full w-full bg-black repeating-square-background">
+      <main className="relative flex flex-col justify-center px-4 items-center h-full w-full bg-[#1c2536] repeating-square-background">
         <AnimatePresence>
           {toastMessage && (
             <motion.div

@@ -173,7 +173,7 @@ export default function Playground({
 
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
-      <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full">
+      <div className="flex flex-col items-center justify-center gap-2 text-gray-300 text-center w-full">
         No audio track. Connect to get started.
       </div>
     );
@@ -311,7 +311,7 @@ export default function Playground({
             <AudioInputTile frequencies={localMultibandVolume} />
           </ConfigurationPanelItem>
         )}
-        <div className="w-full">
+        {/* <div className="w-full">
           <ConfigurationPanelItem title="Color">
             <ColorPicker
               colors={themeColors}
@@ -323,7 +323,7 @@ export default function Playground({
               }}
             />
           </ConfigurationPanelItem>
-        </div>
+        </div> */}
         {config.show_qr && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
@@ -344,8 +344,8 @@ export default function Playground({
     localVideoTrack,
     localMicTrack,
     localMultibandVolume,
-    themeColors,
-    setUserSettings,
+    //themeColors,
+    //setUserSettings,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
@@ -389,7 +389,6 @@ export default function Playground({
     content: (
       <PlaygroundTile
         padding={false}
-        backgroundColor="gray-950"
         className="h-full w-full basis-1/4 items-start overflow-y-auto flex"
         childrenClassName="h-full grow items-start"
       >
@@ -459,7 +458,6 @@ export default function Playground({
         )}
         <PlaygroundTile
           padding={false}
-          backgroundColor="gray-950"
           className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
           childrenClassName="h-full grow items-start"
         >
