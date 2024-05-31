@@ -262,7 +262,7 @@ export default function Playground({
                 roomState === ConnectionState.Connecting ? (
                   <LoadingSVG diameter={16} strokeWidth={2} />
                 ) : (
-                  roomState
+                  roomState.toUpperCase()
                 )
               }
               valueColor={
@@ -275,11 +275,11 @@ export default function Playground({
               name="Agent connected"
               value={
                 isAgentConnected ? (
-                  "true"
+                  "TRUE"
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
                 ) : (
-                  "false"
+                  "FALSE"
                 )
               }
               valueColor={
