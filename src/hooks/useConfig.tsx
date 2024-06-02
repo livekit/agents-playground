@@ -1,10 +1,15 @@
-"use client"
+"use client";
 
 import { getCookie, setCookie } from "cookies-next";
 import jsYaml from "js-yaml";
 import { useRouter } from "next/navigation";
-import React, { createContext, useCallback, useMemo, useState } from "react";
-import { useEffect } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export type AppConfig = {
   title: string;
@@ -49,7 +54,7 @@ const defaultConfig: AppConfig = {
       video: true,
     },
     ws_url: "",
-    token: ""
+    token: "",
   },
   show_qr: false,
 };
@@ -61,6 +66,12 @@ const useAppConfig = (): AppConfig => {
         const parsedConfig = jsYaml.load(
           process.env.NEXT_PUBLIC_APP_CONFIG
         ) as AppConfig;
+        if (parsedConfig.settings === undefined) {
+          parsedConfig.settings = defaultConfig.settings;
+        }
+        if (parsedConfig.settings.editable === undefined) {
+          parsedConfig.settings.editable = true;
+        }
         return parsedConfig;
       } catch (e) {
         console.error("Error parsing app config:", e);
@@ -77,17 +88,15 @@ type ConfigData = {
 
 const ConfigContext = createContext<ConfigData | undefined>(undefined);
 
-export const ConfigProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
   const appConfig = useAppConfig();
   const router = useRouter();
-  const [localColorOverride, setLocalColorOverride] = useState<string | null>(null);
+  const [localColorOverride, setLocalColorOverride] = useState<string | null>(
+    null
+  );
 
   const getSettingsFromUrl = useCallback(() => {
-    if(typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return null;
     }
     if (!window.location.hash) {
@@ -95,7 +104,7 @@ export const ConfigProvider = ({
     }
     const appConfigFromSettings = appConfig;
     if (appConfigFromSettings.settings.editable === false) {
-      return null
+      return null;
     }
     const params = new URLSearchParams(window.location.hash.replace("#", ""));
     return {
@@ -112,39 +121,42 @@ export const ConfigProvider = ({
         chat: params.get("chat") === "1",
       },
       ws_url: "",
-      token: ""
+      token: "",
     } as UserSettings;
-  }, [appConfig])
+  }, [appConfig]);
 
   const getSettingsFromCookies = useCallback(() => {
     const appConfigFromSettings = appConfig;
     if (appConfigFromSettings.settings.editable === false) {
-      return null
+      return null;
     }
     const jsonSettings = getCookie("lk_settings");
     if (!jsonSettings) {
       return null;
     }
     return JSON.parse(jsonSettings) as UserSettings;
-  }, [appConfig])
+  }, [appConfig]);
 
-  const setUrlSettings = useCallback((us: UserSettings) => {
-    const obj = new URLSearchParams({
-      cam: boolToString(us.inputs.camera),
-      mic: boolToString(us.inputs.mic),
-      video: boolToString(us.outputs.video),
-      audio: boolToString(us.outputs.audio),
-      chat: boolToString(us.chat),
-      theme_color: us.theme_color || "cyan",
-    });
-    // Note: We don't set ws_url and token to the URL on purpose
-    router.replace("/#" + obj.toString());
-  }, [router])
+  const setUrlSettings = useCallback(
+    (us: UserSettings) => {
+      const obj = new URLSearchParams({
+        cam: boolToString(us.inputs.camera),
+        mic: boolToString(us.inputs.mic),
+        video: boolToString(us.outputs.video),
+        audio: boolToString(us.outputs.audio),
+        chat: boolToString(us.chat),
+        theme_color: us.theme_color || "cyan",
+      });
+      // Note: We don't set ws_url and token to the URL on purpose
+      router.replace("/#" + obj.toString());
+    },
+    [router]
+  );
 
   const setCookieSettings = useCallback((us: UserSettings) => {
     const json = JSON.stringify(us);
     setCookie("lk_settings", json);
-  }, [])
+  }, []);
 
   const getConfig = useCallback(() => {
     const appConfigFromSettings = appConfig;
@@ -182,21 +194,24 @@ export const ConfigProvider = ({
     setUrlSettings,
   ]);
 
-  const setUserSettings = useCallback((settings: UserSettings) => {
-    const appConfigFromSettings = appConfig;
-    if (appConfigFromSettings.settings.editable === false) {
-      setLocalColorOverride(settings.theme_color);
-      return
-    }
-    setUrlSettings(settings);
-    setCookieSettings(settings);
-    _setConfig((prev) => {
-      return {
-        ...prev,
-        settings: settings,
-      };
-    })
-  }, [appConfig, setCookieSettings, setUrlSettings]);
+  const setUserSettings = useCallback(
+    (settings: UserSettings) => {
+      const appConfigFromSettings = appConfig;
+      if (appConfigFromSettings.settings.editable === false) {
+        setLocalColorOverride(settings.theme_color);
+        return;
+      }
+      setUrlSettings(settings);
+      setCookieSettings(settings);
+      _setConfig((prev) => {
+        return {
+          ...prev,
+          settings: settings,
+        };
+      });
+    },
+    [appConfig, setCookieSettings, setUrlSettings]
+  );
 
   const [config, _setConfig] = useState<AppConfig>(getConfig());
 
@@ -218,6 +233,6 @@ export const useConfig = () => {
     throw new Error("useConfig must be used within a ConfigProvider");
   }
   return context;
-}
+};
 
 const boolToString = (b: boolean) => (b ? "1" : "0");
