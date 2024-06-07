@@ -74,50 +74,16 @@ export const PlaygroundHeader = ({
 };
 
 const LKLogo = () => (
-  <svg
-    width="46"
-    height="60"
-    viewBox="0 0 46 60"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M0.154175 53.44L10.4626 4.76379e-05L6.90572 35.7682L24.4848 36.9143L24.4521 42.9008L31.3896 59.249L24.7707 48.3597L0.154175 53.44Z"
-      fill="#47ABFF"
+  <>
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img
+      style={{
+        height: 56,
+      }}
+      src="/logotrans.png"
+      alt="LiveKit Logo"
     />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M28.2642 26.813L31.3898 59.2448L26.0956 35.1874L14.2159 34.5544L15.1669 22.1598L10.4628 7.86648e-05L17.7661 24.1684L28.2642 26.813Z"
-      fill="#47ABFF"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M30.3303 19.1601L30.6629 25.4919L20.9838 23.2173L20.9644 16.0715L10.4628 3.05015e-05L23.5952 16.7281L30.3303 19.1601Z"
-      fill="#47ABFF"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M32.0935 22.0604L41.0833 24.9262L41.9973 32.5173L32.3667 31.2483L32.0935 22.0604Z"
-      fill="#47ABFF"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M35.9453 32.8982L42.6011 33.7566L43.5588 39.9823L38.665 40.2083L31.3895 59.249L36.4959 40.4912L35.9453 32.8982Z"
-      fill="#47ABFF"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M45.2391 40.8988L45.9999 46.657L40.2188 48.2888L31.3895 59.249L40.1624 45.6581L39.9068 41.4179L45.2391 40.8988Z"
-      fill="#47ABFF"
-    />
-  </svg>
+  </>
 );
 
 const GithubSVG = () => (
