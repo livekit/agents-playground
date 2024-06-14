@@ -1,7 +1,5 @@
 import { ChatMessageType, ChatTile } from "@/components/chat/ChatTile";
 import {
-  Chat,
-  ChatMessage as ComponentsChatMessage,
   TrackReferenceOrPlaceholder,
   useChat,
   useLocalParticipant,

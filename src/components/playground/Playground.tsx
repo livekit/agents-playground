@@ -1,7 +1,7 @@
 "use client";
 
 import { LoadingSVG } from "@/components/button/LoadingSVG";
-import { ChatMessageType, ChatTile } from "@/components/chat/ChatTile";
+import { ChatMessageType } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
@@ -17,6 +17,7 @@ import { useConfig } from "@/hooks/useConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { TranscriptionTile } from "@/transcriptions/TranscriptionTile";
 import {
+  TrackReferenceOrPlaceholder,
   VideoTrack,
   useConnectionState,
   useDataChannel,
@@ -74,11 +75,20 @@ export default function Playground({
     }
   }, [config, localParticipant, roomState]);
 
-  const agentAudioTrack = tracks.find(
+  let agentAudioTrack: TrackReferenceOrPlaceholder | undefined;
+  const aat = tracks.find(
     (trackRef) =>
       trackRef.publication.kind === Track.Kind.Audio &&
       trackRef.participant.isAgent
   );
+  if (aat) {
+    agentAudioTrack = aat;
+  } else if (agentParticipant) {
+    agentAudioTrack = {
+      participant: agentParticipant,
+      source: Track.Source.Microphone,
+    };
+  }
 
   const agentVideoTrack = tracks.find(
     (trackRef) =>
@@ -87,7 +97,7 @@ export default function Playground({
   );
 
   const subscribedVolumes = useMultibandTrackVolume(
-    agentAudioTrack?.publication.track,
+    agentAudioTrack?.publication?.track,
     5
   );
 
