@@ -233,7 +233,12 @@ export default function Playground({
     }
 
     return visualizerContent;
-  }, [ agentAudioTrack, config.settings.theme_color, subscribedVolumes, roomState ]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    agentAudioTrack,
+    config.settings.theme_color,
+    subscribedVolumes,
+    roomState,
+  ]);
 
   const chatTileContent = useMemo(() => {
     if (agentAudioTrack) {
