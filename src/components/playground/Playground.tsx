@@ -13,6 +13,7 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
+import { AgentMultibandAudioWaveVisualizer } from "@/components/visualization/AgentMultibandAudioWaveVisualizer";
 import { useConfig } from "@/hooks/useConfig";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { TranscriptionTile } from "@/transcriptions/TranscriptionTile";
@@ -198,7 +199,7 @@ export default function Playground({
     // TODO: keep it in the speaking state until we come up with a better protocol for agent states
     const visualizerContent = (
       <div className="flex items-center justify-center w-full">
-        <AgentMultibandAudioVisualizer
+        {/* <AgentMultibandAudioVisualizer
           state="speaking"
           barWidth={30}
           minBarHeight={30}
@@ -206,6 +207,17 @@ export default function Playground({
           accentColor={config.settings.theme_color}
           accentShade={500}
           frequencies={subscribedVolumes}
+          borderRadius={12}
+          gap={16}
+        /> */}
+        <AgentMultibandAudioWaveVisualizer
+          state="speaking"
+          barWidth={30}
+          minBarHeight={30}
+          maxBarHeight={150}
+          accentColor={config.settings.theme_color}
+          accentShade={500}
+          frequencies={localMultibandVolume}
           borderRadius={12}
           gap={16}
         />
@@ -217,7 +229,7 @@ export default function Playground({
     }
 
     if (!agentAudioTrack) {
-      return waitingContent;
+      // return waitingContent;
     }
 
     return visualizerContent;
