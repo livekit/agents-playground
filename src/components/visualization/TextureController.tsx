@@ -56,7 +56,7 @@ const TextureController = ({
             max={1}
             step={0.01}
             value={dampening}
-            onChange={(value:number) => { setDampening(value); dampeningData(value); }}
+            onChange={(value:number | number[]) => { setDampening(value as number); dampeningData(value); }}
           />
           <p>Stiffness: {stiffness}</p>
           <Slider
@@ -64,7 +64,7 @@ const TextureController = ({
             max={1}
             step={0.01}
             value={stiffness}
-            onChange={(value:number) => { setStiffness(value); stiffnessData(value); }}
+            onChange={(value:number | number[]) => { setStiffness(value as number); stiffnessData(value); }}
           />
           <p>Connected Neighbors: {connectedNeighbors}</p>
           <Slider
@@ -72,7 +72,7 @@ const TextureController = ({
             max={7}
             step={1}
             value={connectedNeighbors}
-            onChange={(value:number) => { setConnectedNeighbors(value); connectedNeighborsData(value); }}
+            onChange={(value:number | number[]) => { setConnectedNeighbors(value as number); connectedNeighborsData(value); }}
           />
           <p>Neighbor Weight: {neighborWeight}</p>
           <Slider
@@ -80,7 +80,7 @@ const TextureController = ({
             max={1}
             step={0.01}
             value={neighborWeight}
-            onChange={(value:number) => {setNeighborWeight(value);  neighborWeightData(value);}}
+            onChange={(value:number | number[]) => {setNeighborWeight(value as number);  neighborWeightData(value);}}
           />
         </div>
       </Collapse>
@@ -97,7 +97,7 @@ const TextureController = ({
             max={20}
             step={1}
             value={blurRadius}
-            onChange={(value:number) => {setBlurRadius(value); blurRadiusData(value);}}
+            onChange={(value:number | number[]) => {setBlurRadius(value as number); blurRadiusData(value);}}
           />
           <p>Blur Weight: {blurWeight}</p>
           <Slider
@@ -105,7 +105,7 @@ const TextureController = ({
             max={2}
             step={0.01}
             value={blurWeight}
-            onChange={(value:number) => {setBlurWeight(value); blurWeightData(value);}}
+            onChange={(value:number | number[]) => {setBlurWeight(value as number); blurWeightData(value);}}
           />
           <p>Original Weight: {originalWeight}</p>
           <Slider
@@ -113,7 +113,7 @@ const TextureController = ({
             max={2}
             step={0.01}
             value={originalWeight}
-            onChange={(value:number) => {setOriginalWeight(value); originalWeightData(value);}}
+            onChange={(value:number | number[]) => {setOriginalWeight(value as number); originalWeightData(value);}}
           />
         </div>
       </Collapse>
@@ -129,7 +129,7 @@ const TextureController = ({
             max={300}
             step={1}
             value={gridLines}
-            onChange={(value:number) => { setGridLines(value); gridLinesData(value); }}
+            onChange={(value:number | number[]) => { setGridLines(value as number); gridLinesData(value); }}
           />
           <p>Lines Animation Offset: {linesAnimationOffset}</p>
           <Slider
@@ -137,7 +137,7 @@ const TextureController = ({
             max={100}
             step={1}
             value={linesAnimationOffset}
-            onChange={(value:number) => {setLinesAnimationOffset(value); linesAnimationOffsetData(value);}}
+            onChange={(value:number | number[]) => {setLinesAnimationOffset(value as number); linesAnimationOffsetData(value);}}
           />
           <p>Grid Max Height: {gridMaxHeight}</p>
           <Slider
@@ -145,7 +145,7 @@ const TextureController = ({
             max={0.8}
             step={0.01}
             value={gridMaxHeight}
-            onChange={(value:number) => {setGridMaxHeight(value); gridMaxHeightData(value);}}
+            onChange={(value:number | number[]) => {setGridMaxHeight(value as number); gridMaxHeightData(value);}}
           />
         </div>
       </Collapse>

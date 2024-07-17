@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import css from "dom-css";
 import fit from "canvas-fit";
 import mat4 from "gl-mat4";
-import array from "new-array";
 import shuffle from "shuffle-array";
 import Alea from "alea";
 import { createSpring } from "spring-animator";
@@ -639,7 +638,7 @@ export const AgentMultibandAudioWaveVisualizer = ({
     startLoop();
 
     gui.closed = true;
-    css(gui.domElement.parentElement, {
+    css(gui.domElement.parentElement as HTMLElement, {
       zIndex: 11,
     });
     const fabricGUI = gui.addFolder("fabric");
@@ -681,7 +680,7 @@ export const AgentMultibandAudioWaveVisualizer = ({
         points.push(point);
       }
 
-      array(Math.max(0, settings.points - points.length)).forEach(
+      new Array((Math.max(0, settings.points - points.length))).forEach(
         (_: any, i: any) => {
           const id = points.length;
           points.push(createPoint(id, [rand() * 2 - 1, rand() * 2 - 1]));
@@ -839,7 +838,7 @@ export const AgentMultibandAudioWaveVisualizer = ({
 
     function startLoop() {
       return regl.frame(({ time }: any) => {
-        camera.tick({ time });
+        camera.tick(); // { time }
         update();
         renderToFBO(() => {
           renderFrequencies();
@@ -895,18 +894,7 @@ export const AgentMultibandAudioWaveVisualizer = ({
       window.addEventListener("resize", resize);
       initRender();
     }
-  }, [
-    dampening,
-    stiffness,
-    connectedNeighbors,
-    neighborWeight,
-    blurRadius,
-    blurWeight,
-    originalWeight,
-    gridLines,
-    linesAnimationOffset,
-    gridMaxHeight,
-  ]);
+  }, [ dampening, stiffness, connectedNeighbors, neighborWeight, blurRadius, blurWeight, originalWeight, gridLines, linesAnimationOffset, gridMaxHeight ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="visualizer">
