@@ -51,3 +51,66 @@ body {
     opacity: 1;
   }
 }
+
+.visualizer {
+  background-color: transparent;
+  font-family: 'Open Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+  width:100%;
+  height: auto;
+}
+.viz {
+  width: 100%;
+  height: auto;
+  background-color: transparent;
+}
+
+.title-card-container {
+  position: absolute;
+  width: 100%;
+  height: auto;
+  top: 0;
+  left: 0;
+  z-index: 8;
+}
+
+.ios-instructions {
+  display: none;
+  text-align: center;
+  margin: 5vh auto 0;
+  width: 70vw;
+}
+.ios-instructions h2 {
+  font-size: 28px;
+  font-weight: 800;
+}
+.ios-instructions video {
+  width: 100%;
+}
+.controls-container {
+  opacity: 0;
+  margin: 10px;
+  width: 290px;
+  padding-top: 30px;
+  position: relative;
+  z-index: 9;
+}
+.controls-header {
+  padding: 20px 25px;
+  font-weight: 200;
+  font-size: 18px;
+  color: #eee;
+  position: relative;
+}
+.github-link {
+  position: absolute;
+  fill: #888;
+  top: -15px;
+  right: 20px;
+  transition: fill 200ms linear;
+}
+.github-link:hover {
+  fill: #eee;
+}
