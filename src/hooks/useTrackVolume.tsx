@@ -58,6 +58,7 @@ const normalizeFrequencies = (frequencies: Float32Array) => {
   });
 };
 
+
 export const useMultibandTrackVolume = (
   track?: Track,
   bands: number = 5,

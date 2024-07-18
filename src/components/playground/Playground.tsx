@@ -118,9 +118,9 @@ export default function Playground({
     20
   );
 
-  const subscribedAudioVolumes = useAudiobandTrackVolume(
-    agentAudioTrack?.publication?.track
-  );
+  // const subscribedAudioVolumes = useAudiobandTrackVolume(
+  //   agentAudioTrack?.publication?.track
+  // );
 
   // const localMultibandAudioVolume = useAudiobandTrackVolume(
   //   localMicTrack?.publication.track
@@ -226,7 +226,8 @@ export default function Playground({
           maxBarHeight={150}
           accentColor={config.settings.theme_color}
           accentShade={500}
-          localMicTrack = {localMicTrack?.publication?.track}
+          // localMicTrack = {localMicTrack?.publication?.track}
+          localMicTrack = {agentAudioTrack?.publication?.track}
           borderRadius={12}
           gap={16}
         />
@@ -238,7 +239,7 @@ export default function Playground({
     }
 
     if (!agentAudioTrack) {
-      // return waitingContent;
+      return waitingContent;
     }
 
     return visualizerContent;

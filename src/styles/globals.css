@@ -52,20 +52,14 @@ body {
   }
 }
 
-/* @font-face {
-  font-family: 'Open Sans';
-  src: url('src/fonts/OpenSans-Regular.ttf') format('ttf'),
-       url('src/fonts/OpenSans-Regular.woff') format('woff'),
-       url('src/fonts/OpenSans-Regular.woff2') format('woff2');
-} */
 
-html, body {
-  color: #e2e2e2;
-  background-color: rgb(45, 45, 45);
-  font-family: 'Open Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  margin: 0;
-  padding: 0;
+.visualizer{
+  width: 100%;
+  height: 100%;
+}
+.viz {
+  width: 100%;
+  height: 100%;
 }
 .title-card-container {
   position: absolute;
@@ -74,131 +68,4 @@ html, body {
   top: 0;
   left: 0;
   z-index: -1;
-}
-.instructions {
-  opacity: 0;
-  transition: opacity 1000ms linear;
-  color: rgb(230, 230, 230);
-  position: absolute;
-  top: 47%;
-  text-align: center;
-  width: 100vw;
-  font-size: 18px;
-  letter-spacing: 8px;
-}
-.instructions button {
-  margin-top: 50px;
-  color: rgb(230, 230, 230);
-  padding: 25px 50px;
-  transition: background-color 150ms linear;
-  background-color: rgba(60, 60, 60, 0.95);
-  border: 1px solid rgb(70, 70, 70);
-  cursor: pointer;
-  font-size: 14px;
-  letter-spacing: 3px;
-  outline: 0;
-  font-family: inherit;
-}
-.instructions button:hover {
-  background-color: rgba(70, 70, 70, 1);
-}
-.ios-instructions {
-  display: none;
-  text-align: center;
-  margin: 5vh auto 0;
-  width: 70vw;
-}
-.ios-instructions h2 {
-  font-size: 28px;
-  font-weight: 800;
-}
-.ios-instructions video {
-  width: 100%;
-}
-.controls-container {
-  opacity: 0;
-  margin: 10px;
-  width: 290px;
-  padding-top: 30px;
-  position: relative;
-  background-color: rgba(60, 60, 60, 0.65);
-  border: 1px solid rgb(80, 80, 80);
-  z-index: 9;
-}
-.controls-header {
-  padding: 20px 25px;
-  font-weight: 200;
-  font-size: 18px;
-  color: #eee;
-  position: relative;
-}
-.github-link {
-  position: absolute;
-  fill: #888;
-  top: -15px;
-  right: 20px;
-  transition: fill 200ms linear;
-}
-.github-link:hover {
-  fill: #eee;
-}
-.artist {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #aaa;
-}
-.elapsed-time {
-  position: absolute;
-  bottom: 20px;
-  right: 25px;
-  font-weight: 200;
-  font-size: 13px;
-  color: #eee;
-}
-.seeker {
-  height: 5px;
-  width: 100%;
-  background-color: rgba(90, 90, 90, 0.5);
-  cursor: pointer;
-  position: relative;
-}
-.progress {
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: -1px;
-  background-color: #eee;
-}
-.track-selector {
-  margin: 0 0 20px 0;
-  position: relative;
-  z-index: 10;
-  cursor: pointer;
-  list-style: none;
-  padding: 0;
-}
-.track {
-  margin: 10px 0 10px 25px;
-  position: relative;
-  font-size: 13px;
-  transition: color 200ms linear;
-  color: #888;
-}
-.track span {
-  margin-right: 15px;
-}
-.track:hover {
-  color: #bbb;
-}
-.track.selected {
-  color: #eee;
-}
-.hint {
-  display: none;
-  padding: 20px;
-  font-size: 12px;
-  font-weight: 800;
-  text-align: center;
-  border-top: 1px solid rgb(70, 70, 70);
-  color: #aaa;
 }
