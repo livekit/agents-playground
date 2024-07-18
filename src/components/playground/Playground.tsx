@@ -82,6 +82,8 @@ export default function Playground({
       trackRef.publication.kind === Track.Kind.Audio &&
       trackRef.participant.isAgent
   );
+
+  console.log("agentAudioTrack", tracks, participants)
   if (aat) {
     agentAudioTrack = aat;
   } else if (agentParticipant) {
@@ -206,7 +208,7 @@ export default function Playground({
           maxBarHeight={150}
           accentColor={config.settings.theme_color}
           accentShade={500}
-          frequencies={subscribedVolumes}
+          frequencies={localMultibandVolume}
           borderRadius={12}
           gap={16}
         /> */}

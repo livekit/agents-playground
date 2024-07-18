@@ -53,8 +53,8 @@ const defaultConfig: AppConfig = {
       audio: true,
       video: true,
     },
-    ws_url: "",
-    token: "",
+    ws_url: "wss://first-test-app-b6ix8xtk.livekit.cloud",
+    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjEyNTA4OTUsImlzcyI6IkFQSXBNN2NRVVFhU3pZWCIsIm5iZiI6MTcyMTI0OTk5NSwic3ViIjoiQXJhdGgiLCJ2aWRlbyI6eyJjYW5QdWJsaXNoIjp0cnVlLCJjYW5QdWJsaXNoRGF0YSI6dHJ1ZSwiY2FuU3Vic2NyaWJlIjp0cnVlLCJyb29tIjoiY2hhdHRpbmctcm9vbSIsInJvb21Kb2luIjp0cnVlfX0.Mn66TpjlS08IB0Z67NWskCXTsBfXAbxXIiqT_KhRCi0",
   },
   show_qr: false,
 };
