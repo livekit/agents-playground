@@ -110,3 +110,43 @@ export const useMultibandTrackVolume = (
 
   return frequencyBands;
 };
+
+export const useAudiobandTrackVolume = (
+  track?: Track
+) => {
+  const [frequencyBands, setFrequencyBands] = useState<Uint8Array>(new Uint8Array(1024).fill(0));
+
+  useEffect(() => {
+    if (!track || !track.mediaStream) {
+      return;
+    }
+
+    const ctx = new AudioContext();
+    const source = ctx.createMediaStreamSource(track.mediaStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const updateVolume = () => {
+      analyser.getByteFrequencyData(dataArray);
+      let frequencies: Uint8Array = new Uint8Array(dataArray.length);
+      for (let i = 0; i < dataArray.length; i++) {
+        frequencies[i] = dataArray[i];
+      }
+
+      setFrequencyBands(frequencies);
+    };
+
+    const interval = setInterval(updateVolume, 10);
+
+    return () => {
+      source.disconnect();
+      clearInterval(interval);
+    };
+  }, [track, track?.mediaStream]);
+
+  return frequencyBands;
+};
