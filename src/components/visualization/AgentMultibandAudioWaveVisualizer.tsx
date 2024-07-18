@@ -10,20 +10,58 @@ import Delaunator from "delaunator";
 import createPlayer from "web-audio-player";
 import createCamera from "3d-view-controls";
 import glsl from "glslify";
+import { useAudiobandTrackVolume, getAudioAnalyzer } from "@/hooks/useTrackVolume";
 
-let createRegl: any;
-let container: any;
-let resize: any;
-let canvas: any;
-let ctx: any;
-let instructions: any;
-let button: any;
 
-export const AgentMultibandAudioWaveVisualizer = () => {
-  // create Camera
+
+export const AgentMultibandAudioWaveVisualizer = (
+  {state,
+    barWidth,
+    minBarHeight,
+    maxBarHeight,
+    accentColor,
+    accentShade,
+    localMicTrack,
+    borderRadius,
+    gap,}:any
+) => {
+
+
+  let createRegl: any;
+  let container: any;
+  let resize: any;
+  let canvas: any;
+  let ctx: any;
+  let hasSetUp:boolean = false;
+  const settings = {
+    seed: 0,
+
+    points: 2500,
+    dampening: 0.7,
+    stiffness: 0.55,
+    freqPow: 1.7,
+    connectedNeighbors: 4,
+    neighborWeight: 0.99,
+    connectedBinsStride: 1,
+    blurAngle: 0.25,
+    blurMag: 7,
+
+    blurRadius: 3,
+    blurWeight: 0.8,
+    originalWeight: 1.2,
+
+    gridLines: 180,
+    linesDampening: 0.02,
+    linesStiffness: 0.9,
+    linesAnimationOffset: 12,
+    gridMaxHeight: 0.28,
+
+    motionBlur: true,
+    motionBlurAmount: 0.45,
+  };
+
   function createRoamingCamera(canvas: any, center: any, eye: any) {
     let isRoaming = false;
-    // let timeout
 
     const camera = createCamera(canvas, {
       zoomSpeed: 4,
@@ -38,25 +76,17 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       return position;
     }
 
-    // one revolution (6.28 rads) takes 75 seconds (or 4500 frames)
-    // or 0.0014 rads per frame
     const startingSpeed = 0.0014; // rads per frame
     let currentRads = 0;
     let cameraUp = new Float32Array(3);
     let currentPosition = getPositionFromRads(new Float32Array(3), currentRads);
 
     function start() {
-      // temporarily disabling these until I figure out how to make the camera
-      // gently start moving after an interaction - i think the gentle motion
-      // of the camera is an important part of the visualization
-      // canvas.addEventListener('mousedown', stopRoaming)
-      // window.addEventListener('wheel', stopRoaming)
       isRoaming = true;
     }
 
     function tick() {
       camera.tick();
-      // very minor performance improvement by minimizing array creation in loop
       cameraUp[0] = camera.up[0];
       cameraUp[1] = camera.up[1];
       cameraUp[2] = 999;
@@ -75,11 +105,6 @@ export const AgentMultibandAudioWaveVisualizer = () => {
     function getCenter() {
       return camera.center;
     }
-    // function stopRoaming () {
-    //   clearTimeout(timeout)
-    //   timeout = null
-    //   isRoaming = false
-    // }
 
     (window as any).camera = camera;
     return {
@@ -90,329 +115,6 @@ export const AgentMultibandAudioWaveVisualizer = () => {
     };
   }
 
-  // create titlecard
-  const settings = {
-    text: "audiofabric",
-    particles: 600,
-    dampening: 0.35, // 0.17
-    stiffness: 0.85, // 0.9
-    speed: 50,
-    precision: 0.98,
-    lineOpacity: 0.17,
-    turnGranularity: 12,
-    startSpreadMultiplier: 0.35,
-    particleDieRate: 0,
-    colorThreshold: 200,
-    particleSize: 1,
-  };
-
-  let rand: any,
-    points: any,
-    pixelPicker: any,
-    rAFToken: any,
-    start: any,
-    isFading: any;
-
-  function createTitleCard() {
-    return {
-      resize: function () {
-        if (isFading) return;
-        start = Date.now();
-        resize();
-        setup();
-        loop();
-      },
-      show: function () {
-        start = Date.now();
-        // setTimeout(() => {
-        //   css(instructions, { opacity: 1 });
-        // }, 1500);
-        setup();
-        loop();
-        return new Promise((resolve) => {
-          remove();
-          activateDrawers();
-          resolve(true);
-          return false;
-        });
-      },
-    };
-
-    function remove() {
-      isFading = true;
-      css(canvas, {
-        transition: "opacity 1500ms linear",
-        opacity: 0,
-      });
-      // css(instructions, { opacity: 0 });
-      setTimeout(() => {
-        window.removeEventListener("resize", resize);
-        window.cancelAnimationFrame(rAFToken);
-        // container.parentElement.removeChild(container);
-      }, 1700);
-    }
-
-    function loop() {
-      if (!isFading && Date.now() - start > 30000) return;
-      window.cancelAnimationFrame(rAFToken);
-      rAFToken = window.requestAnimationFrame(loop);
-      update();
-      draw();
-    }
-
-    function setup() {
-      const seed = (Math.random() * 1000) | 0; // 74 & 336 looks good
-      rand = new Alea(seed);
-      console.log(`seed: ${seed}`);
-      pixelPicker = getSource();
-      points = new Array(settings.particles).fill(null).map(() => {
-        const rads = rand() * Math.PI * 2;
-        const mag =
-          Math.pow(rand(), 0.5) *
-          settings.startSpreadMultiplier *
-          Math.max(window.innerWidth, window.innerHeight);
-        return {
-          x: Math.cos(rads) * mag + ctx.canvas.width / 2,
-          y: Math.sin(rads) * mag + ctx.canvas.height / 2,
-          angle: createSpring(
-            settings.dampening,
-            settings.stiffness,
-            rand() * Math.PI * 2
-          ),
-          speed: (rand() * settings.speed) / 40,
-          entropy: rand(),
-          isActive: true,
-          line: [],
-        };
-      });
-    }
-
-    function update() {
-      points.forEach((p: any) => {
-        if (!p.isActive) return;
-        const color = pixelPicker(p.x, p.y);
-        const averageVal = getAveragePixelVal(color);
-        const isOnActivePixel =
-          p.line.length || averageVal < settings.colorThreshold;
-
-        if (isOnActivePixel) {
-          p.line.push([p.x, p.y]);
-        }
-
-        if (rand() < settings.precision) {
-          updateNextAngle(p, pixelPicker);
-        }
-
-        const angle = p.angle.tick();
-        const velX = Math.cos(angle) * p.speed;
-        const velY = Math.sin(angle) * p.speed;
-        p.x += velX;
-        p.y += velY;
-
-        if (rand() < settings.particleDieRate / 10) {
-          p.isActive = false;
-        }
-      });
-
-      let i = 0;
-      while (i < points.length) {
-        const p = points[i];
-        if (
-          !p.line.length &&
-          (p.x < 0 ||
-            p.y < 0 ||
-            p.x > ctx.canvas.width ||
-            p.y > ctx.canvas.height)
-        ) {
-          points.splice(i, 1);
-        } else {
-          i += 1;
-        }
-      }
-    }
-
-    function updateNextAngle(p: any, pixelPicker: any) {
-      const angle = p.angle.tick(1, false);
-      const currentPixelVal = getAveragePixelVal(pixelPicker(p.x, p.y));
-      for (let i = 0; i <= settings.turnGranularity; i += 1) {
-        const t = (i / settings.turnGranularity) * Math.PI;
-        let velX = Math.cos(angle + t) * p.speed;
-        let velY = Math.sin(angle + t) * p.speed;
-        let pixel = pixelPicker(p.x + velX, p.y + velY);
-        if (getAveragePixelVal(pixel) < currentPixelVal) {
-          p.angle.updateValue(angle + t);
-          break;
-        }
-        velX = Math.cos(angle - t) * p.speed;
-        velY = Math.sin(angle - t) * p.speed;
-        pixel = pixelPicker(p.x + velX, p.y + velY);
-        if (getAveragePixelVal(pixel) < currentPixelVal) {
-          p.angle.updateValue(angle - t);
-          break;
-        }
-      }
-    }
-
-    function activateDrawers() {
-      settings.precision = 0.4;
-      points.forEach((p: any) => {
-        p.isActive = true;
-        p.speed *= rand() * 10;
-        p.angle = createSpring(0.05, 0.9, p.angle.tick());
-        p.angle.updateValue(rand() * Math.PI * 2);
-      });
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (settings.particleSize) {
-        points.forEach((p: any) => {
-          if (!p.isActive) return;
-          const radius = p.line.length ? settings.particleSize : 0;
-          const opacity = 0.2 * (radius < 10 ? radius / 10 : 1);
-          ctx.strokeStyle = `rgba(200, 200, 255, ${opacity})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-          ctx.stroke();
-        });
-      }
-
-      ctx.beginPath();
-      ctx.strokeStyle = `rgba(200, 200, 255, ${settings.lineOpacity})`;
-      points.forEach((p: any) => {
-        if (p.line.length > 1) {
-          ctx.moveTo(p.line[0][0], p.line[0][1]);
-          p.line.slice(1).forEach((pt: any) => {
-            ctx.lineTo(pt[0], pt[1]);
-          });
-        }
-      });
-      ctx.stroke();
-    }
-  }
-
-  // ---------
-
-  function getAveragePixelVal(pixel: any) {
-    return (pixel.r + pixel.g + pixel.b) / 3;
-  }
-
-  function getSource() {
-    const hiddenCanvas = container.appendChild(
-      document.createElement("canvas")
-    );
-    const hiddenCtx = hiddenCanvas.getContext("2d");
-    fit(hiddenCanvas);
-    hiddenCanvas.style.display = "none";
-    hiddenCtx.fillStyle = "rgb(255, 255, 255)";
-    hiddenCtx.fillRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
-    printText(
-      hiddenCtx,
-      settings.text,
-      Math.min(hiddenCanvas.width, hiddenCanvas.height) * 0.1
-    );
-    const picker = makePixelPicker(hiddenCanvas);
-    hiddenCanvas.parentElement.removeChild(hiddenCanvas);
-    return picker;
-  }
-
-  function makePixelPicker(canvas: any) {
-    const imageData = canvas
-      .getContext("2d")
-      .getImageData(0, 0, canvas.width, canvas.height);
-    return (x: any, y: any) => {
-      x = x | 0;
-      y = y | 0;
-      const i = 4 * (x + y * imageData.width);
-      return {
-        r: imageData.data[i],
-        g: imageData.data[i + 1],
-        b: imageData.data[i + 2],
-        a: imageData.data[i + 3],
-      };
-    };
-  }
-
-  function printText(context: any, text: any, size: any) {
-    context.font = `${size}px "Open Sans"`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillStyle = "rgb(0, 0, 0)";
-    context.fillText(text, context.canvas.width / 2, context.canvas.height / 3);
-  }
-
-  //create audioControl
-  /* function createAudioControls(audio: any, tracks: any) {
-    tracks = tracks.map((t: any) => Object.assign({}, t));
-    const controlsContainer = document.querySelector(
-      ".controls-container"
-    ) as any;
-    const trackSelector = document.querySelector(".track-selector") as any;
-    const titleEl = document.querySelector(".title") as any;
-    const artistEl = document.querySelector(".artist") as any;
-    const timeEl = document.querySelector(".elapsed-time") as any;
-    const seekerEl = document.querySelector(".seeker") as any;
-    const progressEl = document.querySelector(".progress") as any;
-    const width = 290; // must match .controls-container width
-
-    tracks.map((track: any, i: any) => {
-      const trackEl: any = trackSelector.appendChild(
-        document.createElement("li")
-      );
-      trackEl.classList.add("track");
-      trackEl.addEventListener("click", () => {
-        setTrack(tracks[i]);
-        audio.play();
-      });
-      trackEl.innerHTML = "<span>0" + (1 + i) + ".</span> " + track.title;
-      track.el = trackEl;
-    });
-
-    function setTrack(track: any) {
-      audio.src = track.path;
-      tracks.forEach((t: any) => t.el.classList.remove("selected"));
-      track.el.classList.add("selected");
-      titleEl.innerText = track.title;
-      artistEl.innerText = track.artist;
-    }
-
-    setTrack(tracks[0]);
-
-    let lastTime: any;
-    function tick() {
-      if (audio.currentTime !== lastTime) {
-        const t = audio.currentTime / audio.duration;
-        css(progressEl, "width", `${t * 100}%`);
-        timeEl.innerText = formatSeconds(audio.currentTime);
-      }
-      lastTime = audio.currentTime;
-    }
-
-    seekerEl.addEventListener("click", (e: any) => {
-      const { left } = seekerEl.getBoundingClientRect();
-      const t = (e.clientX - left) / width;
-      audio.currentTime = t * audio.duration;
-    });
-
-    window.addEventListener("keypress", (e: any) => {
-      if (e.key === " ") {
-        togglePlay();
-      }
-    });
-
-    return {
-      el: controlsContainer,
-      tick: tick,
-    };
-
-    function togglePlay() {
-      if (audio.paused) {
-        audio.play();
-      } else {
-        audio.pause();
-      }
-    }
-  } */
 
   // create createRenderBloom
   function createRenderBloom(regl: any, canvas: any) {
@@ -574,8 +276,8 @@ export const AgentMultibandAudioWaveVisualizer = () => {
         }
       `,
       uniforms: {
-        iChannel0: regl.prop("iChannel0"), // sampler2D
-        blurredFrame: () => tempFbo, // sampler2D
+        iChannel0: regl.prop("iChannel0"),
+        blurredFrame: () => tempFbo,
         blurWeight: regl.prop("blurWeight"),
         originalWeight: regl.prop("originalWeight"),
       },
@@ -664,20 +366,12 @@ export const AgentMultibandAudioWaveVisualizer = () => {
     });
   }
 
-  function formatSeconds(seconds: any) {
-    const minutes = (seconds / 60) | 0;
-    seconds = "" + (seconds % 60 | 0);
-    if (seconds.length === 1) {
-      seconds = `0${seconds}`;
-    }
-    return `${minutes}:${seconds}`;
-  }
-
   // create RenderGrid
-  let linesOffsetsLoopToken: any;
-  let lines: any = [];
+  
 
   function createRenderGrid(regl: any, settings: any) {
+    let linesOffsetsLoopToken: any;
+    let lines: any = [];
     lines = [];
 
     for (let j = 1; j < settings.gridLines; j++) {
@@ -784,9 +478,6 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       let yVal = 1;
       calls += 1;
       calls = calls % 2;
-      // lines.sort((a, b) => {
-      //   return a.offset.tick(1, false) > b.offset.tick(1, false) ? 1 : -1
-      // })
       const randomGranularity = (((Math.random() * 10) | 0) + 1) / 5;
       lines.forEach((line: any, i: any) => {
         let nextVal;
@@ -830,11 +521,9 @@ export const AgentMultibandAudioWaveVisualizer = () => {
   const initRender = async () => {
     const { GUI } = await import("dat-gui");
     const gui = new GUI();
-    const createAnalyser = (await import("web-audio-analyser")).default;
 
     createRegl = (await import("regl")).default;
 
-    const titleCard = createTitleCard();
     const canvas = document.querySelector("canvas.viz") as any;
     const resize = fit(canvas);
     window.addEventListener(
@@ -842,18 +531,11 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       () => {
         resize(canvas);
         if (hasSetUp) setup();
-        titleCard.resize();
       },
       false
     );
     const camera = createRoamingCamera(canvas, [2.5, 2.5, 2.5], [0, 0, 0]);
-    // const regl = createRegl({
-    //   canvas,
-    //   extensions: ['OES_standard_derivatives']
-    // }); 
     const regl = createRegl(canvas);
-
-    console.log({ regl });
 
     let analyser: any,
       delaunay: any,
@@ -897,79 +579,21 @@ export const AgentMultibandAudioWaveVisualizer = () => {
     ];
 
     const audio = createPlayer(tracks[0].path);
-    audio.on("load", function () {
-      (window as any).audio = audio;
-      analyser = createAnalyser(audio.node, audio.context, {
-        audible: true,
-        stereo: false,
-      });
-      console.log("analyser", audio.node, audio.context)
-      // const audioControls = createAudioControls(audio.element, tracks);
-
       function loop() {
         window.requestAnimationFrame(loop);
-        // audioControls.tick();
       }
-
-      analyser.analyser.fftSize = 1024 * 2;
-      analyser.analyser.minDecibels = -75;
-      analyser.analyser.maxDecibels = -30;
-      analyser.analyser.smoothingTimeConstant = 0.5;
-
-      setup();
-
-      // stupid hack: the first render causes a flash of black on the page,
-      // this just forces it to happen at the start of the app, instead of when
-      // the music starts, which is jarring
-      const renderLoop = startLoop();
-      setTimeout(renderLoop.cancel.bind(renderLoop), 1000);
-
-      titleCard
-        .show()
-        .then(() => new Promise((resolve) => setTimeout(resolve, 1000)))
-        .then(() => {
-          // css(audioControls.el, {
-          //   transition: "opacity 1s linear",
-          //   opacity: 1,
-          // });
-          css(gui.domElement.parentElement as HTMLElement, {
-            transition: "opacity 1s linear",
-            opacity: 1,
-          });
-          window.requestAnimationFrame(loop);
-          audio.play();
-          camera.start();
-          startLoop();
-        });
-    });
-
-    const settings = {
-      seed: 0,
-
-      points: 2500,
-      dampening: 0.7,
-      stiffness: 0.55,
-      freqPow: 1.7,
-      connectedNeighbors: 4,
-      neighborWeight: 0.99,
-      connectedBinsStride: 1,
-      blurAngle: 0.25,
-      blurMag: 7,
-
-      blurRadius: 3,
-      blurWeight: 0.8,
-      originalWeight: 1.2,
-
-      gridLines: 180,
-      linesDampening: 0.02,
-      linesStiffness: 0.9,
-      linesAnimationOffset: 12,
-      gridMaxHeight: 0.28,
-
-      motionBlur: true,
-      motionBlurAmount: 0.45,
-    };
-
+      
+      if(localMicTrack&&localMicTrack.mediaStream){
+        const analyser = getAudioAnalyzer(localMicTrack)
+        setup();
+        
+        const renderLoop = startLoop(analyser);
+        setTimeout(renderLoop.cancel.bind(renderLoop), 1000);
+        window.requestAnimationFrame(loop);
+        camera.start();
+        startLoop(analyser)
+      }
+  
     gui.closed = true;
     css(gui.domElement.parentElement, {
       zIndex: 11,
@@ -988,10 +612,8 @@ export const AgentMultibandAudioWaveVisualizer = () => {
     gridGUI.add(settings, "gridLines", 10, 300).step(1).onChange(setup);
     gridGUI.add(settings, "linesAnimationOffset", 0, 100).step(1);
     gridGUI.add(settings, "gridMaxHeight", 0.01, 0.8).step(0.01);
-    // gui.add(settings, 'motionBlur')
-    // gui.add(settings, 'motionBlurAmount', 0.01, 1).step(0.01)
 
-    let hasSetUp = false;
+    hasSetUp = false;
     function setup() {
       hasSetUp = true;
       const rand = new Alea(settings.seed);
@@ -1001,11 +623,8 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       renderToBlurredFBO = regl({ framebuffer: blurredFbo });
 
       renderGrid = createRenderGrid(regl, settings);
-      console.log("renderGrid", renderGrid, renderToBlurredFBO, blurredFbo)
 
-      // fill up the points list with the freqency-tracking nodes
-      const frequenciesCount = analyser.frequencies().length; // 1024
-      console.log("analyser.frequencies()", analyser.frequencies())
+      const frequenciesCount = 1024;
       for (let q = 0; q < frequenciesCount; q += settings.connectedBinsStride) {
         const mag = Math.pow(rand(), 1 - q / frequenciesCount) * 0.9;
         const rads = rand() * Math.PI * 2;
@@ -1027,7 +646,7 @@ export const AgentMultibandAudioWaveVisualizer = () => {
         return {
           position: position,
           id: id,
-          neighbors: new Set(), // gonna fill this up with the results of delaunay
+          neighbors: new Set(),
           spring: createSpring(
             settings.dampening * settings.stiffness,
             settings.stiffness,
@@ -1059,7 +678,6 @@ export const AgentMultibandAudioWaveVisualizer = () => {
 
       positions = new Float32Array(delaunay.triangles.length * 3);
       positionsBuffer = regl.buffer(positions);
-      console.log("positionsBuffer", positionsBuffer)
 
       renderFrequencies = regl({
         vert: glsl`
@@ -1088,9 +706,9 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       });
     }
 
-    function update() {
-      const frequencies = analyser.frequencies();
-      // console.log("frequencies --- update", frequencies)
+    function update(analyser:any) {
+      const frequencies = useAudiobandTrackVolume(localMicTrack, analyser);
+      console.log("localMicTrack", localMicTrack, frequencies)
       points.forEach((pt: any) => {
         let value = 0;
         if (pt.frequencyBin || pt.frequencyBin === 0) {
@@ -1175,10 +793,10 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       primitive: "triangles",
     });
 
-    function startLoop() {
+    function startLoop(analyser:any) {
       return regl.frame(({ time }) => {
         camera.tick({ time });
-        update();
+        update(analyser);
         renderToFBO(() => {
           renderFrequencies();
         });
@@ -1232,48 +850,16 @@ export const AgentMultibandAudioWaveVisualizer = () => {
       resize = fit(canvas);
       window.addEventListener("resize", resize);
   
-      // instructions = container.querySelector(".instructions");
-      // button = container.querySelector("button");
       initRender();
     }
-  }, []);
+  }, [localMicTrack]);
 
   return (
     <>
       <canvas className="viz" style={{ position: 'relative' }}></canvas>
       <div className="title-card-container">
         <canvas></canvas>
-        {/* <div className="instructions">
-          <div>TURN YOUR SOUND ON</div>
-          <button>READY</button>
-        </div> */}
       </div>
-      {/* <div className="controls-container">
-        <div className="controls-header">
-          <a
-            href="https://github.com/rolyatmax/audiofabric"
-            className="github-link"
-          >
-            <svg
-              width="22px"
-              height="22px"
-              viewBox="0 0 30 30"
-              version="1.1"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M15,0.0576923077 C6.72580645,0.0576923077 0.00806451613,6.91483516 0.00806451613,15.3791209 C0.00806451613,22.1456044 4.30645161,27.8901099 10.2580645,29.9175824 C11.0080645,30.0576923 11.25,29.5879121 11.25,29.1840659 L11.25,26.3241758 C7.08064516,27.2554945 6.20967742,24.5192308 6.20967742,24.5192308 C5.53225806,22.7472527 4.5483871,22.2774725 4.5483871,22.2774725 C3.18548387,21.3296703 4.65322581,21.3461538 4.65322581,21.3461538 C6.16129032,21.4532967 6.9516129,22.9285714 6.9516129,22.9285714 C8.29032258,25.2692308 10.4596774,24.5934066 11.3145161,24.1978022 C11.4516129,23.2087912 11.8387097,22.532967 12.266129,22.1456044 C8.93548387,21.7582418 5.43548387,20.4478022 5.43548387,14.5714286 C5.43548387,12.8983516 6.02419355,11.5302198 6.98387097,10.4587912 C6.83064516,10.0714286 6.31451613,8.51373626 7.12903226,6.40384615 C7.12903226,6.40384615 8.38709677,5.99175824 11.25,7.97802198 C12.4435484,7.64010989 13.7258065,7.46703297 15,7.45879121 C16.2741935,7.46703297 17.5564516,7.63186813 18.7580645,7.97802198 C21.6209677,6 22.8790323,6.40384615 22.8790323,6.40384615 C23.6935484,8.51373626 23.1854839,10.0714286 23.0241935,10.4587912 C23.983871,11.5302198 24.5645161,12.8983516 24.5645161,14.5714286 C24.5645161,20.456044 21.0564516,21.75 17.7177419,22.1291209 C18.2580645,22.6071429 18.75,23.5384615 18.75,24.9642857 L18.75,29.1675824 C18.75,29.5714286 18.9919355,30.0494505 19.75,29.9010989 C25.7016129,27.8736264 29.9919355,22.1291209 29.9919355,15.3626374 C29.9919355,6.91483516 23.2741935,0.0576923077 15,0.0576923077 L15,0.0576923077 Z"></path>
-            </svg>
-          </a>
-          <div className="title"></div>
-          <div className="artist"></div>
-          <div className="elapsed-time"></div>
-        </div>
-        <div className="seeker">
-          <div className="progress"></div>
-        </div>
-        <ul className="track-selector"></ul>
-        <div className="hint">DRAG AND SCROLL TO PAN AND ZOOM</div>
-      </div> */}
     </>
   );
 };

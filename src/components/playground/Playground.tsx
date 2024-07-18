@@ -91,7 +91,6 @@ export default function Playground({
       source: Track.Source.Microphone,
     };
   }
-  console.log("agentAudioTrack", agentAudioTrack)
 
   const agentVideoTrack = tracks.find(
     (trackRef) =>
@@ -113,7 +112,6 @@ export default function Playground({
   const localMicTrack = localTracks.find(
     ({ source }) => source === Track.Source.Microphone
   );
-  console.log("localMicTrack", localMicTrack)
 
   const localMultibandVolume = useMultibandTrackVolume(
     localMicTrack?.publication.track,
@@ -124,13 +122,9 @@ export default function Playground({
     agentAudioTrack?.publication?.track
   );
 
-  const localMultibandAudioVolume = useAudiobandTrackVolume(
-    localMicTrack?.publication.track
-  );
-  console.log("subscribedVolumes", subscribedVolumes)
-  console.log("localMultibandVolume", localMultibandVolume)
-  console.log("subscribedAudi----oVolumes", subscribedAudioVolumes)
-  console.log("localMultibandAu----dioVolume", localMultibandAudioVolume)
+  // const localMultibandAudioVolume = useAudiobandTrackVolume(
+  //   localMicTrack?.publication.track
+  // );
 
   const onDataReceived = useCallback(
     (msg: any) => {
@@ -232,7 +226,7 @@ export default function Playground({
           maxBarHeight={150}
           accentColor={config.settings.theme_color}
           accentShade={500}
-          frequencies={localMultibandAudioVolume}
+          localMicTrack = {localMicTrack?.publication?.track}
           borderRadius={12}
           gap={16}
         />
@@ -253,6 +247,7 @@ export default function Playground({
     config.settings.theme_color,
     subscribedVolumes,
     roomState,
+    localMicTrack,
   ]);
 
   const chatTileContent = useMemo(() => {
