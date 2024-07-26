@@ -11,7 +11,7 @@ import {
   Track,
   TranscriptionSegment,
 } from "livekit-client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function TranscriptionTile({
   agentAudioTrack,
@@ -28,67 +28,32 @@ export function TranscriptionTile({
     participant: localParticipant.localParticipant,
   });
 
-  const [transcripts, setTranscripts] = useState<Map<string, ChatMessageType>>(
-    new Map()
-  );
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const { chatMessages, send: sendChat } = useChat();
 
-  // store transcripts
   useEffect(() => {
-    agentMessages.segments.forEach((s) =>
-      transcripts.set(
-        s.id,
-        segmentToChatMessage(
-          s,
-          transcripts.get(s.id),
-          agentAudioTrack.participant
-        )
-      )
-    );
-    localMessages.segments.forEach((s) =>
-      transcripts.set(
-        s.id,
-        segmentToChatMessage(
-          s,
-          transcripts.get(s.id),
-          localParticipant.localParticipant
-        )
-      )
-    );
+    const onSegment = (segment: TranscriptionSegment[]) => {
+      console.log("received segment", segment);
+    };
+    agentAudioTrack.participant.on("transcriptionReceived", onSegment);
+    return () => {
+      agentAudioTrack.participant.off("transcriptionReceived", onSegment);
+    };
+  }, [agentAudioTrack, agentAudioTrack.participant, messages]);
 
-    const allMessages = Array.from(transcripts.values());
-    for (const msg of chatMessages) {
-      const isAgent =
-        msg.from?.identity === agentAudioTrack.participant?.identity;
-      const isSelf =
-        msg.from?.identity === localParticipant.localParticipant.identity;
-      let name = msg.from?.name;
-      if (!name) {
-        if (isAgent) {
-          name = "Agent";
-        } else if (isSelf) {
-          name = "You";
-        } else {
-          name = "Unknown";
-        }
-      }
-      allMessages.push({
-        name,
-        message: msg.message,
-        timestamp: msg.timestamp,
-        isSelf: isSelf,
-      });
-    }
-    allMessages.sort((a, b) => a.timestamp - b.timestamp);
-    setMessages(allMessages);
+  const compiledMessages = useMemo(() => {
+    const agentSegments = agentMessages.segments.map((s) =>
+      segmentToChatMessage(s, undefined, agentAudioTrack.participant)
+    );
+    const localSegments = localMessages.segments.map((s) =>
+      segmentToChatMessage(s, undefined, localParticipant.localParticipant)
+    );
+    console.log({}, agentSegments, localSegments);
   }, [
-    transcripts,
-    chatMessages,
-    localParticipant.localParticipant,
     agentAudioTrack.participant,
     agentMessages.segments,
     localMessages.segments,
+    localParticipant.localParticipant,
   ]);
 
   return (
