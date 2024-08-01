@@ -4,6 +4,7 @@ import { useCloud } from "@/cloud/useCloud";
 import React, { createContext, useState } from "react";
 import { useCallback } from "react";
 import { useConfig } from "./useConfig";
+import { useSearchParams } from "next/navigation";
 
 export type ConnectionMode = "cloud" | "manual" | "env"
 
@@ -25,6 +26,7 @@ export const ConnectionProvider = ({
 }) => {
   const { generateToken, wsUrl: cloudWSUrl } = useCloud();
   const { config } = useConfig();
+  const params = useSearchParams();
   const [connectionDetails, setConnectionDetails] = useState<{
     wsUrl: string;
     token: string;
@@ -35,6 +37,11 @@ export const ConnectionProvider = ({
   const connect = useCallback(async (mode: ConnectionMode) => {
     let token = "";
     let url = "";
+    /**
+     * If the mode is cloud, generate a token and use the cloudWSUrl
+     * USE the env variable if the mode is env
+     * 
+     */
     if (mode === "cloud") {
       token = await generateToken();
       url = cloudWSUrl;
@@ -43,7 +50,7 @@ export const ConnectionProvider = ({
         throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
       }
       url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
-      const {accessToken} = await fetch("/api/token").then((res) => res.json());
+      const {accessToken} = await fetch(`/api/token?control_room=${params.get("control_room")}&serial_number=${params.get("serial_number")}`).then((res) => res.json());
       token = accessToken;
     } else {
       token = config.settings.token;

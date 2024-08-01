@@ -24,6 +24,8 @@ export default async function handleToken(
       res.status(500).end();
       return;
     }
+    const { control_room, serial_number } = req.query;
+   
 
     const roomName = `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
     const identity = `identity-${generateRandomAlphanumeric(4)}`
@@ -36,7 +38,12 @@ export default async function handleToken(
       canSubscribe: true,
     };
 
-    const token = await createToken({ identity }, grant);
+    const jsonObj = {
+      control_room,
+      serial_number,
+    }
+    const metadata = JSON.stringify(jsonObj);
+    const token = await createToken({ identity, metadata }, grant);
     const result: TokenResult = {
       identity,
       accessToken: token,
