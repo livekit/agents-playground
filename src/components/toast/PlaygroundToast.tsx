@@ -1,3 +1,5 @@
+import { useToast } from "./ToasterProvider";
+
 export type ToastType = "error" | "success" | "info";
 export type ToastProps = {
   message: string;
@@ -5,16 +7,24 @@ export type ToastProps = {
   onDismiss: () => void;
 };
 
-export const PlaygroundToast = ({ message, type, onDismiss }: ToastProps) => {
+export const PlaygroundToast = () => {
+  const { toastMessage, setToastMessage } = useToast();
   const color =
-    type === "error" ? "red" : type === "success" ? "green" : "amber";
+    toastMessage?.type === "error"
+      ? "red"
+      : toastMessage?.type === "success"
+      ? "green"
+      : "amber";
+
   return (
     <div
       className={`absolute text-sm break-words px-4 pr-12 py-2 bg-${color}-950 rounded-sm border border-${color}-800 text-${color}-400 top-4 left-4 right-4`}
     >
       <button
         className={`absolute right-2 border border-transparent rounded-md px-2 hover:bg-${color}-900 hover:text-${color}-300`}
-        onClick={onDismiss}
+        onClick={() => {
+          setToastMessage(null);
+        }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -31,7 +41,7 @@ export const PlaygroundToast = ({ message, type, onDismiss }: ToastProps) => {
           />
         </svg>
       </button>
-      {message}
+      {toastMessage?.message}
     </div>
   );
 };
