@@ -4,6 +4,7 @@ import { useCloud } from "@/cloud/useCloud";
 import React, { createContext, useState } from "react";
 import { useCallback } from "react";
 import { useConfig } from "./useConfig";
+import toast from "react-hot-toast";
 
 export type ConnectionMode = "cloud" | "manual" | "env"
 
@@ -36,7 +37,13 @@ export const ConnectionProvider = ({
     let token = "";
     let url = "";
     if (mode === "cloud") {
-      token = await generateToken();
+      try {
+        token = await generateToken();
+      } catch (error) {
+        toast.error(
+          "Failed to generate token, you may need to increase your role in this LiveKit Cloud project."
+        );
+      }
       url = cloudWSUrl;
     } else if (mode === "env") {
       if(!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
