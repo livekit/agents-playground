@@ -40,7 +40,7 @@ export type UserSettings = {
 const defaultConfig: AppConfig = {
   title: "LiveKit Agents Playground",
   description: "A playground for testing LiveKit Agents",
-  video_fit: "cover",
+  video_fit: "contain",
   settings: {
     editable: true,
     theme_color: "cyan",
