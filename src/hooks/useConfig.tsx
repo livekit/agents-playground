@@ -38,7 +38,7 @@ export type UserSettings = {
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
-  title: "LiveKit Agents Playground",
+  title: "iPresence Agents Playground",
   description: "A playground for testing LiveKit Agents",
   video_fit: "cover",
   settings: {
