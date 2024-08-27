@@ -25,9 +25,3 @@ env:
     availability:
       - BUILD
       - RUNTIME
-
-  - variable: NEXT_PUBLIC_APP_CONFIG
-    secret: projects/837808454450/secrets/NEXT_PUBLIC_APP_CONFIG
-    availability:
-      - BUILD
-      - RUNTIME
