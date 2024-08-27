@@ -1,0 +1,27 @@
+# Settings for Cloud Run
+runConfig:
+  minInstances: 2
+  maxInstances: 100
+  concurrency: 100
+  cpu: 2
+  memoryMiB: 1024
+
+# Environment variables and secrets
+env:
+  - variable: NEXT_PUBLIC_LIVEKIT_URL
+    value: wss://ipresencetest.livekit.cloud
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: LIVEKIT_API_KEY
+    secret: projects/837808454450/secrets/LIVEKIT_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: LIVEKIT_API_SECRET
+    secret: projects/837808454450/secrets/LIVEKIT_API_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
