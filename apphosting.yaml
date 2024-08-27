@@ -9,7 +9,7 @@ runConfig:
 # Environment variables and secrets
 env:
   - variable: NEXT_PUBLIC_LIVEKIT_URL
-    value: wss://ipresencetest.livekit.cloud
+    secret: projects/837808454450/secrets/NEXT_PUBLIC_LIVEKIT_URL
     availability:
       - BUILD
       - RUNTIME
@@ -22,6 +22,12 @@ env:
 
   - variable: LIVEKIT_API_SECRET
     secret: projects/837808454450/secrets/LIVEKIT_API_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_APP_CONFIG
+    secret: projects/837808454450/secrets/NEXT_PUBLIC_APP_CONFIG
     availability:
       - BUILD
       - RUNTIME
