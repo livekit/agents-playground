@@ -10,12 +10,21 @@ runConfig:
 env:
   - variable: NEXT_PUBLIC_LIVEKIT_URL
     value: wss://ipresencetest.livekit.cloud
+    availability:
+      - BUILD
+      - RUNTIME
 
   - variable: LIVEKIT_API_KEY
     secret: projects/837808454450/secrets/LIVEKIT_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
 
   - variable: LIVEKIT_API_SECRET
     secret: projects/837808454450/secrets/LIVEKIT_API_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
   
   - variable: NEXT_PUBLIC_APP_CONFIG
     value: |
@@ -34,3 +43,7 @@ env:
           mic: true    # Enable or disable microphone input
           camera: true # Enable or disable camera input
           sip: true    # Enable or disable SIP input
+    availability:
+      - BUILD
+      - RUNTIME
+
