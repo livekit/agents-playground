@@ -27,7 +27,7 @@ env:
       - RUNTIME
   
   - variable: NEXT_PUBLIC_APP_CONFIG
-    value: |
+    value: "
       title: 'iPresence Agent Playground'
       description: 'iPresence Agent Playground allows you to test your LiveKit Agent integration by connecting to your LiveKit Cloud or self-hosted instance.'
       github_link: 'https://github.com/livekit/agents-playground'
@@ -43,6 +43,7 @@ env:
           mic: true    # Enable or disable microphone input
           camera: true # Enable or disable camera input
           sip: true    # Enable or disable SIP input
+          "
     availability:
       - BUILD
       - RUNTIME
