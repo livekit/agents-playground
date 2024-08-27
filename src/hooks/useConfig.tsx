@@ -62,6 +62,7 @@ const defaultConfig: AppConfig = {
 const useAppConfig = (): AppConfig => {
   return useMemo(() => {
     if (process.env.NEXT_PUBLIC_APP_CONFIG) {
+      console.log(process.env.NEXT_PUBLIC_APP_CONFIG);
       try {
         const parsedConfig = jsYaml.load(
           process.env.NEXT_PUBLIC_APP_CONFIG
