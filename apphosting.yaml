@@ -27,23 +27,27 @@ env:
       - RUNTIME
   
   - variable: NEXT_PUBLIC_APP_CONFIG
-    value: "
-      title: 'iPresence Agent Playground'
-      description: 'iPresence Agent Playground allows you to test your LiveKit Agent integration by connecting to your LiveKit Cloud or self-hosted instance.'
-      github_link: 'https://github.com/livekit/agents-playground'
-      video_fit: 'cover' # 'contain' or 'cover'
-      settings:
-        editable: true # Should the user be able to edit settings in-app
-        theme_color: 'cyan'
-        chat: true  # Enable or disable chat feature
-        outputs:
-          audio: true # Enable or disable audio output
-          video: true # Enable or disable video output
-        inputs:
-          mic: true    # Enable or disable microphone input
-          camera: true # Enable or disable camera input
-          sip: true    # Enable or disable SIP input
-          "
+    value: >
+      {
+        "title": "iPresence Agent Playground",
+        "description": "iPresence Agent Playground allows you to test your LiveKit Agent integration by connecting to your LiveKit Cloud or self-hosted instance.",
+        "github_link": "https://github.com/livekit/agents-playground",
+        "video_fit": "cover",
+        "settings": {
+          "editable": true,
+          "theme_color": "cyan",
+          "chat": true,
+          "outputs": {
+            "audio": true,
+            "video": true
+          },
+          "inputs": {
+            "mic": true,
+            "camera": true,
+            "sip": true
+          }
+        }
+      }
     availability:
       - BUILD
       - RUNTIME
