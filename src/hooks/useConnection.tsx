@@ -27,7 +27,6 @@ export const ConnectionProvider = ({
   const { generateToken, wsUrl: cloudWSUrl } = useCloud();
   const { setToastMessage } = useToast();
   const { config } = useConfig();
-  const params = useSearchParams();
   const [connectionDetails, setConnectionDetails] = useState<{
     wsUrl: string;
     token: string;
