@@ -27,13 +27,14 @@ export const ConnectionProvider = ({
   const { generateToken, wsUrl: cloudWSUrl } = useCloud();
   const { setToastMessage } = useToast();
   const { config } = useConfig();
+  const params = useSearchParams();
   const [connectionDetails, setConnectionDetails] = useState<{
     wsUrl: string;
     token: string;
     mode: ConnectionMode;
     shouldConnect: boolean;
   }>({ wsUrl: "", token: "", shouldConnect: false, mode: "manual" });
-
+  
   const connect = useCallback(
     async (mode: ConnectionMode) => {
       let token = "";

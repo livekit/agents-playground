@@ -38,7 +38,7 @@ export type UserSettings = {
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
-  title: "LiveKit Agents Playground",
+  title: "iPresence Agents Playground",
   description: "A playground for testing LiveKit Agents",
   video_fit: "cover",
   settings: {
@@ -62,6 +62,7 @@ const defaultConfig: AppConfig = {
 const useAppConfig = (): AppConfig => {
   return useMemo(() => {
     if (process.env.NEXT_PUBLIC_APP_CONFIG) {
+      console.log(process.env.NEXT_PUBLIC_APP_CONFIG);
       try {
         const parsedConfig = jsYaml.load(
           process.env.NEXT_PUBLIC_APP_CONFIG
