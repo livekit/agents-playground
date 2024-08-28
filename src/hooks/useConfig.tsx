@@ -38,20 +38,20 @@ export type UserSettings = {
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
-  title: "iPresence Agents Playground",
+  title: "土壌汚染対策法について知りたいことをご質問ください",
   description: "A playground for testing LiveKit Agents",
   video_fit: "cover",
   settings: {
-    editable: true,
-    theme_color: "cyan",
+    editable: false,
+    theme_color: "blue",
     chat: true,
     inputs: {
-      camera: true,
+      camera: false,
       mic: true,
     },
     outputs: {
       audio: true,
-      video: true,
+      video: false,
     },
     ws_url: "",
     token: "",
