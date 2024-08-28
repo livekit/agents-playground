@@ -4,7 +4,6 @@ import { SettingsDropdown } from "@/components/playground/SettingsDropdown";
 import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
 import { ReactNode } from "react";
-import ipresence from '../../../public/ipresence.jpg'
 import Image from "next/image";
 
 type PlaygroundHeader = {
@@ -36,7 +35,7 @@ export const PlaygroundHeader = ({
     >
       <div className="flex items-center gap-3 basis-2/3">
         <div className="flex lg:basis-2/5">
-            <Image src={ipresence} alt="ipresence_logo" className="w-40" />
+            <Image src="/ipresence.jpg" alt="ipresence_logo" className="w-40" />
         </div>
         <div className="lg:basis lg:text-center text-xs lg:text-base lg:font-semibold text-black">
           {title}
