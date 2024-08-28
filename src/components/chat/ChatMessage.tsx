@@ -26,10 +26,8 @@ export const ChatMessage = ({
       )}
       <div
         className={`pr-4 text-${
-          isSelf ? "gray-300" : accentColor + "-500"
-        } text-sm ${
-          isSelf ? "" : "drop-shadow-" + accentColor
-        } whitespace-pre-line`}
+          isSelf ? "gray-700" : accentColor + "-900"
+        } text-sm whitespace-pre-line`}
       >
         {message}
       </div>

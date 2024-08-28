@@ -35,7 +35,7 @@ const TokenConnect = ({
 
   return (
     <div className="flex left-0 top-0 w-full h-full bg-black/80 items-center justify-center text-center">
-      <div className="flex flex-col gap-4 p-8 bg-gray-950 w-full text-white border-t border-gray-900">
+      <div className="flex flex-col gap-4 p-8 bg-white w-full text-white border-t border-gray-900">
         <div className="flex flex-col gap-2">
           <input
             value={url}
@@ -86,7 +86,7 @@ export const PlaygroundConnect = ({
   return (
     <div className="flex left-0 top-0 w-full h-full bg-black/80 items-center justify-center text-center gap-2">
       <div className="min-h-[540px]">
-        <div className="flex flex-col bg-gray-950 w-full max-w-[480px] rounded-lg text-white border border-gray-900">
+        <div className="flex flex-col bg-white w-full max-w-[480px] rounded-lg text-white border border-gray-900">
           <div className="flex flex-col gap-2">
             <div className="px-10 space-y-2 py-6">
               <h1 className="text-2xl">Connect to playground</h1>
