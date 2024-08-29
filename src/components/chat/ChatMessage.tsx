@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown';
+
 type ChatMessageProps = {
   message: string;
   accentColor: string;
@@ -29,7 +31,7 @@ export const ChatMessage = ({
           isSelf ? "gray-700" : accentColor + "-900"
         } text-sm whitespace-pre-line`}
       >
-        {message}
+        <ReactMarkdown>{message}</ReactMarkdown>
       </div>
     </div>
   );
