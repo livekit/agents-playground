@@ -35,16 +35,16 @@ export const PlaygroundHeader = ({
     >
       <div className="flex items-center gap-3 basis-2/3">
         <div className="flex lg:basis-2/5">
-            <Image src="/ipresence.jpg" alt="ipresence_logo" className="w-40" />
+            <Image src="/ipresence.jpg" alt="ipresence_logo" width={40} height={40} className="w-40" />
         </div>
-        <div className="lg:basis lg:text-center text-xs lg:text-base lg:font-semibold text-black">
+        <div className="lg:basis lg:text-center lg:text-base lg:font-semibold text-black">
           {title}
         </div>
       </div>
       <div className="flex basis-1/3 justify-end items-center gap-2">
         {config.settings.editable && <SettingsDropdown />}
         <Button
-          className="text-white"
+          className="text-white text-xl"
           accentColor={
             connectionState === ConnectionState.Connected ? "red" : accentColor
           }

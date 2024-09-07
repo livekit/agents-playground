@@ -10,7 +10,7 @@ type PlaygroundConnectProps = {
 };
 
 const ConnectTab = ({ active, onClick, children }: any) => {
-  let className = "px-2 py-1 text-sm";
+  let className = "px-2 py-1 text-xl";
 
   if (active) {
     className += " border-b border-cyan-500 text-cyan-500";

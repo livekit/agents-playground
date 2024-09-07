@@ -8,7 +8,7 @@ type AudioInputTileProps = {
 export const AudioInputTile = ({ frequencies }: AudioInputTileProps) => {
   return (
     <div
-      className={`flex flex-row gap-2 h-[100px] items-center w-full justify-center border rounded-sm border-gray-800 bg-gray-900`}
+      className={`flex flex-row gap-2 h-[100px] items-center w-full justify-center border rounded-sm border-gray-800 bg-white`}
     >
       <AgentMultibandAudioVisualizer
         state="speaking"

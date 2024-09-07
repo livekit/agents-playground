@@ -79,7 +79,7 @@ export const ChatMessageInput = ({
         ></div>
         <input
           ref={inputRef}
-          className={`w-full text-xs caret-transparent bg-transparent opacity-25 text-gray-900 p-2 pr-6 rounded-sm focus:opacity-100 focus:outline-none focus:border-${accentColor}-700 focus:ring-1 focus:ring-${accentColor}-700`}
+          className={`w-full text-xl caret-transparent bg-transparent opacity-25 text-gray-900 p-2 pr-6 rounded-sm focus:opacity-100 focus:outline-none focus:border-${accentColor}-700 focus:ring-1 focus:ring-${accentColor}-700`}
           style={{
             paddingLeft: message.length > 0 ? "12px" : "24px",
             caretShape: "block",
@@ -103,7 +103,7 @@ export const ChatMessageInput = ({
         ></input>
         <span
           ref={hiddenInputRef}
-          className="absolute top-0 left-0 text-xs pl-3 text-amber-500 pointer-events-none opacity-0"
+          className="absolute top-0 left-0 text-xl pl-3 text-amber-500 pointer-events-none opacity-0"
         >
           {message.replaceAll(" ", "\u00a0")}
         </span>

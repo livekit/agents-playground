@@ -32,6 +32,7 @@ import {
 } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import {AudioInputTile} from "@/components/config/AudioInputTile";
 
 export interface PlaygroundMeta {
   name: string;
@@ -180,7 +181,7 @@ export default function Playground({
 
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
-      <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full">
+      <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full text-xl">
         右上の「接続」を押してください。
       </div>
     );
@@ -349,20 +350,6 @@ export default function Playground({
     });
   }
 
-  // mobileTabs.push({
-  //   title: "Settings",
-  //   content: (
-  //     <PlaygroundTile
-  //       padding={false}
-  //       backgroundColor="gray-950"
-  //       className="h-full w-full basis-1/4 items-start overflow-y-auto flex"
-  //       childrenClassName="h-full grow items-start"
-  //     >
-  //       {settingsTileContent}
-  //     </PlaygroundTile>
-  //   ),
-  // });
-
   return (
     <>
       <PlaygroundHeader
@@ -403,14 +390,24 @@ export default function Playground({
               {videoTileContent}
             </PlaygroundTile>
           )}
+          {localMicTrack && (
+              <ConfigurationPanelItem
+                  title="Microphone"
+                  deviceSelectorKind="audioinput"
+              >
+                <AudioInputTile frequencies={localMultibandVolume} />
+              </ConfigurationPanelItem>
+          )}
           {config.settings.outputs.audio && (
-            <PlaygroundTile
-              title="Audio"
-              className="w-full h-full grow"
-              childrenClassName="justify-center"
-            >
-              {audioTileContent}
-            </PlaygroundTile>
+              <>
+                <PlaygroundTile
+                    title="Audio"
+                    className="w-full h-full grow"
+                    childrenClassName="justify-center"
+                >
+                  {audioTileContent}
+                </PlaygroundTile>
+              </>
           )}
         </div>
 

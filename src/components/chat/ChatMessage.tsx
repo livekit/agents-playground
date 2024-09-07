@@ -29,7 +29,7 @@ export const ChatMessage = ({
       <div
         className={`pr-4 text-${
           isSelf ? "gray-700" : accentColor + "-900"
-        } text-sm whitespace-pre-line`}
+        } text-xl whitespace-pre-line`}
       >
         <ReactMarkdown>{message}</ReactMarkdown>
       </div>

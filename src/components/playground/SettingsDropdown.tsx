@@ -94,7 +94,7 @@ export const SettingsDropdown = () => {
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="z-50 flex w-60 flex-col gap-0 overflow-hidden rounded text-gray-100 border border-gray-800 bg-gray-900 py-2 text-sm"
+          className="z-50 flex w-60 flex-col gap-0 overflow-hidden rounded text-gray-100 border border-gray-800 bg-gray-900 py-2 text-xl"
           sideOffset={5}
           collisionPadding={16}
         >
