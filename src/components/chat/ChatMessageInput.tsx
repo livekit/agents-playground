@@ -59,7 +59,7 @@ export const ChatMessageInput = ({
   return (
     <div
       className="flex flex-col gap-2 border-t border-t-gray-800"
-      style={{ height: height }}
+      style={{ height: "3.5rem" }}
     >
       <div className="flex flex-row pt-3 gap-2 items-center relative">
         <div

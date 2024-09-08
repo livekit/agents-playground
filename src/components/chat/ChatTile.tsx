@@ -32,7 +32,7 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
         ref={containerRef}
         className="overflow-y-auto"
         style={{
-          height: `calc(100% - ${inputHeight}px)`,
+          height: `calc(100% - 6rem)`,
         }}
       >
         <div className="flex flex-col min-h-full justify-end">

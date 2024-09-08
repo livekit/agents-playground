@@ -66,6 +66,9 @@ module.exports = {
       dropShadow: {
        ...textShadows,
       },
+      fontSize: {
+        'xl': '2.5rem',
+      },
       boxShadow: {
         ...customShadows,
       }

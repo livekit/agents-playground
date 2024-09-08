@@ -19,16 +19,16 @@ export const ConfigurationPanelItem: React.FC<ConfigurationPanelItemProps> = ({
       <div className="items-center px-4 text-xs uppercase tracking-wider">
         <h3 className="pb-2">{title}</h3>
         {deviceSelectorKind && (
-          <span className="flex flex-row gap-2">
+          <span className="gap-2">
+              <PlaygroundDeviceSelector kind={deviceSelectorKind} />
             <TrackToggle
-              className="px-2 py-1 bg-white text-gray-300 border border-gray-800 rounded-sm"
+              className="flex flex-row items-center px-3 py-3 mt-2 w-full justify-center bg-blue-700 border border-gray-800 rounded-sm text-white h-[200px] text-xl lk-button"
               source={
                 deviceSelectorKind === "audioinput"
                   ? Track.Source.Microphone
                   : Track.Source.Camera
               }
             />
-            <PlaygroundDeviceSelector kind={deviceSelectorKind} />
           </span>
         )}
       </div>

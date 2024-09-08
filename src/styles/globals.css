@@ -51,3 +51,7 @@ body {
     opacity: 1;
   }
 }
+
+.lk-button svg {
+  scale: 6;
+}
