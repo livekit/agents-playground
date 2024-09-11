@@ -12,26 +12,19 @@ import {
   PlaygroundTabbedTile,
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
-import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
 import { useConfig } from "@/hooks/useConfig";
-import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { TranscriptionTile } from "@/transcriptions/TranscriptionTile";
 import {
-  TrackReferenceOrPlaceholder,
+  BarVisualizer,
   VideoTrack,
   useConnectionState,
   useDataChannel,
   useLocalParticipant,
-  useRemoteParticipants,
   useRoomInfo,
   useTracks,
+  useVoiceAssistant,
 } from "@livekit/components-react";
-import {
-  ConnectionState,
-  LocalParticipant,
-  RoomEvent,
-  Track,
-} from "livekit-client";
+import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -55,15 +48,10 @@ export default function Playground({
 }: PlaygroundProps) {
   const { config, setUserSettings } = useConfig();
   const { name } = useRoomInfo();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
 
-  const participants = useRemoteParticipants({
-    updateOnlyOn: [RoomEvent.ParticipantMetadataChanged],
-  });
-  const agentParticipant = participants.find((p) => p.isAgent);
-  const isAgentConnected = agentParticipant !== undefined;
+  const voiceAssistant = useVoiceAssistant();
 
   const roomState = useConnectionState();
   const tracks = useTracks();
@@ -75,30 +63,10 @@ export default function Playground({
     }
   }, [config, localParticipant, roomState]);
 
-  let agentAudioTrack: TrackReferenceOrPlaceholder | undefined;
-  const aat = tracks.find(
-    (trackRef) =>
-      trackRef.publication.kind === Track.Kind.Audio &&
-      trackRef.participant.isAgent
-  );
-  if (aat) {
-    agentAudioTrack = aat;
-  } else if (agentParticipant) {
-    agentAudioTrack = {
-      participant: agentParticipant,
-      source: Track.Source.Microphone,
-    };
-  }
-
   const agentVideoTrack = tracks.find(
     (trackRef) =>
       trackRef.publication.kind === Track.Kind.Video &&
       trackRef.participant.isAgent
-  );
-
-  const subscribedVolumes = useMultibandTrackVolume(
-    agentAudioTrack?.publication?.track,
-    5
   );
 
   const localTracks = tracks.filter(
@@ -109,11 +77,6 @@ export default function Playground({
   );
   const localMicTrack = localTracks.find(
     ({ source }) => source === Track.Source.Microphone
-  );
-
-  const localMultibandVolume = useMultibandTrackVolume(
-    localMicTrack?.publication.track,
-    20
   );
 
   const onDataReceived = useCallback(
@@ -197,18 +160,8 @@ export default function Playground({
 
     // TODO: keep it in the speaking state until we come up with a better protocol for agent states
     const visualizerContent = (
-      <div className="flex items-center justify-center w-full">
-        <AgentMultibandAudioVisualizer
-          state="speaking"
-          barWidth={30}
-          minBarHeight={30}
-          maxBarHeight={150}
-          accentColor={config.settings.theme_color}
-          accentShade={500}
-          frequencies={subscribedVolumes}
-          borderRadius={12}
-          gap={16}
-        />
+      <div className="flex items-center justify-center w-full h-full [--lk-va-bar-width:30px] [--lk-va-bar-gap:20px]">
+        <BarVisualizer state={voiceAssistant.state} barCount={5} />
       </div>
     );
 
@@ -216,29 +169,29 @@ export default function Playground({
       return disconnectedContent;
     }
 
-    if (!agentAudioTrack) {
+    if (!voiceAssistant.audioTrack) {
       return waitingContent;
     }
 
     return visualizerContent;
   }, [
-    agentAudioTrack,
+    voiceAssistant.audioTrack,
     config.settings.theme_color,
-    subscribedVolumes,
     roomState,
+    voiceAssistant.state,
   ]);
 
   const chatTileContent = useMemo(() => {
-    if (agentAudioTrack) {
+    if (voiceAssistant.audioTrack) {
       return (
         <TranscriptionTile
-          agentAudioTrack={agentAudioTrack}
+          agentAudioTrack={voiceAssistant.audioTrack}
           accentColor={config.settings.theme_color}
         />
       );
     }
     return <></>;
-  }, [config.settings.theme_color, agentAudioTrack]);
+  }, [config.settings.theme_color, voiceAssistant.audioTrack]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -284,7 +237,7 @@ export default function Playground({
             <NameValueRow
               name="Agent connected"
               value={
-                isAgentConnected ? (
+                voiceAssistant.agent ? (
                   "TRUE"
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
@@ -293,7 +246,7 @@ export default function Playground({
                 )
               }
               valueColor={
-                isAgentConnected
+                voiceAssistant.agent
                   ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
@@ -318,7 +271,7 @@ export default function Playground({
             title="Microphone"
             deviceSelectorKind="audioinput"
           >
-            <AudioInputTile frequencies={localMultibandVolume} />
+            <AudioInputTile />
           </ConfigurationPanelItem>
         )}
         <div className="w-full">
@@ -350,12 +303,11 @@ export default function Playground({
     localParticipant,
     name,
     roomState,
-    isAgentConnected,
     localVideoTrack,
     localMicTrack,
-    localMultibandVolume,
     themeColors,
     setUserSettings,
+    voiceAssistant.agent,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
