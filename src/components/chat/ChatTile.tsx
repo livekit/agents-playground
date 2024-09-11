@@ -18,7 +18,7 @@ type ChatTileProps = {
   onSend?: (message: string) => Promise<ComponentsChatMessage>;
 };
 
-function removeBrackets(text) {
+function removeBrackets(text: String) {
     return text.replace(/\[.*?\]/g, '').replace(/###/g, '');
 }
 
