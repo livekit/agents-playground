@@ -18,6 +18,10 @@ type ChatTileProps = {
   onSend?: (message: string) => Promise<ComponentsChatMessage>;
 };
 
+function removeBrackets(text) {
+    return text.replace(/\[.*?\]/g, '').replace(/###/g, '');
+}
+
 export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -39,7 +43,7 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
           {messages.map((message, index, allMsg) => {
             const hideName =
               index >= 1 && allMsg[index - 1].name === message.name;
-
+            message.message = removeBrackets(message.message);
             return (
               <ChatMessage
                 key={index}
