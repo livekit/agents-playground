@@ -9,8 +9,7 @@ type ChatMessageProps = {
   hideName?: boolean;
 };
 
-const transformMessage = (message) => {
-    console.log(message)
+const transformMessage = (message:string) => {
   return message.replace(/【(.*?)】(\.pdf)?/g, (match, p1, p2) => {
       if (p2) {
           return `<small>引用元:${p1}${p2}.pdf</small>`;
@@ -19,8 +18,12 @@ const transformMessage = (message) => {
   });
 };
 
-const CustomMarkdown = ({ message }) => {
-  const modifiedMessage = transformMessage(message);
+interface CustomMarkdownProps {
+    message: string;
+}
+
+const CustomMarkdown: React.FC<CustomMarkdownProps> = ({ message }) => {
+    const modifiedMessage: string = transformMessage(message);
 
   return (
       <ReactMarkdown
