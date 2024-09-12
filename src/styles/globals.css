@@ -55,3 +55,7 @@ body {
 .lk-button svg {
   scale: 6;
 }
+
+small {
+    font-size: 70%;
+}

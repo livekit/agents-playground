@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 type ChatMessageProps = {
   message: string;
@@ -6,6 +7,31 @@ type ChatMessageProps = {
   name: string;
   isSelf: boolean;
   hideName?: boolean;
+};
+
+const transformMessage = (message) => {
+    console.log(message)
+  return message.replace(/【(.*?)】(\.pdf)?/g, (match, p1, p2) => {
+      if (p2) {
+          return `<small>引用元:${p1}${p2}.pdf</small>`;
+      }
+      return `<small>引用元:${p1}.pdf</small>`;
+  });
+};
+
+const CustomMarkdown = ({ message }) => {
+  const modifiedMessage = transformMessage(message);
+
+  return (
+      <ReactMarkdown
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            small: ({ node, ...props }) => <small {...props} />,
+          }}
+      >
+        {modifiedMessage}
+      </ReactMarkdown>
+  );
 };
 
 export const ChatMessage = ({
@@ -31,7 +57,7 @@ export const ChatMessage = ({
           isSelf ? "gray-700" : accentColor + "-900"
         } text-xl whitespace-pre-line`}
       >
-        <ReactMarkdown>{message}</ReactMarkdown>
+        <CustomMarkdown message={message} />
       </div>
     </div>
   );
