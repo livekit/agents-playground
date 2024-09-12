@@ -290,7 +290,7 @@ export default function Playground({
             title="Microphone"
             deviceSelectorKind="audioinput"
           >
-            <AudioInputTile />
+            <AudioInputTile trackRef={localMicTrack} />
           </ConfigurationPanelItem>
         )}
         <div className="w-full">

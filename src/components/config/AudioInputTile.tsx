@@ -1,17 +1,13 @@
-import { useMemo } from "react";
-import { BarVisualizer, useLocalParticipant } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import {
+  BarVisualizer,
+  TrackReferenceOrPlaceholder,
+} from "@livekit/components-react";
 
-export const AudioInputTile = () => {
-  const { microphoneTrack, localParticipant } = useLocalParticipant();
-
-  const trackRef = useMemo(() => {
-    return {
-      participant: localParticipant,
-      source: Track.Source.Microphone,
-      publication: microphoneTrack,
-    };
-  }, [microphoneTrack, localParticipant]);
+export const AudioInputTile = ({
+  trackRef,
+}: {
+  trackRef: TrackReferenceOrPlaceholder;
+}) => {
   return (
     <div
       className={`flex flex-row gap-2 h-[100px] items-center w-full justify-center border rounded-sm border-gray-800 bg-gray-900`}
