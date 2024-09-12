@@ -20,7 +20,7 @@ export const AudioInputTile = () => {
         trackRef={trackRef}
         className="h-full w-full"
         barCount={20}
-        options={{ minHeight: 1 }}
+        options={{ minHeight: 0 }}
       />
     </div>
   );

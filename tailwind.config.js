@@ -14,7 +14,7 @@ const customColors = {
   pink: colors.pink,
   teal: colors.teal,
   red: colors.red,
-}
+};
 
 let customShadows = {};
 let shadowNames = [];

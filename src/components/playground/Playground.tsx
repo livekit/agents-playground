@@ -27,6 +27,7 @@ import {
 import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import tailwindTheme from "../../lib/tailwindTheme.preval";
 
 export interface PlaygroundMeta {
   name: string;
@@ -144,6 +145,18 @@ export default function Playground({
     );
   }, [agentVideoTrack, config, roomState]);
 
+  useEffect(() => {
+    document.body.style.setProperty(
+      "--lk-theme-color",
+      // @ts-ignore
+      tailwindTheme.colors[config.settings.theme_color]["500"]
+    );
+    document.body.style.setProperty(
+      "--lk-drop-shadow",
+      `var(--lk-theme-color) 0px 0px 18px`
+    );
+  }, [config.settings.theme_color]);
+
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
       <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full">
@@ -158,10 +171,16 @@ export default function Playground({
       </div>
     );
 
-    // TODO: keep it in the speaking state until we come up with a better protocol for agent states
     const visualizerContent = (
-      <div className="flex items-center justify-center w-full h-full [--lk-va-bar-width:30px] [--lk-va-bar-gap:20px]">
-        <BarVisualizer state={voiceAssistant.state} barCount={5} />
+      <div
+        className={`flex items-center justify-center w-full h-48 [--lk-va-bar-width:30px] [--lk-va-bar-gap:20px] [--lk-fg:var(--lk-theme-color)]`}
+      >
+        <BarVisualizer
+          state={voiceAssistant.state}
+          trackRef={voiceAssistant.audioTrack}
+          barCount={5}
+          options={{ minHeight: 20 }}
+        />
       </div>
     );
 
