@@ -24,7 +24,7 @@ The repo containing the (server side) agent implementations (including example a
 ## Try out a live version
 
 You can try out the agents playground at [https://livekit-agent-playground.vercel.app](https://livekit-agent-playground.vercel.app).
-This will connect you to our example agent [KITT](https://github.com/livekit/agents/tree/main/examples/kitt).
+This will connect you to our example agent, KITT, which is based off of the [minimal-assistant](https://github.com/livekit/agents/blob/main/examples/voice-pipeline-agent/minimal_assistant.py).
 
 ## Setting up the playground locally
 
