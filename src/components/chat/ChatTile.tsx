@@ -37,14 +37,27 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
       >
         <div className="flex flex-col min-h-full justify-end">
           {messages.map((message, index, allMsg) => {
+              console.log(messages)
             const hideName =
               index >= 1 && allMsg[index - 1].name === message.name;
+              let outputMassage = "";
+              let source = "";
+              if (message.message.includes("<response>") && message.message.includes("<source>")) {
+                  const responseMatch = message.message.match(/<response>([\s\S]*?)<\/response>/);
+                  const sourceMatch = message.message.match(/<source>([\s\S]*?)<\/source>/);
+                  const response = responseMatch ? responseMatch[1] : '';
+                  source = sourceMatch ? sourceMatch[1] : '';
+                  outputMassage = response;
+              }else{
+                  outputMassage = message.message;
+              }
             return (
               <ChatMessage
                 key={index}
                 hideName={hideName}
                 name={message.name}
-                message={message.message}
+                message={outputMassage}
+                citation={source}
                 isSelf={message.isSelf}
                 accentColor={accentColor}
               />
