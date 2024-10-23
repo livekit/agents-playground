@@ -5,6 +5,9 @@ import { useEffect, useRef } from "react";
 
 const inputHeight = 48;
 
+let partialResponse = '';
+let partialSource = '';
+
 export type ChatMessageType = {
   name: string;
   message: string;
@@ -37,26 +40,62 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
       >
         <div className="flex flex-col min-h-full justify-end">
           {messages.map((message, index, allMsg) => {
-              console.log(messages)
-            const hideName =
-              index >= 1 && allMsg[index - 1].name === message.name;
-              let outputMassage = "";
+              console.log(messages);
+
+              const hideName = index >= 1 && allMsg[index - 1].name === message.name;
+              let outputMessage = "";
               let source = "";
-              if (message.message.includes("<response>") && message.message.includes("<source>")) {
-                  const responseMatch = message.message.match(/<response>([\s\S]*?)<\/response>/);
-                  const sourceMatch = message.message.match(/<source>([\s\S]*?)<\/source>/);
-                  const response = responseMatch ? responseMatch[1] : '';
-                  source = sourceMatch ? sourceMatch[1] : '';
-                  outputMassage = response;
-              }else{
-                  outputMassage = message.message;
+
+              // <response> タグを含む場合
+              if (message.message.includes("<response>")) {
+                  // <response> が閉じられていない場合
+                  if (!message.message.includes("</response>")) {
+                      const responseMatch = message.message.match(/<response>([\s\S]*)/);
+                      if (responseMatch) {
+                          partialResponse += responseMatch[1];  // 閉じタグが来るまで蓄積
+                      }
+                  } else {
+                      // 閉じタグがある場合、蓄積していたものも含めて出力
+                      const responseMatch = message.message.match(/<response>([\s\S]*?)<\/response>/);
+                      partialResponse += responseMatch ? responseMatch[1] : '';
+                      outputMessage = partialResponse;
+                      partialResponse = '';  // 完了後はリセット
+                  }
               }
+
+              // <source> タグを含む場合
+              if (message.message.includes("<source>")) {
+                  // <source> が閉じられていない場合
+                  if (!message.message.includes("</source>")) {
+                      const sourceMatch = message.message.match(/<source>([\s\S]*)/);
+                      if (sourceMatch) {
+                          partialSource += sourceMatch[1];  // 閉じタグが来るまで蓄積
+                      }
+                  } else {
+                      // 閉じタグがある場合、蓄積していたものも含めて出力
+                      const sourceMatch = message.message.match(/<source>([\s\S]*?)<\/source>/);
+                      partialSource += sourceMatch ? sourceMatch[1] : '';
+                      source = partialSource;
+                      partialSource = '';  // 完了後はリセット
+                  }
+              }
+              // 閉じタグがあった場合、出力される内容
+              if (message.message.includes("</response>")) {
+                  outputMessage = partialResponse;
+                  partialResponse = '';  // 完了後はリセット
+              }
+
+              if (message.message.includes("</source>")) {
+                  source = partialSource;
+                  partialSource = '';  // 完了後はリセット
+              }
+
             return (
               <ChatMessage
                 key={index}
                 hideName={hideName}
                 name={message.name}
-                message={outputMassage}
+                message={outputMessage}
                 citation={source}
                 isSelf={message.isSelf}
                 accentColor={accentColor}
