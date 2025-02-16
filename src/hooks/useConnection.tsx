@@ -54,7 +54,14 @@ export const ConnectionProvider = ({
           throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
         }
         url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
-        const { accessToken } = await fetch("/api/token").then((res) =>
+        const params = new URLSearchParams();
+        if (config.settings.room_name) {
+          params.append('roomName', config.settings.room_name);
+        }
+        if (config.settings.participant_name) {
+          params.append('participantName', config.settings.participant_name);
+        }
+        const { accessToken } = await fetch(`/api/token?${params}`).then((res) =>
           res.json()
         );
         token = accessToken;
@@ -68,6 +75,8 @@ export const ConnectionProvider = ({
       cloudWSUrl,
       config.settings.token,
       config.settings.ws_url,
+      config.settings.room_name,
+      config.settings.participant_name,
       generateToken,
       setToastMessage,
     ]
