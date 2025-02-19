@@ -15,7 +15,7 @@
     "cookies-next": "^4.1.1",
     "framer-motion": "^10.16.16",
     "js-yaml": "^4.1.0",
-    "livekit-client": "^2.9.2",
+    "livekit-client": "^2.9.3",
     "livekit-server-sdk": "^2.10.1",
     "lodash": "^4.17.21",
     "next": "^14.0.4",
