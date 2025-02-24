@@ -10,7 +10,7 @@ export const useSendText = () => {
         try {
             console.log('Sending text message:', message);
             const info = await room.localParticipant.sendText(message, {
-                topic: 'lk.room_text_input'
+                topic: 'lk.chat'
             });
             console.log('Text message sent:', info);
         } catch (e) {
