@@ -23,11 +23,13 @@ import {
   useRoomInfo,
   useTracks,
   useVoiceAssistant,
+  useRoomContext,
 } from "@livekit/components-react";
 import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
+import { EditableNameValueRow } from "@/components/config/NameValueRow";
 
 export interface PlaygroundMeta {
   name: string;
@@ -56,6 +58,7 @@ export default function Playground({
 
   const roomState = useConnectionState();
   const tracks = useTracks();
+
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -222,19 +225,34 @@ export default function Playground({
         )}
 
         <ConfigurationPanelItem title="Settings">
-          {localParticipant && (
-            <div className="flex flex-col gap-2">
-              <NameValueRow
-                name="Room"
-                value={name}
-                valueColor={`${config.settings.theme_color}-500`}
-              />
-              <NameValueRow
-                name="Participant"
-                value={localParticipant.identity}
-              />
-            </div>
-          )}
+          <div className="flex flex-col gap-4">
+            <EditableNameValueRow
+              name="Room"
+              value={roomState === ConnectionState.Connected ? name : config.settings.room_name}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.room_name = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter room name"
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="Participant"
+              value={roomState === ConnectionState.Connected ? 
+                (localParticipant?.identity || '') : 
+                (config.settings.participant_name || '')}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.participant_name = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter participant id"
+              editable={roomState !== ConnectionState.Connected}
+            />
+          </div>
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">

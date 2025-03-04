@@ -34,6 +34,8 @@ export type UserSettings = {
   };
   ws_url: string;
   token: string;
+  room_name: string;
+  participant_name: string;
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
@@ -55,6 +57,8 @@ const defaultConfig: AppConfig = {
     },
     ws_url: "",
     token: "",
+    room_name: "",
+    participant_name: "",
   },
   show_qr: false,
 };
@@ -122,6 +126,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       },
       ws_url: "",
       token: "",
+      room_name: "",
+      participant_name: "",
     } as UserSettings;
   }, [appConfig]);
 
