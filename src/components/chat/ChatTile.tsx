@@ -1,7 +1,7 @@
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatMessageInput } from "@/components/chat/ChatMessageInput";
 import { ChatMessage as ComponentsChatMessage } from "@livekit/components-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const inputHeight = 48;
 
@@ -20,6 +20,18 @@ type ChatTileProps = {
 
 export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [copySuccess, setCopySuccess] = useState("");
+
+  const handleCopy = () => {
+    const chatContent = messages.map((message) => ({
+      participant: message.name,
+      content: message.message,
+    }));
+    navigator.clipboard.writeText(JSON.stringify(chatContent, null, 2))
+      .then(() => setCopySuccess("Copied!"))
+      .catch(() => setCopySuccess("Failed to copy"));
+  };
+
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
@@ -28,6 +40,10 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
 
   return (
     <div className="flex flex-col gap-4 w-full h-full">
+      <button onClick={handleCopy} className={`text-xs uppercase text-${accentColor}-500 hover:bg-${accentColor}-950 p-2 rounded-md`}>
+        Copy Chat
+      </button>
+      {copySuccess && <span className="text-xs text-green-500">{copySuccess}</span>}
       <div
         ref={containerRef}
         className="overflow-y-auto"

@@ -36,6 +36,8 @@ export type UserSettings = {
   token: string;
   room_name: string;
   participant_name: string;
+  agent_name: string;
+  metadata: object;
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
@@ -59,6 +61,8 @@ const defaultConfig: AppConfig = {
     token: "",
     room_name: "",
     participant_name: "",
+    agent_name: "",
+    metadata: {},
   },
   show_qr: false,
 };
@@ -128,6 +132,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       token: "",
       room_name: "",
       participant_name: "",
+      agent_name: "",
+      metadata: {},
     } as UserSettings;
   }, [appConfig]);
 

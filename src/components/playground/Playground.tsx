@@ -29,7 +29,8 @@ import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
-import { EditableNameValueRow } from "@/components/config/NameValueRow";
+import { EditableNameValueRow, SelectionNameValueRow, InputJSON } from "@/components/config/NameValueRow";
+import { useConnection } from "@/hooks/useConnection";
 
 export interface PlaygroundMeta {
   name: string;
@@ -51,13 +52,17 @@ export default function Playground({
 }: PlaygroundProps) {
   const { config, setUserSettings } = useConfig();
   const { name } = useRoomInfo();
+  const { dispatchAgent } = useConnection();
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
-
   const voiceAssistant = useVoiceAssistant();
 
   const roomState = useConnectionState();
   const tracks = useTracks();
+
+  if (Object.keys(config.settings.metadata).length === 0) {
+    config.settings.metadata = JSON.parse(process.env.NEXT_PUBLIC_DEFAULT_METADATA?.toString() || '{}');
+  }
 
 
   useEffect(() => {
@@ -66,6 +71,29 @@ export default function Playground({
       localParticipant.setMicrophoneEnabled(config.settings.inputs.mic);
     }
   }, [config, localParticipant, roomState]);
+
+  useEffect(() => {
+    if (roomState === ConnectionState.Connected && config.settings.agent_name && !voiceAssistant.agent) {
+      (async () => {
+        const responseAgent = await dispatchAgent(name, config.settings.agent_name, config.settings.metadata);
+        // console.log("Agent dispatch response:", responseAgent);
+
+        // const data = new TextEncoder().encode(
+        //   JSON.stringify({
+        //     call_id: crypto.randomUUID(),
+        //     status: "ACTIVE",
+        //   })
+        // );
+        // const opts = {
+        //   reliable: true,
+        //   topic: "call_status_changed",
+        // };
+
+        // const responsePublish = await localParticipant.publishData(data, opts);
+        // console.log("Data publish response:", responsePublish);
+      })();
+    }
+  }, [roomState]);
 
   const agentVideoTrack = tracks.find(
     (trackRef) =>
@@ -225,15 +253,15 @@ export default function Playground({
         )}
 
         <ConfigurationPanelItem title="Settings">
-          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
             <EditableNameValueRow
               name="Room"
               value={roomState === ConnectionState.Connected ? name : config.settings.room_name}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.room_name = value;
-                setUserSettings(newSettings);
+              const newSettings = { ...config.settings };
+              newSettings.room_name = value;
+              setUserSettings(newSettings);
               }}
               placeholder="Enter room name"
               editable={roomState !== ConnectionState.Connected}
@@ -241,8 +269,8 @@ export default function Playground({
             <EditableNameValueRow
               name="Participant"
               value={roomState === ConnectionState.Connected ? 
-                (localParticipant?.identity || '') : 
-                (config.settings.participant_name || '')}
+              (localParticipant?.identity || '') : 
+              (config.settings.participant_name || '')}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
                 const newSettings = { ...config.settings };
@@ -252,7 +280,34 @@ export default function Playground({
               placeholder="Enter participant id"
               editable={roomState !== ConnectionState.Connected}
             />
-          </div>
+            <SelectionNameValueRow
+              name="Agent"
+              value={config.settings.agent_name}
+              valueColor={`${config.settings.theme_color}-500`}
+              options={process.env.NEXT_PUBLIC_AGENT_NAMES?.split(",") || []}
+              onValueChange={(value: string) => {
+                const newSettings = { ...config.settings };
+                newSettings.agent_name = value;
+                setUserSettings(newSettings);
+              }}
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <InputJSON
+              name="Metadata"
+              value={JSON.stringify(config.settings.metadata, null, 2)}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value: string) => {
+                const newSettings = { ...config.settings };
+                try {
+                  newSettings.metadata = JSON.parse(value);
+                } catch (e) {
+                  console.error("Invalid JSON input", e);
+                }
+                setUserSettings(newSettings);
+              }}
+              editable={roomState !== ConnectionState.Connected}
+            />
+            </div>
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">
