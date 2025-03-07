@@ -15,6 +15,7 @@ type TokenGeneratorData = {
   mode: ConnectionMode;
   disconnect: () => Promise<void>;
   connect: (mode: ConnectionMode) => Promise<void>;
+  dispatchAgent: (roomName: string, agentName: string, metadata: object) => Promise<void>;
 };
 
 const ConnectionContext = createContext<TokenGeneratorData | undefined>(undefined);
@@ -82,6 +83,15 @@ export const ConnectionProvider = ({
     ]
   );
 
+  const dispatchAgent = useCallback(async (roomName: string, agentName: string, metadata: object) => {
+    const params = new URLSearchParams();
+    params.append('roomName', roomName);
+    params.append('agentName', agentName);
+    params.append('metadata', JSON.stringify(metadata));
+    const response = await fetch(`/api/dispatch_agent?${params}`);
+    return response.json();
+  }, []);
+
   const disconnect = useCallback(async () => {
     setConnectionDetails((prev) => ({ ...prev, shouldConnect: false }));
   }, []);
@@ -95,6 +105,7 @@ export const ConnectionProvider = ({
         mode: connectionDetails.mode,
         connect,
         disconnect,
+        dispatchAgent,
       }}
     >
       {children}

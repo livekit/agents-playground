@@ -17,13 +17,19 @@ COPY . .
 RUN npm run build
 
 # Use a lightweight web server to serve the static files
-FROM nginx:1-alpine-slim 
+FROM node:18.17.0-alpine
 
-# Copy the build output to the web server's directory
-COPY --from=build /app/.next /usr/share/nginx/html
+# Set the working directory inside the container
+WORKDIR /app
 
-# Expose port 80 to the outside world
-EXPOSE 80
+# Copy the build output to the working directory
+COPY --from=build /app ./
 
-# Start the web server
-CMD ["nginx", "-g", "daemon off;"]
+# Install only production dependencies
+RUN npm install --only=production
+
+# Expose port 3000 to the outside world
+EXPOSE 3000
+
+# Start the Next.js server
+CMD ["npm", "start"]
