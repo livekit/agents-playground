@@ -23,13 +23,18 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
   const [copySuccess, setCopySuccess] = useState("");
 
   const handleCopy = () => {
-    const chatContent = messages.map((message) => ({
-      participant: message.name,
-      content: message.message,
-    }));
-    navigator.clipboard.writeText(JSON.stringify(chatContent, null, 2))
-      .then(() => setCopySuccess("Copied!"))
-      .catch(() => setCopySuccess("Failed to copy"));
+    const userMessages = messages
+      .filter((message) => message.name === "You")
+      .map((message) => message.message);
+    navigator.clipboard.writeText(JSON.stringify(userMessages, null, 2))
+      .then(() => {
+        setCopySuccess("Copied!");
+        setTimeout(() => setCopySuccess(""), 1000);
+      })
+      .catch(() => {
+        setCopySuccess("Failed to copy!");
+        setTimeout(() => setCopySuccess(""), 1000);
+      });
   };
 
   useEffect(() => {

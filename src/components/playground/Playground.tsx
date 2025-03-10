@@ -79,20 +79,20 @@ export default function Playground({
     if (roomState === ConnectionState.Connected && config.settings.agent_name && !voiceAssistant.agent) {
       (async () => {
         const responseAgent = await dispatchAgent(name, config.settings.agent_name, config.settings.metadata);
-        console.log("Agent dispatch response:", responseAgent);
+        // console.log("Agent dispatch response:", responseAgent);
 
-        // const data = new TextEncoder().encode(
-        //   JSON.stringify({
-        //     call_id: crypto.randomUUID(),
-        //     status: "ACTIVE",
-        //   })
-        // );
-        // const opts = {
-        //   reliable: true,
-        //   topic: "call_status_changed",
-        // };
+        const data = new TextEncoder().encode(
+          JSON.stringify({
+            call_id: crypto.randomUUID(),
+            status: "ACTIVE",
+          })
+        );
 
-        // const responsePublish = await localParticipant.publishData(data, opts);
+        const responsePublish = await localParticipant.publishData(data, {
+          reliable: true,
+          topic: "call_status_changed",
+        });
+
         // console.log("Data publish response:", responsePublish);
       })();
     }
