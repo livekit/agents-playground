@@ -106,7 +106,6 @@ export const SelectionNameValueRow: React.FC<SelectionNameValueRowProps> = ({
   );
 };
 
-
 type EditableJSONProps = {
   name: string;
   value: string;
@@ -115,6 +114,7 @@ type EditableJSONProps = {
   placeholder?: string;
   editable: boolean;
 };
+
 export const InputJSON: React.FC<EditableJSONProps> = ({
   name,
   value,
