@@ -77,8 +77,9 @@ export const SelectionNameValueRow: React.FC<SelectionNameValueRowProps> = ({
   options,
   valueColor = "gray-300",
   onValueChange,
+  editable,
 }) => {
-  if (onValueChange) {
+  if (editable && onValueChange) {
     return (
       <div className="flex flex-row w-full items-baseline text-sm">
         <div className="grow shrink-0 text-gray-500">{name}</div>
@@ -96,8 +97,14 @@ export const SelectionNameValueRow: React.FC<SelectionNameValueRowProps> = ({
       </div>
     );
   }
+  return (
+    <NameValueRow
+      name={name}
+      value={value}
+      valueColor={valueColor}
+    />
+  );
 };
-
 
 type EditableJSONProps = {
   name: string;
@@ -107,6 +114,7 @@ type EditableJSONProps = {
   placeholder?: string;
   editable: boolean;
 };
+
 export const InputJSON: React.FC<EditableJSONProps> = ({
   name,
   value,
