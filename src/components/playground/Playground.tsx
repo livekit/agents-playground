@@ -64,6 +64,9 @@ export default function Playground({
     config.settings.metadata = JSON.parse(process.env.NEXT_PUBLIC_DEFAULT_METADATA?.toString() || '{}');
   }
 
+  if (config.settings.agent_name === "" && (process.env.NEXT_PUBLIC_AGENT_NAMES?.split(","))) {
+    config.settings.agent_name = process.env.NEXT_PUBLIC_AGENT_NAMES?.split(",")[0];
+  }
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -76,7 +79,7 @@ export default function Playground({
     if (roomState === ConnectionState.Connected && config.settings.agent_name && !voiceAssistant.agent) {
       (async () => {
         const responseAgent = await dispatchAgent(name, config.settings.agent_name, config.settings.metadata);
-        // console.log("Agent dispatch response:", responseAgent);
+        console.log("Agent dispatch response:", responseAgent);
 
         // const data = new TextEncoder().encode(
         //   JSON.stringify({
@@ -285,7 +288,7 @@ export default function Playground({
               value={config.settings.agent_name}
               valueColor={`${config.settings.theme_color}-500`}
               options={process.env.NEXT_PUBLIC_AGENT_NAMES?.split(",") || []}
-              onValueChange={(value: string) => {
+              onValueChange={(value) => {
                 const newSettings = { ...config.settings };
                 newSettings.agent_name = value;
                 setUserSettings(newSettings);
