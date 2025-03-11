@@ -20,8 +20,7 @@ export function TranscriptionTile({
   agentAudioTrack?: TrackReferenceOrPlaceholder;
   accentColor: string;
 }) {
-  // Only use track transcription if the audio track exists
-  const agentMessages = agentAudioTrack ? useTrackTranscription(agentAudioTrack) : { segments: [] };
+  const agentMessages = useTrackTranscription(agentAudioTrack || undefined);
   const localParticipant = useLocalParticipant();
   const localMessages = useTrackTranscription({
     publication: localParticipant.microphoneTrack,
