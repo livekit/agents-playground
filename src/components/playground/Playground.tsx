@@ -201,7 +201,7 @@ export default function Playground({
   ]);
 
   const chatTileContent = useMemo(() => {
-    if (voiceAssistant.audioTrack) {
+    if (voiceAssistant.agent) {
       return (
         <TranscriptionTile
           agentAudioTrack={voiceAssistant.audioTrack}
@@ -210,7 +210,7 @@ export default function Playground({
       );
     }
     return <></>;
-  }, [config.settings.theme_color, voiceAssistant.audioTrack]);
+  }, [config.settings.theme_color, voiceAssistant.audioTrack, voiceAssistant.agent]);
 
   const settingsTileContent = useMemo(() => {
     return (
