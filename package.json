@@ -18,7 +18,7 @@
     "livekit-client": "^2.5.1",
     "livekit-server-sdk": "^2.6.1",
     "lodash": "^4.17.21",
-    "next": "^14.0.4",
+    "next": "^15.0.0",
     "next-plugin-preval": "^1.2.6",
     "qrcode.react": "^4.0.0",
     "react": "^18",
@@ -32,7 +32,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.16",
     "eslint": "^8",
-    "eslint-config-next": "14.2.15",
+    "eslint-config-next": "15.2.2",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.3.3"
