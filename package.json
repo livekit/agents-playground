@@ -12,7 +12,7 @@
     "@livekit/components-react": "^2.6.0",
     "@livekit/components-styles": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
-    "cookies-next": "^4.1.1",
+    "cookies-next": "^5.0.0",
     "framer-motion": "^10.16.16",
     "js-yaml": "^4.1.0",
     "livekit-client": "^2.5.1",
