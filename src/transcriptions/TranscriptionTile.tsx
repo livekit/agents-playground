@@ -12,6 +12,7 @@ import {
   TranscriptionSegment,
 } from "livekit-client";
 import { useEffect, useState } from "react";
+import { useSendText } from '@/hooks/useSendText';
 
 export function TranscriptionTile({
   agentAudioTrack,
@@ -33,6 +34,7 @@ export function TranscriptionTile({
   );
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const { chatMessages, send: sendChat } = useChat();
+  const sendText = useSendText();
 
   // store transcripts
   useEffect(() => {
@@ -96,8 +98,16 @@ export function TranscriptionTile({
     agentAudioTrack,
   ]);
 
+  const handleSendMessage = async (message: string) => {
+    const [chatMessage, _] = await Promise.all([
+      sendChat(message),
+      sendText(message)
+    ]);
+    return chatMessage;
+  };
+
   return (
-    <ChatTile messages={messages} accentColor={accentColor} onSend={sendChat} />
+    <ChatTile messages={messages} accentColor={accentColor} onSend={handleSendMessage} />
   );
 }
 

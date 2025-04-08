@@ -221,9 +221,11 @@ export default function Playground({
   const handleRpcCall = useCallback(async () => {
     if (!voiceAssistant.agent || !room) return;
     
+    const agent_identity = voiceAssistant.agentAttributes?.['lk.publish_for'] || voiceAssistant.agent.identity;
+    console.log('Agent identity for RPC call:', agent_identity);
     try {
       const response = await room.localParticipant.performRpc({
-        destinationIdentity: voiceAssistant.agent.identity,
+        destinationIdentity: agent_identity,
         method: rpcMethod,
         payload: rpcPayload,
       });
@@ -231,7 +233,7 @@ export default function Playground({
     } catch (e) {
       console.error('RPC call failed:', e);
     }
-  }, [room, rpcMethod, rpcPayload, voiceAssistant.agent]);
+  }, [room, rpcMethod, rpcPayload, voiceAssistant.agent, voiceAssistant.agentAttributes]);
 
   const settingsTileContent = useMemo(() => {
     return (
