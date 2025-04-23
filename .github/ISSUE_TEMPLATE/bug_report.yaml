@@ -1,5 +1,5 @@
 name: "\U0001F41E Bug report"
-description: Report an issue with LiveKit Agent Playground
+description: Report an issue with LiveKit Agents Playground
 body:
   - type: markdown
     attributes:
