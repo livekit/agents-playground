@@ -79,8 +79,11 @@ export default function Playground({
   const localTracks = tracks.filter(
     ({ participant }) => participant instanceof LocalParticipant
   );
-  const localVideoTrack = localTracks.find(
+  const localCameraTrack = localTracks.find(
     ({ source }) => source === Track.Source.Camera
+  );
+  const localScreenTrack = localTracks.find(
+    ({ source }) => source === Track.Source.ScreenShare
   );
   const localMicTrack = localTracks.find(
     ({ source }) => source === Track.Source.Microphone
@@ -339,15 +342,34 @@ export default function Playground({
             />
           </div>
         </ConfigurationPanelItem>
-        {localVideoTrack && (
+        {roomState === ConnectionState.Connected && config.settings.inputs.screen && (
+          <ConfigurationPanelItem
+            title="Screen"
+            source={Track.Source.ScreenShare}
+          >
+            {localScreenTrack ? (
+              <div className="relative">
+                <VideoTrack
+                  className="rounded-sm border border-gray-800 opacity-70 w-full"
+                  trackRef={localScreenTrack}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
+                Press the button above to share your screen.
+              </div>
+            )}
+          </ConfigurationPanelItem>
+        )}
+        {localCameraTrack && (
           <ConfigurationPanelItem
             title="Camera"
-            deviceSelectorKind="videoinput"
+            source={Track.Source.Camera}
           >
             <div className="relative">
               <VideoTrack
                 className="rounded-sm border border-gray-800 opacity-70 w-full"
-                trackRef={localVideoTrack}
+                trackRef={localCameraTrack}
               />
             </div>
           </ConfigurationPanelItem>
@@ -355,7 +377,7 @@ export default function Playground({
         {localMicTrack && (
           <ConfigurationPanelItem
             title="Microphone"
-            deviceSelectorKind="audioinput"
+            source={Track.Source.Microphone}
           >
             <AudioInputTile trackRef={localMicTrack} />
           </ConfigurationPanelItem>
@@ -389,7 +411,8 @@ export default function Playground({
     localParticipant,
     name,
     roomState,
-    localVideoTrack,
+    localCameraTrack,
+    localScreenTrack,
     localMicTrack,
     themeColors,
     setUserSettings,
