@@ -50,7 +50,7 @@ const defaultConfig: AppConfig = {
     chat: true,
     inputs: {
       camera: true,
-      screen: false,
+      screen: true,
       mic: true,
     },
     outputs: {
