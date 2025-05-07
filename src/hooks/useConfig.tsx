@@ -26,6 +26,7 @@ export type UserSettings = {
   chat: boolean;
   inputs: {
     camera: boolean;
+    screen: boolean;
     mic: boolean;
   };
   outputs: {
@@ -49,6 +50,7 @@ const defaultConfig: AppConfig = {
     chat: true,
     inputs: {
       camera: true,
+      screen: true,
       mic: true,
     },
     outputs: {
@@ -117,6 +119,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       theme_color: params.get("theme_color"),
       inputs: {
         camera: params.get("cam") === "1",
+        screen: params.get("screen") === "1",
         mic: params.get("mic") === "1",
       },
       outputs: {
@@ -148,6 +151,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       const obj = new URLSearchParams({
         cam: boolToString(us.inputs.camera),
         mic: boolToString(us.inputs.mic),
+        screen: boolToString(us.inputs.screen),
         video: boolToString(us.outputs.video),
         audio: boolToString(us.outputs.audio),
         chat: boolToString(us.chat),
