@@ -15,6 +15,7 @@ import { ConfigProvider, useConfig } from "@/hooks/useConfig";
 import { ConnectionMode, ConnectionProvider, useConnection } from "@/hooks/useConnection";
 import { useMemo } from "react";
 import { ToastProvider, useToast } from "@/components/toast/ToasterProvider";
+import Image from "next/image";
 
 const themeColors = [
   "cyan",
@@ -114,6 +115,7 @@ export function HomeInner() {
                 const m = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : mode;
                 handleConnect(c, m);
               }}
+              logo={<Image src="/VNSilicon.png" width={50} height={50} alt="VNSilicon" />}
             />
             <RoomAudioRenderer />
             <StartAudio label="Click to enable audio playback" />
