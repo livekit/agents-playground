@@ -27,7 +27,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.0",
-    "@types/node": "^20.10.4",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.16",
