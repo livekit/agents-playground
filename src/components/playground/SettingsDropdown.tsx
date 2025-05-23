@@ -22,35 +22,19 @@ const settingsDropdown: SettingValue[] = [
     key: "separator_1",
   },
   {
-    title: "Show video",
-    type: "outputs",
-    key: "video",
-  },
-  {
     title: "Show audio",
     type: "outputs",
     key: "audio",
   },
-
   {
     title: "---",
     type: "separator",
     key: "separator_2",
   },
   {
-    title: "Enable camera",
-    type: "inputs",
-    key: "camera",
-  },
-  {
     title: "Enable mic",
     type: "inputs",
     key: "mic",
-  },
-  {
-    title: "Allow screenshare",
-    type: "inputs",
-    key: "screen",
   },
 ];
 
@@ -90,44 +74,43 @@ export const SettingsDropdown = () => {
   };
 
   return (
-    <DropdownMenu.Root modal={false}>
-      <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 p-1 pr-2 text-gray-100">
-        <button className="my-auto text-sm flex gap-1 pl-2 py-1 h-full items-center">
+      <DropdownMenu.Root modal={false}>
+        <DropdownMenu.Trigger
+            className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 text-gray-100 text-sm pl-3 pr-2 py-2">
           Settings
           <ChevronIcon />
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="z-50 flex w-60 flex-col gap-0 overflow-hidden rounded text-gray-100 border border-gray-800 bg-gray-900 py-2 text-sm"
-          sideOffset={5}
-          collisionPadding={16}
-        >
-          {settingsDropdown.map((setting) => {
-            if (setting.type === "separator") {
-              return (
-                <div
-                  key={setting.key}
-                  className="border-t border-gray-800 my-2"
-                />
-              );
-            }
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+              className="z-50 flex w-60 flex-col gap-0 overflow-hidden rounded text-gray-100 border border-gray-800 bg-gray-900 py-2 text-sm"
+              sideOffset={5}
+              collisionPadding={16}
+          >
+            {settingsDropdown.map((setting) => {
+              if (setting.type === "separator") {
+                return (
+                    <div
+                        key={setting.key}
+                        className="border-t border-gray-800 my-2"
+                    />
+                );
+              }
 
-            return (
-              <DropdownMenu.Label
-                key={setting.key}
-                onClick={() => toggleSetting(setting)}
-                className="flex max-w-full flex-row items-end gap-2 px-3 py-2 text-xs hover:bg-gray-800 cursor-pointer"
-              >
-                <div className="w-4 h-4 flex items-center">
-                  {isEnabled(setting) && <CheckIcon />}
-                </div>
-                <span>{setting.title}</span>
-              </DropdownMenu.Label>
-            );
-          })}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+              return (
+                  <DropdownMenu.Label // Or DropdownMenu.Item
+                      key={setting.key}
+                      onClick={() => toggleSetting(setting)}
+                      className="flex max-w-full flex-row items-end gap-2 px-3 py-2 text-xs hover:bg-gray-800 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 flex items-center">
+                      {isEnabled(setting) && <CheckIcon />}
+                    </div>
+                    <span>{setting.title}</span>
+                  </DropdownMenu.Label>
+              );
+            })}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
   );
 };

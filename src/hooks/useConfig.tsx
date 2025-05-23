@@ -17,7 +17,6 @@ export type AppConfig = {
   github_link?: string;
   video_fit?: "cover" | "contain";
   settings: UserSettings;
-  show_qr?: boolean;
 };
 
 export type UserSettings = {
@@ -62,7 +61,6 @@ const defaultConfig: AppConfig = {
     room_name: "",
     participant_name: "",
   },
-  show_qr: false,
 };
 
 const useAppConfig = (): AppConfig => {
