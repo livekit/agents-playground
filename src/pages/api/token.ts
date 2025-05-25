@@ -19,19 +19,37 @@ export default async function handleToken(
   res: NextApiResponse
 ) {
   try {
+    if (req.method !== "POST") {
+      res.setHeader("Allow", "POST");
+      res.status(405).end("Method Not Allowed");
+      return;
+    }
     if (!apiKey || !apiSecret) {
       res.statusMessage = "Environment variables aren't set up correctly";
       res.status(500).end();
       return;
     }
 
+    const {
+      roomName: roomNameFromBody,
+      participantName,
+      participantId: participantIdFromBody,
+      metadata: metadataFromBody,
+      attributes: attributesFromBody,
+    } = req.body;
+
     // Get room name from query params or generate random one
-    const roomName = req.query.roomName as string || 
+    const roomName = roomNameFromBody as string ||
       `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
-    
+
     // Get participant name from query params or generate random one
-    const identity = req.query.participantName as string || 
+    const identity = participantIdFromBody as string ||
       `identity-${generateRandomAlphanumeric(4)}`;
+
+    // Get metadata and attributes from query params
+    const metadata = metadataFromBody as string | undefined;
+    const attributesStr = attributesFromBody as string | undefined;
+    const attributes = attributesStr || {};
 
     const grant: VideoGrant = {
       room: roomName,
@@ -41,7 +59,7 @@ export default async function handleToken(
       canSubscribe: true,
     };
 
-    const token = await createToken({ identity }, grant);
+    const token = await createToken({ identity, metadata, attributes, name: participantName }, grant);
     const result: TokenResult = {
       identity,
       accessToken: token,

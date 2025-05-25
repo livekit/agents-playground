@@ -30,6 +30,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
+import { AttributesEditor } from "@/components/config/AttributesEditor";
 
 export interface PlaygroundMeta {
   name: string;
@@ -260,9 +261,23 @@ export default function Playground({
               editable={roomState !== ConnectionState.Connected}
             />
             <EditableNameValueRow
-              name="Participant"
+              name="Participant ID"
               value={roomState === ConnectionState.Connected ? 
                 (localParticipant?.identity || '') : 
+                (config.settings.participant_id || '')}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.participant_id = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter participant id"
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="Participant Name"
+              value={roomState === ConnectionState.Connected ? 
+                (localParticipant?.name || '') : 
                 (config.settings.participant_name || '')}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
@@ -270,10 +285,39 @@ export default function Playground({
                 newSettings.participant_name = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter participant id"
+              placeholder="Enter participant name"
               editable={roomState !== ConnectionState.Connected}
             />
           </div>
+          
+          <div className="flex flex-col gap-2 mt-4">
+            <div className="text-xs text-gray-500 mt-2">Metadata</div>
+            <textarea
+              value={config.settings.metadata || ""}
+              onChange={(e) => {
+                const newSettings = { ...config.settings };
+                newSettings.metadata = e.target.value;
+                setUserSettings(newSettings);
+              }}
+              className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
+              placeholder="Custom metadata..."
+              rows={2}
+              disabled={roomState === ConnectionState.Connected}
+            />
+            
+            <div className="text-xs text-gray-500 mt-2">Attributes</div>
+            <AttributesEditor
+              attributes={config.settings.attributes || []}
+              onAttributesChange={(newAttributes) => {
+                const newSettings = { ...config.settings };
+                newSettings.attributes = newAttributes;
+                setUserSettings(newSettings);
+              }}
+              themeColor={config.settings.theme_color}
+              disabled={roomState === ConnectionState.Connected}
+            />
+          </div>
+
           <div className="flex flex-col gap-2 mt-4">
             <div className="text-xs text-gray-500 mt-2">RPC Method</div>
             <input
