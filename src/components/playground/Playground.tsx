@@ -345,7 +345,6 @@ export default function Playground({
                   set on the agent.
                 </p>
                 <AttributesInspector
-                  title="Agent Attributes"
                   attributes={Object.entries(agentAttributes.attributes || {}).map(([key, value], index) => ({
                     id: `agent-attr-${index}`,
                     key,
@@ -408,7 +407,6 @@ export default function Playground({
               disabled={roomState === ConnectionState.Connected}
             />
             <AttributesInspector
-              title="User Attributes"
               attributes={config.settings.attributes || []}
               onAttributesChange={(newAttributes) => {
                 const newSettings = { ...config.settings };
