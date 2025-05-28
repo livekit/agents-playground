@@ -321,7 +321,8 @@ export default function Playground({
             collapsible={true} 
             defaultCollapsed={true}
           >
-            <pre className="text-xs bg-gray-900 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
+            <p className="text-xs text-gray-500">The <a href="https://docs.livekit.io/home/client/state/participant-attributes" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">participant attributes</a> set on the agent.</p>
+            <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
           </ConfigurationPanelItem>
         )}
         {roomState === ConnectionState.Connected && config.settings.inputs.screen && (
@@ -343,41 +344,42 @@ export default function Playground({
             )}
           </ConfigurationPanelItem>
         )}
-        {roomState === ConnectionState.Connected && (
+        {roomState === ConnectionState.Connected && voiceAssistant.agent && (
           <ConfigurationPanelItem 
             title="RPC" 
             collapsible={true} 
             defaultCollapsed={true}
           >
             <div className="flex flex-col gap-2">
-              <div className="text-xs text-gray-500 mt-2">RPC Method</div>
+              <p className="text-xs text-gray-500">Perform an <a href="https://docs.livekit.io/home/client/data/rpc/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">RPC call</a> on the agent.</p>
+              <div className="text-xs text-gray-500 mt-2">Method Name</div>
               <input
                 type="text"
                 value={rpcMethod}
                 onChange={(e) => setRpcMethod(e.target.value)}
                 className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-                placeholder="RPC method name"
+                placeholder="my_method"
               />
               
-              <div className="text-xs text-gray-500 mt-2">RPC Payload</div>
+              <div className="text-xs text-gray-500 mt-2">Payload</div>
               <textarea
                 value={rpcPayload}
                 onChange={(e) => setRpcPayload(e.target.value)}
                 className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-                placeholder="RPC payload"
+                placeholder='{"my": "payload"}'
                 rows={2}
               />
               
               <button
                 onClick={handleRpcCall}
-                disabled={!voiceAssistant.agent || !rpcMethod}
+                disabled={!rpcMethod}
                 className={`mt-2 px-2 py-1 rounded-sm text-xs 
-                  ${voiceAssistant.agent && rpcMethod 
+                  ${rpcMethod 
                     ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600` 
                     : 'bg-gray-700 cursor-not-allowed'
                   } text-white`}
               >
-                Perform RPC Call
+                Perform RPC
               </button>
             </div>
           </ConfigurationPanelItem>
