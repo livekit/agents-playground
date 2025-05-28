@@ -63,7 +63,7 @@ export default function Playground({
 
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
-  const [showAttributes, setShowAttributes] = useState(false);
+  const [showRpc, setShowRpc] = useState(false);
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -242,7 +242,7 @@ export default function Playground({
 
   const settingsTileContent = useMemo(() => {
     return (
-      <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
+      <div className="flex flex-col h-full w-full items-start overflow-y-auto">
         {config.description && (
           <ConfigurationPanelItem title="Description">
             {config.description}
@@ -277,37 +277,6 @@ export default function Playground({
               placeholder="Enter participant id"
               editable={roomState !== ConnectionState.Connected}
             />
-          </div>
-          <div className="flex flex-col gap-2 mt-4">
-            <div className="text-xs text-gray-500 mt-2">RPC Method</div>
-            <input
-              type="text"
-              value={rpcMethod}
-              onChange={(e) => setRpcMethod(e.target.value)}
-              className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-              placeholder="RPC method name"
-            />
-            
-            <div className="text-xs text-gray-500 mt-2">RPC Payload</div>
-            <textarea
-              value={rpcPayload}
-              onChange={(e) => setRpcPayload(e.target.value)}
-              className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-              placeholder="RPC payload"
-              rows={2}
-            />
-            
-            <button
-              onClick={handleRpcCall}
-              disabled={!voiceAssistant.agent || !rpcMethod}
-              className={`mt-2 px-2 py-1 rounded-sm text-xs 
-                ${voiceAssistant.agent && rpcMethod 
-                  ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600` 
-                  : 'bg-gray-700 cursor-not-allowed'
-                } text-white`}
-            >
-              Perform RPC Call
-            </button>
           </div>
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
@@ -344,23 +313,17 @@ export default function Playground({
                   : "gray-500"
               }
             />
-            {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowAttributes(!showAttributes)}
-                  className={`text-xs text-gray-400 hover:text-${config.settings.theme_color}-400 transition-colors`}
-                >
-                  {showAttributes ? 'Hide Participant Attributes' : 'Show Participant Attributes'}
-                </button>
-              </div>
-              {showAttributes && (
-                <pre className="text-xs bg-gray-900 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
-              )}
-            </div>
-            )}
           </div>
         </ConfigurationPanelItem>
+        {roomState === ConnectionState.Connected && voiceAssistant.agent && (
+          <ConfigurationPanelItem 
+            title="Agent Attributes" 
+            collapsible={true} 
+            defaultCollapsed={true}
+          >
+            <pre className="text-xs bg-gray-900 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
+          </ConfigurationPanelItem>
+        )}
         {roomState === ConnectionState.Connected && config.settings.inputs.screen && (
           <ConfigurationPanelItem
             title="Screen"
@@ -378,6 +341,45 @@ export default function Playground({
                 Press the button above to share your screen.
               </div>
             )}
+          </ConfigurationPanelItem>
+        )}
+        {roomState === ConnectionState.Connected && (
+          <ConfigurationPanelItem 
+            title="RPC" 
+            collapsible={true} 
+            defaultCollapsed={true}
+          >
+            <div className="flex flex-col gap-2">
+              <div className="text-xs text-gray-500 mt-2">RPC Method</div>
+              <input
+                type="text"
+                value={rpcMethod}
+                onChange={(e) => setRpcMethod(e.target.value)}
+                className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
+                placeholder="RPC method name"
+              />
+              
+              <div className="text-xs text-gray-500 mt-2">RPC Payload</div>
+              <textarea
+                value={rpcPayload}
+                onChange={(e) => setRpcPayload(e.target.value)}
+                className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
+                placeholder="RPC payload"
+                rows={2}
+              />
+              
+              <button
+                onClick={handleRpcCall}
+                disabled={!voiceAssistant.agent || !rpcMethod}
+                className={`mt-2 px-2 py-1 rounded-sm text-xs 
+                  ${voiceAssistant.agent && rpcMethod 
+                    ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600` 
+                    : 'bg-gray-700 cursor-not-allowed'
+                  } text-white`}
+              >
+                Perform RPC Call
+              </button>
+            </div>
           </ConfigurationPanelItem>
         )}
         {localCameraTrack && (
@@ -439,8 +441,8 @@ export default function Playground({
     rpcMethod,
     rpcPayload,
     handleRpcCall,
-    showAttributes,
-    setShowAttributes,
+    showRpc,
+    setShowRpc,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
