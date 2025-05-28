@@ -122,14 +122,14 @@ export default function Playground({
 
     const disconnectedContent = (
       <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
-        No video track. Connect to get started.
+        No agent video track. Connect to get started.
       </div>
     );
 
     const loadingContent = (
       <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
         <LoadingSVG />
-        Waiting for video track
+        Waiting for agent video track…
       </div>
     );
 
@@ -171,14 +171,14 @@ export default function Playground({
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
       <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center w-full">
-        No audio track. Connect to get started.
+        No agent audio track. Connect to get started.
       </div>
     );
 
     const waitingContent = (
       <div className="flex flex-col items-center gap-2 text-gray-700 text-center w-full">
         <LoadingSVG />
-        Waiting for audio track
+        Waiting for agent audio track…
       </div>
     );
 
@@ -316,7 +316,7 @@ export default function Playground({
               name="Agent"
               value={
                 voiceAssistant.agent ? (
-                  "JOINED"
+                  "CONNECTED"
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
                 ) : (
@@ -546,7 +546,7 @@ export default function Playground({
         >
           {config.settings.outputs.video && (
             <PlaygroundTile
-              title="Video"
+              title="Agent Video"
               className="w-full h-full grow"
               childrenClassName="justify-center"
             >
@@ -555,7 +555,7 @@ export default function Playground({
           )}
           {config.settings.outputs.audio && (
             <PlaygroundTile
-              title="Audio"
+              title="Agent Audio"
               className="w-full h-full grow"
               childrenClassName="justify-center"
             >
