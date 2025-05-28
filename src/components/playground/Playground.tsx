@@ -24,6 +24,7 @@ import {
   useTracks,
   useVoiceAssistant,
   useRoomContext,
+  useParticipantAttributes,
 } from "@livekit/components-react";
 import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
@@ -62,6 +63,7 @@ export default function Playground({
 
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
+  const [showAttributes, setShowAttributes] = useState(false);
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -236,6 +238,8 @@ export default function Playground({
     }
   }, [room, rpcMethod, rpcPayload, voiceAssistant.agent]);
 
+  const agentAttributes = useParticipantAttributes({ participant: voiceAssistant.agent });
+
   const settingsTileContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
@@ -340,6 +344,21 @@ export default function Playground({
                   : "gray-500"
               }
             />
+            {roomState === ConnectionState.Connected && voiceAssistant.agent && (
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAttributes(!showAttributes)}
+                  className={`text-xs text-gray-400 hover:text-${config.settings.theme_color}-400 transition-colors`}
+                >
+                  {showAttributes ? 'Hide Participant Attributes' : 'Show Participant Attributes'}
+                </button>
+              </div>
+              {showAttributes && (
+                <pre className="text-xs bg-gray-900 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
+              )}
+            </div>
+            )}
           </div>
         </ConfigurationPanelItem>
         {roomState === ConnectionState.Connected && config.settings.inputs.screen && (
@@ -420,6 +439,8 @@ export default function Playground({
     rpcMethod,
     rpcPayload,
     handleRpcCall,
+    showAttributes,
+    setShowAttributes,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
