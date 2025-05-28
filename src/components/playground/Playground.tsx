@@ -327,35 +327,33 @@ export default function Playground({
                   : "gray-500"
               }
             />
-            <p className="text-xs text-gray-500 mt-2 text-right">
-              Set an agent name to use <a href="https://docs.livekit.io/agents/worker/dispatch#explicit" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">explicit dispatch</a>.
-            </p>
-            {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-              <>
-                <p className="text-xs text-gray-500 mt-2">
-                  The{" "}
-                  <a
-                    href="https://docs.livekit.io/home/client/state/participant-attributes"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-gray-300 underline"
-                  >
-                    participant attributes
-                  </a>{" "}
-                  set on the agent.
-                </p>
+            {roomState === ConnectionState.Connected &&
+              voiceAssistant.agent && (
                 <AttributesInspector
-                  attributes={Object.entries(agentAttributes.attributes || {}).map(([key, value], index) => ({
+                  attributes={Object.entries(
+                    agentAttributes.attributes || {},
+                  ).map(([key, value], index) => ({
                     id: `agent-attr-${index}`,
                     key,
-                    value: String(value)
+                    value: String(value),
                   }))}
                   onAttributesChange={() => {}}
                   themeColor={config.settings.theme_color}
                   disabled={true}
                 />
-              </>
-            )}
+              )}
+            <p className="text-xs text-gray-500 mt-2 text-right">
+              Set an agent name to use{" "}
+              <a
+                href="https://docs.livekit.io/agents/worker/dispatch#explicit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-300 underline"
+              >
+                explicit dispatch
+              </a>
+              .
+            </p>
           </div>
         </ConfigurationPanelItem>
 
@@ -393,24 +391,17 @@ export default function Playground({
               placeholder="Enter participant id"
               editable={roomState !== ConnectionState.Connected}
             />
-            <div className="text-sm text-gray-500 mb-2">Metadata</div>
-            <textarea
-              value={config.settings.metadata || ""}
-              onChange={(e) => {
-                const newSettings = { ...config.settings };
-                newSettings.metadata = e.target.value;
-                setUserSettings(newSettings);
-              }}
-              className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-              placeholder="Custom metadata..."
-              rows={2}
-              disabled={roomState === ConnectionState.Connected}
-            />
             <AttributesInspector
               attributes={config.settings.attributes || []}
               onAttributesChange={(newAttributes) => {
                 const newSettings = { ...config.settings };
                 newSettings.attributes = newAttributes;
+                setUserSettings(newSettings);
+              }}
+              metadata={config.settings.metadata}
+              onMetadataChange={(metadata) => {
+                const newSettings = { ...config.settings };
+                newSettings.metadata = metadata;
                 setUserSettings(newSettings);
               }}
               themeColor={config.settings.theme_color}
