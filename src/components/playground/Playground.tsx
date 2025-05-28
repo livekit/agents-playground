@@ -394,7 +394,7 @@ export default function Playground({
               placeholder="Enter participant id"
               editable={roomState !== ConnectionState.Connected}
             />
-            <div className="text-xs text-gray-500 mt-2">Metadata</div>
+            <div className="text-sm text-gray-500 mb-2">Metadata</div>
             <textarea
               value={config.settings.metadata || ""}
               onChange={(e) => {
