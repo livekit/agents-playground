@@ -17,10 +17,10 @@ export function TranscriptionTile({
   agentAudioTrack,
   accentColor,
 }: {
-  agentAudioTrack: TrackReferenceOrPlaceholder;
+  agentAudioTrack?: TrackReferenceOrPlaceholder;
   accentColor: string;
 }) {
-  const agentMessages = useTrackTranscription(agentAudioTrack);
+  const agentMessages = useTrackTranscription(agentAudioTrack || undefined);
   const localParticipant = useLocalParticipant();
   const localMessages = useTrackTranscription({
     publication: localParticipant.microphoneTrack,
@@ -36,16 +36,19 @@ export function TranscriptionTile({
 
   // store transcripts
   useEffect(() => {
-    agentMessages.segments.forEach((s) =>
-      transcripts.set(
-        s.id,
-        segmentToChatMessage(
-          s,
-          transcripts.get(s.id),
-          agentAudioTrack.participant
+    if (agentAudioTrack) {
+      agentMessages.segments.forEach((s) =>
+        transcripts.set(
+          s.id,
+          segmentToChatMessage(
+            s,
+            transcripts.get(s.id),
+            agentAudioTrack.participant
+          )
         )
-      )
-    );
+      );
+    }
+    
     localMessages.segments.forEach((s) =>
       transcripts.set(
         s.id,
@@ -59,8 +62,9 @@ export function TranscriptionTile({
 
     const allMessages = Array.from(transcripts.values());
     for (const msg of chatMessages) {
-      const isAgent =
-        msg.from?.identity === agentAudioTrack.participant?.identity;
+      const isAgent = agentAudioTrack
+        ? msg.from?.identity === agentAudioTrack.participant?.identity
+        : msg.from?.identity !== localParticipant.localParticipant.identity;
       const isSelf =
         msg.from?.identity === localParticipant.localParticipant.identity;
       let name = msg.from?.name;
@@ -86,9 +90,10 @@ export function TranscriptionTile({
     transcripts,
     chatMessages,
     localParticipant.localParticipant,
-    agentAudioTrack.participant,
+    agentAudioTrack?.participant,
     agentMessages.segments,
     localMessages.segments,
+    agentAudioTrack,
   ]);
 
   return (

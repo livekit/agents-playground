@@ -25,8 +25,13 @@ export default async function handleToken(
       return;
     }
 
-    const roomName = `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
-    const identity = `identity-${generateRandomAlphanumeric(4)}`
+    // Get room name from query params or generate random one
+    const roomName = req.query.roomName as string || 
+      `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
+    
+    // Get participant name from query params or generate random one
+    const identity = req.query.participantName as string || 
+      `identity-${generateRandomAlphanumeric(4)}`;
 
     const grant: VideoGrant = {
       room: roomName,

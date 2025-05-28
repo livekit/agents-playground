@@ -9,16 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@livekit/components-react": "^2.3.1",
+    "@livekit/components-react": "^2.9.3",
+    "@livekit/components-styles": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "cookies-next": "^4.1.1",
     "framer-motion": "^10.16.16",
     "js-yaml": "^4.1.0",
-    "livekit-client": "^2.1.5",
-    "livekit-server-sdk": "^2.1.2",
+    "livekit-client": "^2.5.1",
+    "livekit-server-sdk": "^2.6.1",
     "lodash": "^4.17.21",
     "next": "^14.0.4",
-    "qrcode.react": "^3.1.0",
+    "next-plugin-preval": "^1.2.6",
+    "qrcode.react": "^4.0.0",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -30,7 +32,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.16",
     "eslint": "^8",
-    "eslint-config-next": "14.2.4",
+    "eslint-config-next": "14.2.26",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.3.3"

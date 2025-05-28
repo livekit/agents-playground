@@ -6,12 +6,12 @@ export const CheckIcon = () => (
     viewBox="0 0 12 12"
     fill="none"
   >
-    <g clip-path="url(#clip0_718_9977)">
+    <g clipPath="url(#clip0_718_9977)">
       <path
         d="M1.5 7.5L4.64706 10L10.5 2"
         stroke="white"
-        stroke-width="1.5"
-        stroke-linecap="square"
+        strokeWidth="1.5"
+        strokeLinecap="square"
       />
     </g>
     <defs>

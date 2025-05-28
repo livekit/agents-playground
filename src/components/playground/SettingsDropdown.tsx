@@ -47,6 +47,11 @@ const settingsDropdown: SettingValue[] = [
     type: "inputs",
     key: "mic",
   },
+  {
+    title: "Allow screenshare",
+    type: "inputs",
+    key: "screen",
+  },
 ];
 
 export const SettingsDropdown = () => {
@@ -59,7 +64,7 @@ export const SettingsDropdown = () => {
     }
 
     if(setting.type === "inputs") {
-      const key = setting.key as "camera" | "mic";
+      const key = setting.key as "camera" | "mic" | "screen";
       return config.settings.inputs[key];
     } else if(setting.type === "outputs") {
       const key = setting.key as "video" | "audio";
@@ -77,7 +82,7 @@ export const SettingsDropdown = () => {
     if(setting.type === "chat") {
       newSettings.chat = newValue;
     } else if(setting.type === "inputs") {
-      newSettings.inputs[setting.key as "camera" | "mic"] = newValue;
+      newSettings.inputs[setting.key as "camera" | "mic" | "screen"] = newValue;
     } else if(setting.type === "outputs") {
       newSettings.outputs[setting.key as "video" | "audio"] = newValue;
     }

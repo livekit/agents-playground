@@ -6,29 +6,30 @@ import { Track } from "livekit-client";
 type ConfigurationPanelItemProps = {
   title: string;
   children?: ReactNode;
-  deviceSelectorKind?: MediaDeviceKind;
+  source?: Track.Source;
 };
 
 export const ConfigurationPanelItem: React.FC<ConfigurationPanelItemProps> = ({
   children,
   title,
-  deviceSelectorKind,
+  source,
 }) => {
   return (
     <div className="w-full text-gray-300 py-4 border-b border-b-gray-800 relative">
       <div className="flex flex-row justify-between items-center px-4 text-xs uppercase tracking-wider">
         <h3>{title}</h3>
-        {deviceSelectorKind && (
+        {source && (
           <span className="flex flex-row gap-2">
             <TrackToggle
               className="px-2 py-1 bg-gray-900 text-gray-300 border border-gray-800 rounded-sm hover:bg-gray-800"
-              source={
-                deviceSelectorKind === "audioinput"
-                  ? Track.Source.Microphone
-                  : Track.Source.Camera
-              }
+              source={source}
             />
-            <PlaygroundDeviceSelector kind={deviceSelectorKind} />
+            {source === Track.Source.Camera && (
+              <PlaygroundDeviceSelector kind="videoinput" />
+            )}
+            {source === Track.Source.Microphone && (
+              <PlaygroundDeviceSelector kind="audioinput" />
+            )}
           </span>
         )}
       </div>

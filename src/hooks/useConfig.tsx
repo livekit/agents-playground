@@ -26,6 +26,7 @@ export type UserSettings = {
   chat: boolean;
   inputs: {
     camera: boolean;
+    screen: boolean;
     mic: boolean;
   };
   outputs: {
@@ -34,12 +35,14 @@ export type UserSettings = {
   };
   ws_url: string;
   token: string;
+  room_name: string;
+  participant_name: string;
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
 const defaultConfig: AppConfig = {
   title: "LiveKit Agents Playground",
-  description: "A playground for testing LiveKit Agents",
+  description: "A virtual workbench for testing multimodal AI agents.",
   video_fit: "contain",
   settings: {
     editable: true,
@@ -47,6 +50,7 @@ const defaultConfig: AppConfig = {
     chat: true,
     inputs: {
       camera: true,
+      screen: true,
       mic: true,
     },
     outputs: {
@@ -55,6 +59,8 @@ const defaultConfig: AppConfig = {
     },
     ws_url: "",
     token: "",
+    room_name: "",
+    participant_name: "",
   },
   show_qr: false,
 };
@@ -113,6 +119,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       theme_color: params.get("theme_color"),
       inputs: {
         camera: params.get("cam") === "1",
+        screen: params.get("screen") === "1",
         mic: params.get("mic") === "1",
       },
       outputs: {
@@ -122,6 +129,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       },
       ws_url: "",
       token: "",
+      room_name: "",
+      participant_name: "",
     } as UserSettings;
   }, [appConfig]);
 
@@ -142,6 +151,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       const obj = new URLSearchParams({
         cam: boolToString(us.inputs.camera),
         mic: boolToString(us.inputs.mic),
+        screen: boolToString(us.inputs.screen),
         video: boolToString(us.outputs.video),
         audio: boolToString(us.outputs.audio),
         chat: boolToString(us.chat),
