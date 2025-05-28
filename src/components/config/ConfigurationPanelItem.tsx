@@ -45,7 +45,7 @@ export const ConfigurationPanelItem: React.FC<ConfigurationPanelItemProps> = ({
               className="text-gray-400 hover:text-gray-300 transition-colors"
             >
               <svg
-                className={`w-4 h-4 transform transition-transform ${!isCollapsed ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 transform transition-transform ${!isCollapsed ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

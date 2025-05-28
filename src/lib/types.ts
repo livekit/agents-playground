@@ -14,3 +14,9 @@ export interface TokenResult {
   identity: string;
   accessToken: string;
 }
+
+export interface AttributeItem {
+  id: string;
+  key: string;
+  value: string;
+}

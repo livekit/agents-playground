@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useCloud } from "@/cloud/useCloud";
 import React, { createContext, useState } from "react";
@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { useConfig } from "./useConfig";
 import { useToast } from "@/components/toast/ToasterProvider";
 
-export type ConnectionMode = "cloud" | "manual" | "env"
+export type ConnectionMode = "cloud" | "manual" | "env";
 
 type TokenGeneratorData = {
   shouldConnect: boolean;
@@ -17,7 +17,9 @@ type TokenGeneratorData = {
   connect: (mode: ConnectionMode) => Promise<void>;
 };
 
-const ConnectionContext = createContext<TokenGeneratorData | undefined>(undefined);
+const ConnectionContext = createContext<TokenGeneratorData | undefined>(
+  undefined,
+);
 
 export const ConnectionProvider = ({
   children,
@@ -54,19 +56,44 @@ export const ConnectionProvider = ({
           throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
         }
         url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
-        const params = new URLSearchParams();
+        const body: Record<string, any> = {};
         if (config.settings.room_name) {
-          params.append('roomName', config.settings.room_name);
+          body.roomName = config.settings.room_name;
+        }
+        if (config.settings.participant_id) {
+          body.participantId = config.settings.participant_id;
         }
         if (config.settings.participant_name) {
-          params.append('participantName', config.settings.participant_name);
+          body.participantName = config.settings.participant_name;
         }
         if (config.settings.agent_name) {
-          params.append('agentName', config.settings.agent_name);
+          body.agentName = config.settings.agent_name;
         }
-        const { accessToken } = await fetch(`/api/token?${params}`).then((res) =>
-          res.json()
-        );
+        if (config.settings.metadata) {
+          body.metadata = config.settings.metadata;
+        }
+        const attributesArray = Array.isArray(config.settings.attributes)
+          ? config.settings.attributes
+          : [];
+        if (attributesArray?.length) {
+          const attributes = attributesArray.reduce(
+            (acc, attr) => {
+              if (attr.key) {
+                acc[attr.key] = attr.value;
+              }
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
+          body.attributes = attributes;
+        }
+        const { accessToken } = await fetch(`/api/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }).then((res) => res.json());
         token = accessToken;
       } else {
         token = config.settings.token;
@@ -81,9 +108,12 @@ export const ConnectionProvider = ({
       config.settings.room_name,
       config.settings.participant_name,
       config.settings.agent_name,
+      config.settings.participant_id,
+      config.settings.metadata,
+      config.settings.attributes,
       generateToken,
       setToastMessage,
-    ]
+    ],
   );
 
   const disconnect = useCallback(async () => {
@@ -112,4 +142,4 @@ export const useConnection = () => {
     throw new Error("useConnection must be used within a ConnectionProvider");
   }
   return context;
-}
+};

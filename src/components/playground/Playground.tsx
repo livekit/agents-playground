@@ -31,6 +31,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
+import { AttributesEditor } from "@/components/config/AttributesEditor";
 
 export interface PlaygroundMeta {
   name: string;
@@ -75,27 +76,27 @@ export default function Playground({
   const agentVideoTrack = tracks.find(
     (trackRef) =>
       trackRef.publication.kind === Track.Kind.Video &&
-      trackRef.participant.isAgent
+      trackRef.participant.isAgent,
   );
 
   const localTracks = tracks.filter(
-    ({ participant }) => participant instanceof LocalParticipant
+    ({ participant }) => participant instanceof LocalParticipant,
   );
   const localCameraTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Camera
+    ({ source }) => source === Track.Source.Camera,
   );
   const localScreenTrack = localTracks.find(
-    ({ source }) => source === Track.Source.ScreenShare
+    ({ source }) => source === Track.Source.ScreenShare,
   );
   const localMicTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Microphone
+    ({ source }) => source === Track.Source.Microphone,
   );
 
   const onDataReceived = useCallback(
     (msg: any) => {
       if (msg.topic === "transcription") {
         const decoded = JSON.parse(
-          new TextDecoder("utf-8").decode(msg.payload)
+          new TextDecoder("utf-8").decode(msg.payload),
         );
         let timestamp = new Date().getTime();
         if ("timestamp" in decoded && decoded.timestamp > 0) {
@@ -112,13 +113,13 @@ export default function Playground({
         ]);
       }
     },
-    [transcripts]
+    [transcripts],
   );
 
   useDataChannel(onDataReceived);
 
   const videoTileContent = useMemo(() => {
-    const videoFitClassName = `object-${config.video_fit || "cover"}`;
+    const videoFitClassName = `object-${config.video_fit || "contain"}`;
 
     const disconnectedContent = (
       <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
@@ -160,11 +161,11 @@ export default function Playground({
     document.body.style.setProperty(
       "--lk-theme-color",
       // @ts-ignore
-      tailwindTheme.colors[config.settings.theme_color]["500"]
+      tailwindTheme.colors[config.settings.theme_color]["500"],
     );
     document.body.style.setProperty(
       "--lk-drop-shadow",
-      `var(--lk-theme-color) 0px 0px 18px`
+      `var(--lk-theme-color) 0px 0px 18px`,
     );
   }, [config.settings.theme_color]);
 
@@ -221,24 +222,30 @@ export default function Playground({
       );
     }
     return <></>;
-  }, [config.settings.theme_color, voiceAssistant.audioTrack, voiceAssistant.agent]);
+  }, [
+    config.settings.theme_color,
+    voiceAssistant.audioTrack,
+    voiceAssistant.agent,
+  ]);
 
   const handleRpcCall = useCallback(async () => {
     if (!voiceAssistant.agent || !room) return;
-    
+
     try {
       const response = await room.localParticipant.performRpc({
         destinationIdentity: voiceAssistant.agent.identity,
         method: rpcMethod,
         payload: rpcPayload,
       });
-      console.log('RPC response:', response);
+      console.log("RPC response:", response);
     } catch (e) {
-      console.error('RPC call failed:', e);
+      console.error("RPC call failed:", e);
     }
   }, [room, rpcMethod, rpcPayload, voiceAssistant.agent]);
 
-  const agentAttributes = useParticipantAttributes({ participant: voiceAssistant.agent });
+  const agentAttributes = useParticipantAttributes({
+    participant: voiceAssistant.agent,
+  });
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -251,10 +258,16 @@ export default function Playground({
 
         <ConfigurationPanelItem title="Connection settings">
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-gray-500">Optional settings for room connection.</p>
+            <p className="text-xs text-gray-500">
+              Optional settings for room connection.
+            </p>
             <EditableNameValueRow
               name="Room name"
-              value={roomState === ConnectionState.Connected ? name : config.settings.room_name}
+              value={
+                roomState === ConnectionState.Connected
+                  ? name
+                  : config.settings.room_name
+              }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
                 const newSettings = { ...config.settings };
@@ -266,9 +279,27 @@ export default function Playground({
             />
             <EditableNameValueRow
               name="Participant identity"
-              value={roomState === ConnectionState.Connected ? 
-                (localParticipant?.identity || '') : 
-                (config.settings.participant_name || '')}
+              value={
+                roomState === ConnectionState.Connected
+                  ? localParticipant?.identity || ""
+                  : config.settings.participant_id || ""
+              }
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.participant_id = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter participant id"
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="Participant Name"
+              value={
+                roomState === ConnectionState.Connected
+                  ? localParticipant?.name || ""
+                  : config.settings.participant_name || ""
+              }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
                 const newSettings = { ...config.settings };
@@ -280,9 +311,11 @@ export default function Playground({
             />
             <EditableNameValueRow
               name="Agent name"
-              value={roomState === ConnectionState.Connected ? 
-                (config.settings.agent_name || 'None') : 
-                (config.settings.agent_name || '')}
+              value={
+                roomState === ConnectionState.Connected
+                  ? config.settings.agent_name || "None"
+                  : config.settings.agent_name || ""
+              }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
                 const newSettings = { ...config.settings };
@@ -292,7 +325,46 @@ export default function Playground({
               placeholder="None"
               editable={roomState !== ConnectionState.Connected}
             />
-            <p className="text-xs text-gray-500 text-right">Enter an agent name to use <a href="https://docs.livekit.io/agents/worker/dispatch#explicit" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">explicit dispatch</a>.</p>
+            <p className="text-xs text-gray-500 text-right">
+              Enter an agent name to use{" "}
+              <a
+                href="https://docs.livekit.io/agents/worker/dispatch#explicit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-300 underline"
+              >
+                explicit dispatch
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-4">
+            <div className="text-xs text-gray-500 mt-2">Metadata</div>
+            <textarea
+              value={config.settings.metadata || ""}
+              onChange={(e) => {
+                const newSettings = { ...config.settings };
+                newSettings.metadata = e.target.value;
+                setUserSettings(newSettings);
+              }}
+              className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
+              placeholder="Custom metadata..."
+              rows={2}
+              disabled={roomState === ConnectionState.Connected}
+            />
+
+            <div className="text-xs text-gray-500 mt-2">Attributes</div>
+            <AttributesEditor
+              attributes={config.settings.attributes || []}
+              onAttributesChange={(newAttributes) => {
+                const newSettings = { ...config.settings };
+                newSettings.attributes = newAttributes;
+                setUserSettings(newSettings);
+              }}
+              themeColor={config.settings.theme_color}
+              disabled={roomState === ConnectionState.Connected}
+            />
           </div>
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
@@ -332,42 +404,67 @@ export default function Playground({
           </div>
         </ConfigurationPanelItem>
         {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-          <ConfigurationPanelItem 
-            title="Agent Attributes" 
-            collapsible={true} 
+          <ConfigurationPanelItem
+            title="Agent Attributes"
+            collapsible={true}
             defaultCollapsed={true}
           >
-            <p className="text-xs text-gray-500">The <a href="https://docs.livekit.io/home/client/state/participant-attributes" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">participant attributes</a> set on the agent.</p>
-            <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">{JSON.stringify(agentAttributes.attributes, null, 2)}</pre>
+            <p className="text-xs text-gray-500">
+              The{" "}
+              <a
+                href="https://docs.livekit.io/home/client/state/participant-attributes"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-300 underline"
+              >
+                participant attributes
+              </a>{" "}
+              set on the agent.
+            </p>
+            <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">
+              {JSON.stringify(agentAttributes.attributes, null, 2)}
+            </pre>
           </ConfigurationPanelItem>
         )}
-        {roomState === ConnectionState.Connected && config.settings.inputs.screen && (
-          <ConfigurationPanelItem
-            title="Screen"
-            source={Track.Source.ScreenShare}
-          >
-            {localScreenTrack ? (
-              <div className="relative">
-                <VideoTrack
-                  className="rounded-sm border border-gray-800 opacity-70 w-full"
-                  trackRef={localScreenTrack}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
-                Press the button above to share your screen.
-              </div>
-            )}
-          </ConfigurationPanelItem>
-        )}
+        {roomState === ConnectionState.Connected &&
+          config.settings.inputs.screen && (
+            <ConfigurationPanelItem
+              title="Screen"
+              source={Track.Source.ScreenShare}
+            >
+              {localScreenTrack ? (
+                <div className="relative">
+                  <VideoTrack
+                    className="rounded-sm border border-gray-800 opacity-70 w-full"
+                    trackRef={localScreenTrack}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">
+                  Press the button above to share your screen.
+                </div>
+              )}
+            </ConfigurationPanelItem>
+          )}
         {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-          <ConfigurationPanelItem 
-            title="RPC" 
-            collapsible={true} 
+          <ConfigurationPanelItem
+            title="RPC"
+            collapsible={true}
             defaultCollapsed={true}
           >
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-gray-500">Perform an <a href="https://docs.livekit.io/home/client/data/rpc/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">RPC call</a> on the agent.</p>
+              <p className="text-xs text-gray-500">
+                Perform an{" "}
+                <a
+                  href="https://docs.livekit.io/home/client/data/rpc/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-300 underline"
+                >
+                  RPC call
+                </a>{" "}
+                on the agent.
+              </p>
               <div className="text-xs text-gray-500 mt-2">Method Name</div>
               <input
                 type="text"
@@ -376,7 +473,7 @@ export default function Playground({
                 className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
                 placeholder="my_method"
               />
-              
+
               <div className="text-xs text-gray-500 mt-2">Payload</div>
               <textarea
                 value={rpcPayload}
@@ -385,14 +482,15 @@ export default function Playground({
                 placeholder='{"my": "payload"}'
                 rows={2}
               />
-              
+
               <button
                 onClick={handleRpcCall}
                 disabled={!rpcMethod}
                 className={`mt-2 px-2 py-1 rounded-sm text-xs 
-                  ${rpcMethod 
-                    ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600` 
-                    : 'bg-gray-700 cursor-not-allowed'
+                  ${
+                    rpcMethod
+                      ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600`
+                      : "bg-gray-700 cursor-not-allowed"
                   } text-white`}
               >
                 Perform RPC
@@ -401,10 +499,7 @@ export default function Playground({
           </ConfigurationPanelItem>
         )}
         {localCameraTrack && (
-          <ConfigurationPanelItem
-            title="Camera"
-            source={Track.Source.Camera}
-          >
+          <ConfigurationPanelItem title="Camera" source={Track.Source.Camera}>
             <div className="relative">
               <VideoTrack
                 className="rounded-sm border border-gray-800 opacity-70 w-full"

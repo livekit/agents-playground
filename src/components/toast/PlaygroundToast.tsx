@@ -13,8 +13,8 @@ export const PlaygroundToast = () => {
     toastMessage?.type === "error"
       ? "red"
       : toastMessage?.type === "success"
-      ? "green"
-      : "amber";
+        ? "green"
+        : "amber";
 
   return (
     <div

@@ -66,7 +66,7 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
 }) => {
   const contentPadding = 4;
   const [activeTab, setActiveTab] = useState(initialTab);
-  if(activeTab >= tabs.length) {
+  if (activeTab >= tabs.length) {
     return null;
   }
   return (
