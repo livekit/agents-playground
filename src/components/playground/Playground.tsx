@@ -117,7 +117,7 @@ export default function Playground({
   useDataChannel(onDataReceived);
 
   const videoTileContent = useMemo(() => {
-    const videoFitClassName = `object-${config.video_fit || "cover"}`;
+    const videoFitClassName = `object-${config.video_fit || "contain"}`;
 
     const disconnectedContent = (
       <div className="flex items-center justify-center text-gray-700 text-center w-full h-full">

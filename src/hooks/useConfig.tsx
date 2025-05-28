@@ -47,7 +47,7 @@ export type UserSettings = {
 const defaultConfig: AppConfig = {
   title: "LiveKit Agents Playground",
   description: "A virtual workbench for testing multimodal AI agents.",
-  video_fit: "cover",
+  video_fit: "contain",
   settings: {
     editable: true,
     theme_color: "cyan",
