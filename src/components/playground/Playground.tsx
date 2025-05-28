@@ -31,7 +31,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
-import { AttributesEditor } from "@/components/config/AttributesEditor";
+import { AttributesInspector } from "@/components/config/AttributesInspector";
 
 export interface PlaygroundMeta {
   name: string;
@@ -344,9 +344,16 @@ export default function Playground({
                   </a>{" "}
                   set on the agent.
                 </p>
-                <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">
-                  {JSON.stringify(agentAttributes.attributes, null, 2)}
-                </pre>
+                <AttributesInspector
+                  attributes={Object.entries(agentAttributes.attributes || {}).map(([key, value], index) => ({
+                    id: `agent-attr-${index}`,
+                    key,
+                    value: String(value)
+                  }))}
+                  onAttributesChange={() => {}}
+                  themeColor={config.settings.theme_color}
+                  disabled={true}
+                />
               </>
             )}
           </div>
@@ -400,7 +407,7 @@ export default function Playground({
               disabled={roomState === ConnectionState.Connected}
             />
             <div className="text-xs text-gray-500 mt-2">Attributes</div>
-            <AttributesEditor
+            <AttributesInspector
               attributes={config.settings.attributes || []}
               onAttributesChange={(newAttributes) => {
                 const newSettings = { ...config.settings };
