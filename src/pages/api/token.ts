@@ -2,15 +2,26 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { generateRandomAlphanumeric } from "@/lib/util";
 
 import { AccessToken } from "livekit-server-sdk";
+import { RoomAgentDispatch, RoomConfiguration } from '@livekit/protocol';
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
 import { TokenResult } from "../../lib/types";
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 
-const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant) => {
+const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant, agentName?: string) => {
   const at = new AccessToken(apiKey, apiSecret, userInfo);
   at.addGrant(grant);
+  if (agentName) {
+  at.roomConfig = new RoomConfiguration({
+    agents: [
+      new RoomAgentDispatch({
+        agentName: agentName,
+        metadata: '{"user_id": "12345"}',
+        }),
+      ],
+    });
+  }
   return at.toJwt();
 };
 
@@ -33,6 +44,9 @@ export default async function handleToken(
     const identity = req.query.participantName as string || 
       `identity-${generateRandomAlphanumeric(4)}`;
 
+    // Get agent name from query params or use none (automatic dispatch)
+    const agentName = req.query.agentName as string || undefined;
+
     const grant: VideoGrant = {
       room: roomName,
       roomJoin: true,
@@ -41,7 +55,7 @@ export default async function handleToken(
       canSubscribe: true,
     };
 
-    const token = await createToken({ identity }, grant);
+    const token = await createToken({ identity }, grant, agentName);
     const result: TokenResult = {
       identity,
       accessToken: token,

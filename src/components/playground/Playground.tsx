@@ -249,10 +249,11 @@ export default function Playground({
           </ConfigurationPanelItem>
         )}
 
-        <ConfigurationPanelItem title="Settings">
-          <div className="flex flex-col gap-4">
+        <ConfigurationPanelItem title="Connection settings">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-gray-500">Optional settings for room connection. Leave blank to use a random room name and participant ID and <a href="https://docs.livekit.io/agents/worker/dispatch#automatic" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">automatic agent dispatch</a>.</p>
             <EditableNameValueRow
-              name="Room"
+              name="Room name"
               value={roomState === ConnectionState.Connected ? name : config.settings.room_name}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
@@ -264,7 +265,7 @@ export default function Playground({
               editable={roomState !== ConnectionState.Connected}
             />
             <EditableNameValueRow
-              name="Participant"
+              name="Participant identity"
               value={roomState === ConnectionState.Connected ? 
                 (localParticipant?.identity || '') : 
                 (config.settings.participant_name || '')}
@@ -274,7 +275,19 @@ export default function Playground({
                 newSettings.participant_name = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter participant id"
+              placeholder="Enter participant identity"
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="Agent name"
+              value={config.settings.agent_name || ''}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.agent_name = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter agent name"
               editable={roomState !== ConnectionState.Connected}
             />
           </div>

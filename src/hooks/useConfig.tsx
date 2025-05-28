@@ -37,6 +37,7 @@ export type UserSettings = {
   token: string;
   room_name: string;
   participant_name: string;
+  agent_name?: string;
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set

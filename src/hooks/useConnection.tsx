@@ -61,6 +61,9 @@ export const ConnectionProvider = ({
         if (config.settings.participant_name) {
           params.append('participantName', config.settings.participant_name);
         }
+        if (config.settings.agent_name) {
+          params.append('agentName', config.settings.agent_name);
+        }
         const { accessToken } = await fetch(`/api/token?${params}`).then((res) =>
           res.json()
         );
@@ -77,6 +80,7 @@ export const ConnectionProvider = ({
       config.settings.ws_url,
       config.settings.room_name,
       config.settings.participant_name,
+      config.settings.agent_name,
       generateToken,
       setToastMessage,
     ]
