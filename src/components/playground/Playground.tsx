@@ -256,11 +256,8 @@ export default function Playground({
           </ConfigurationPanelItem>
         )}
 
-        <ConfigurationPanelItem title="Connection settings">
+        <ConfigurationPanelItem title="Room">
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-gray-500">
-              Optional settings for room connection.
-            </p>
             <EditableNameValueRow
               name="Room name"
               value={
@@ -277,38 +274,26 @@ export default function Playground({
               placeholder="Auto"
               editable={roomState !== ConnectionState.Connected}
             />
-            <EditableNameValueRow
-              name="Participant identity"
+            <NameValueRow
+              name="Status"
               value={
-                roomState === ConnectionState.Connected
-                  ? localParticipant?.identity || ""
-                  : config.settings.participant_id || ""
+                roomState === ConnectionState.Connecting ? (
+                  <LoadingSVG diameter={16} strokeWidth={2} />
+                ) : (
+                  roomState.charAt(0).toUpperCase() + roomState.slice(1)
+                )
               }
-              valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.participant_id = value;
-                setUserSettings(newSettings);
-              }}
-              placeholder="Enter participant id"
-              editable={roomState !== ConnectionState.Connected}
-            />
-            <EditableNameValueRow
-              name="Participant Name"
-              value={
+              valueColor={
                 roomState === ConnectionState.Connected
-                  ? localParticipant?.name || ""
-                  : config.settings.participant_name || ""
+                  ? `${config.settings.theme_color}-500`
+                  : "gray-500"
               }
-              valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.participant_name = value;
-                setUserSettings(newSettings);
-              }}
-              placeholder="Auto"
-              editable={roomState !== ConnectionState.Connected}
             />
+          </div>
+        </ConfigurationPanelItem>
+
+        <ConfigurationPanelItem title="Agent">
+          <div className="flex flex-col gap-2">
             <EditableNameValueRow
               name="Agent name"
               value={
@@ -325,21 +310,82 @@ export default function Playground({
               placeholder="None"
               editable={roomState !== ConnectionState.Connected}
             />
-            <p className="text-xs text-gray-500 text-right">
-              Enter an agent name to use{" "}
-              <a
-                href="https://docs.livekit.io/agents/worker/dispatch#explicit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-300 underline"
-              >
-                explicit dispatch
-              </a>
-              .
+            <NameValueRow
+              name="Identity"
+              value={
+                voiceAssistant.agent ? (
+                  voiceAssistant.agent.identity
+                ) : roomState === ConnectionState.Connected ? (
+                  <LoadingSVG diameter={12} strokeWidth={2} />
+                ) : (
+                  "Disconnected"
+                )
+              }
+              valueColor={
+                voiceAssistant.agent
+                  ? `${config.settings.theme_color}-500`
+                  : "gray-500"
+              }
+            />
+            <p className="text-xs text-gray-500 mt-2 text-right">
+              Set an agent name to use <a href="https://docs.livekit.io/agents/worker/dispatch#explicit" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">explicit dispatch</a>.
             </p>
+            {roomState === ConnectionState.Connected && voiceAssistant.agent && (
+              <>
+                <p className="text-xs text-gray-500 mt-2">
+                  The{" "}
+                  <a
+                    href="https://docs.livekit.io/home/client/state/participant-attributes"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-500 hover:text-gray-300 underline"
+                  >
+                    participant attributes
+                  </a>{" "}
+                  set on the agent.
+                </p>
+                <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">
+                  {JSON.stringify(agentAttributes.attributes, null, 2)}
+                </pre>
+              </>
+            )}
           </div>
+        </ConfigurationPanelItem>
 
-          <div className="flex flex-col gap-2 mt-4">
+        <ConfigurationPanelItem title="User">
+          <div className="flex flex-col gap-2">
+            <EditableNameValueRow
+              name="Name"
+              value={
+                roomState === ConnectionState.Connected
+                  ? localParticipant?.name || ""
+                  : config.settings.participant_name || ""
+              }
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.participant_name = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Auto"
+              editable={roomState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="Identity"
+              value={
+                roomState === ConnectionState.Connected
+                  ? localParticipant?.identity || ""
+                  : config.settings.participant_id || ""
+              }
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                const newSettings = { ...config.settings };
+                newSettings.participant_id = value;
+                setUserSettings(newSettings);
+              }}
+              placeholder="Enter participant id"
+              editable={roomState !== ConnectionState.Connected}
+            />
             <div className="text-xs text-gray-500 mt-2">Metadata</div>
             <textarea
               value={config.settings.metadata || ""}
@@ -353,7 +399,6 @@ export default function Playground({
               rows={2}
               disabled={roomState === ConnectionState.Connected}
             />
-
             <div className="text-xs text-gray-500 mt-2">Attributes</div>
             <AttributesEditor
               attributes={config.settings.attributes || []}
@@ -367,65 +412,7 @@ export default function Playground({
             />
           </div>
         </ConfigurationPanelItem>
-        <ConfigurationPanelItem title="Status">
-          <div className="flex flex-col gap-2">
-            <NameValueRow
-              name="Room"
-              value={
-                roomState === ConnectionState.Connecting ? (
-                  <LoadingSVG diameter={16} strokeWidth={2} />
-                ) : (
-                  roomState.toUpperCase()
-                )
-              }
-              valueColor={
-                roomState === ConnectionState.Connected
-                  ? `${config.settings.theme_color}-500`
-                  : "gray-500"
-              }
-            />
-            <NameValueRow
-              name="Agent"
-              value={
-                voiceAssistant.agent ? (
-                  "CONNECTED"
-                ) : roomState === ConnectionState.Connected ? (
-                  <LoadingSVG diameter={12} strokeWidth={2} />
-                ) : (
-                  "DISCONNECTED"
-                )
-              }
-              valueColor={
-                voiceAssistant.agent
-                  ? `${config.settings.theme_color}-500`
-                  : "gray-500"
-              }
-            />
-          </div>
-        </ConfigurationPanelItem>
-        {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-          <ConfigurationPanelItem
-            title="Agent Attributes"
-            collapsible={true}
-            defaultCollapsed={true}
-          >
-            <p className="text-xs text-gray-500">
-              The{" "}
-              <a
-                href="https://docs.livekit.io/home/client/state/participant-attributes"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-300 underline"
-              >
-                participant attributes
-              </a>{" "}
-              set on the agent.
-            </p>
-            <pre className="text-xs bg-gray-900 mt-2 p-2 rounded-sm overflow-auto max-h-48">
-              {JSON.stringify(agentAttributes.attributes, null, 2)}
-            </pre>
-          </ConfigurationPanelItem>
-        )}
+
         {roomState === ConnectionState.Connected &&
           config.settings.inputs.screen && (
             <ConfigurationPanelItem
