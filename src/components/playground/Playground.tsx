@@ -251,7 +251,7 @@ export default function Playground({
 
         <ConfigurationPanelItem title="Connection settings">
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-gray-500">Optional settings for room connection. Leave blank to use a random room name and participant ID and <a href="https://docs.livekit.io/agents/worker/dispatch#automatic" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">automatic agent dispatch</a>.</p>
+            <p className="text-xs text-gray-500">Optional settings for room connection.</p>
             <EditableNameValueRow
               name="Room name"
               value={roomState === ConnectionState.Connected ? name : config.settings.room_name}
@@ -261,7 +261,7 @@ export default function Playground({
                 newSettings.room_name = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter room name"
+              placeholder="Auto"
               editable={roomState !== ConnectionState.Connected}
             />
             <EditableNameValueRow
@@ -275,27 +275,30 @@ export default function Playground({
                 newSettings.participant_name = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter participant identity"
+              placeholder="Auto"
               editable={roomState !== ConnectionState.Connected}
             />
             <EditableNameValueRow
               name="Agent name"
-              value={config.settings.agent_name || ''}
+              value={roomState === ConnectionState.Connected ? 
+                (config.settings.agent_name || 'None') : 
+                (config.settings.agent_name || '')}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
                 const newSettings = { ...config.settings };
                 newSettings.agent_name = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter agent name"
+              placeholder="None"
               editable={roomState !== ConnectionState.Connected}
             />
+            <p className="text-xs text-gray-500 text-right">Enter an agent name to use <a href="https://docs.livekit.io/agents/worker/dispatch#explicit" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-300 underline">explicit dispatch</a>.</p>
           </div>
         </ConfigurationPanelItem>
         <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">
             <NameValueRow
-              name="Room connected"
+              name="Room"
               value={
                 roomState === ConnectionState.Connecting ? (
                   <LoadingSVG diameter={16} strokeWidth={2} />
@@ -310,14 +313,14 @@ export default function Playground({
               }
             />
             <NameValueRow
-              name="Agent connected"
+              name="Agent"
               value={
                 voiceAssistant.agent ? (
-                  "TRUE"
+                  "JOINED"
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
                 ) : (
-                  "FALSE"
+                  "DISCONNECTED"
                 )
               }
               valueColor={
