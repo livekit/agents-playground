@@ -54,14 +54,36 @@ export const ConnectionProvider = ({
           throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
         }
         url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
-        const params = new URLSearchParams();
+        const body: Record<string, any> = {};
         if (config.settings.room_name) {
-          params.append('roomName', config.settings.room_name);
+          body.roomName = config.settings.room_name;
+        }
+        if (config.settings.participant_id) {
+          body.participantId = config.settings.participant_id;
         }
         if (config.settings.participant_name) {
-          params.append('participantName', config.settings.participant_name);
+          body.participantName = config.settings.participant_name;
         }
-        const { accessToken } = await fetch(`/api/token?${params}`).then((res) =>
+        if (config.settings.metadata) {
+          body.metadata = config.settings.metadata;
+        }
+        const attributesArray = Array.isArray(config.settings.attributes) ? config.settings.attributes : [];
+        if (attributesArray?.length) {
+          const attributes = attributesArray.reduce((acc, attr) => {
+            if (attr.key){
+              acc[attr.key] = attr.value;
+            }
+            return acc;
+          }, {} as Record<string, string>);
+          body.attributes = attributes;
+        }
+        const { accessToken } = await fetch(`/api/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }).then((res) =>
           res.json()
         );
         token = accessToken;
@@ -76,7 +98,9 @@ export const ConnectionProvider = ({
       config.settings.token,
       config.settings.ws_url,
       config.settings.room_name,
-      config.settings.participant_name,
+      config.settings.participant_id,
+      config.settings.metadata,
+      config.settings.attributes,
       generateToken,
       setToastMessage,
     ]

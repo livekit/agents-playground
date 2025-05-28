@@ -1,5 +1,6 @@
 "use client";
 
+import { AttributeItem } from "@/lib/types";
 import { getCookie, setCookie } from "cookies-next";
 import jsYaml from "js-yaml";
 import { useRouter } from "next/navigation";
@@ -36,7 +37,10 @@ export type UserSettings = {
   ws_url: string;
   token: string;
   room_name: string;
+  participant_id: string;
   participant_name: string;
+  metadata?: string;
+  attributes?: AttributeItem[];
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
@@ -60,7 +64,10 @@ const defaultConfig: AppConfig = {
     ws_url: "",
     token: "",
     room_name: "",
+    participant_id: "",
     participant_name: "",
+    metadata: "",
+    attributes: [],
   },
   show_qr: false,
 };
@@ -130,6 +137,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       ws_url: "",
       token: "",
       room_name: "",
+      participant_id: "",
       participant_name: "",
     } as UserSettings;
   }, [appConfig]);
