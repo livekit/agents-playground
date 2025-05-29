@@ -32,6 +32,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
   const [showSyncFlash, setShowSyncFlash] = useState(false);
   const { localParticipant } = useLocalParticipant();
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const syncFlashTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Update local attributes when props change
   useEffect(() => {
@@ -55,7 +56,10 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     localParticipant.setAttributes(attributesMap);
     setHasUnsavedChanges(false);
     setShowSyncFlash(true);
-    setTimeout(() => setShowSyncFlash(false), 1000);
+    if (syncFlashTimeoutRef.current) {
+      clearTimeout(syncFlashTimeoutRef.current);
+    }
+    syncFlashTimeoutRef.current = setTimeout(() => setShowSyncFlash(false), 1000);
   }, [localAttributes, localParticipant, connectionState]);
 
   // Handle debounced sync
