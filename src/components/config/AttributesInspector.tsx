@@ -25,7 +25,8 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMetadataExpanded, setIsMetadataExpanded] = useState(false);
-  const [localAttributes, setLocalAttributes] = useState<AttributeItem[]>(attributes);
+  const [localAttributes, setLocalAttributes] =
+    useState<AttributeItem[]>(attributes);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showSyncFlash, setShowSyncFlash] = useState(false);
   const { localParticipant } = useLocalParticipant();
@@ -36,14 +37,18 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
   }, [attributes]);
 
   const syncAttributesWithRoom = useCallback(() => {
-    if (!localParticipant || connectionState !== ConnectionState.Connected) return;
+    if (!localParticipant || connectionState !== ConnectionState.Connected)
+      return;
 
-    const attributesMap = localAttributes.reduce((acc, attr) => {
-      if (attr.key && attr.key.trim() !== '') {
-        acc[attr.key] = attr.value;
-      }
-      return acc;
-    }, {} as Record<string, string>);
+    const attributesMap = localAttributes.reduce(
+      (acc, attr) => {
+        if (attr.key && attr.key.trim() !== "") {
+          acc[attr.key] = attr.value;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
 
     localParticipant.setAttributes(attributesMap);
     setHasUnsavedChanges(false);
@@ -53,7 +58,8 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
 
   // Auto-save after 1 second of no changes, but only when connected
   useEffect(() => {
-    if (!hasUnsavedChanges || connectionState !== ConnectionState.Connected) return;
+    if (!hasUnsavedChanges || connectionState !== ConnectionState.Connected)
+      return;
 
     const timeoutId = setTimeout(() => {
       syncAttributesWithRoom();
@@ -68,7 +74,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     );
     setLocalAttributes(updatedAttributes);
     onAttributesChange(updatedAttributes);
-    if (connectionState === ConnectionState.Connected && newKey.trim() !== '') {
+    if (connectionState === ConnectionState.Connected && newKey.trim() !== "") {
       setHasUnsavedChanges(true);
     }
   };
@@ -132,20 +138,29 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
         <div className="border border-gray-800 rounded-sm bg-gray-900/30 p-3 mb-2">
           {disabled ? (
             localAttributes.length === 0 ? (
-              <div className="text-sm text-gray-400 font-sans">No attributes set</div>
+              <div className="text-sm text-gray-400 font-sans">
+                No attributes set
+              </div>
             ) : (
               localAttributes.map((attribute) => (
-                <div key={attribute.id} className="flex items-center gap-2 mb-2">
+                <div
+                  key={attribute.id}
+                  className="flex items-center gap-2 mb-2"
+                >
                   <input
                     value={attribute.key}
-                    onChange={(e) => handleKeyChange(attribute.id, e.target.value)}
+                    onChange={(e) =>
+                      handleKeyChange(attribute.id, e.target.value)
+                    }
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
                     placeholder="Name"
                     disabled
                   />
                   <input
                     value={attribute.value}
-                    onChange={(e) => handleValueChange(attribute.id, e.target.value)}
+                    onChange={(e) =>
+                      handleValueChange(attribute.id, e.target.value)
+                    }
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
                     placeholder="Value"
                     disabled
@@ -156,17 +171,24 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
           ) : (
             <>
               {localAttributes.map((attribute) => (
-                <div key={attribute.id} className="flex items-center gap-2 mb-2">
+                <div
+                  key={attribute.id}
+                  className="flex items-center gap-2 mb-2"
+                >
                   <input
                     value={attribute.key}
-                    onChange={(e) => handleKeyChange(attribute.id, e.target.value)}
+                    onChange={(e) =>
+                      handleKeyChange(attribute.id, e.target.value)
+                    }
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
                     placeholder="Name"
                     disabled={disabled}
                   />
                   <input
                     value={attribute.value}
-                    onChange={(e) => handleValueChange(attribute.id, e.target.value)}
+                    onChange={(e) =>
+                      handleValueChange(attribute.id, e.target.value)
+                    }
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
                     placeholder="Value"
                     disabled={disabled}
@@ -247,15 +269,17 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
             />
           </svg>
         </div>
-        {isMetadataExpanded && (
-          disabled || connectionState === ConnectionState.Connected ? (
+        {isMetadataExpanded &&
+          (disabled || connectionState === ConnectionState.Connected ? (
             <div className="border border-gray-800 rounded-sm bg-gray-900/30 px-3 py-2 mb-4 min-h-[40px] flex items-center">
               {metadata ? (
                 <pre className="w-full text-gray-400 text-xs bg-transparent font-mono whitespace-pre-wrap break-words m-0 p-0 border-0">
                   {metadata}
                 </pre>
               ) : (
-                <div className="text-sm text-gray-400 font-sans w-full text-left">No metadata set</div>
+                <div className="text-sm text-gray-400 font-sans w-full text-left">
+                  No metadata set
+                </div>
               )}
             </div>
           ) : (
@@ -266,8 +290,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
               placeholder="Enter metadata..."
               rows={3}
             />
-          )
-        )}
+          ))}
       </>
     </div>
   );

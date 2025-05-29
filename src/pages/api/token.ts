@@ -47,7 +47,7 @@ export default async function handleToken(
 
     const {
       roomName: roomNameFromBody,
-      participantName,
+      participantName: participantNameFromBody,
       participantId: participantIdFromBody,
       metadata: metadataFromBody,
       attributes: attributesFromBody,
@@ -71,6 +71,8 @@ export default async function handleToken(
     const metadata = metadataFromBody as string | undefined;
     const attributesStr = attributesFromBody as string | undefined;
     const attributes = attributesStr || {};
+
+    const participantName = participantNameFromBody || identity;
 
     const grant: VideoGrant = {
       room: roomName,

@@ -98,15 +98,15 @@ module.exports = {
         ...customShadows,
       },
       keyframes: {
-        'fade-in-out': {
-          '0%': { opacity: '0' },
-          '20%': { opacity: '1' },
-          '80%': { opacity: '1' },
-          '100%': { opacity: '0' },
-        }
+        "fade-in-out": {
+          "0%": { opacity: "0" },
+          "20%": { opacity: "1" },
+          "80%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
       },
       animation: {
-        'fade-in-out': 'fade-in-out 1s ease-in-out',
+        "fade-in-out": "fade-in-out 1s ease-in-out",
       },
     },
   },

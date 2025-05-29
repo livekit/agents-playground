@@ -342,7 +342,7 @@ export default function Playground({
                   disabled={true}
                 />
               )}
-            <p className="text-xs text-gray-500 mt-2 text-right">
+            <p className="text-xs text-gray-500 text-right">
               Set an agent name to use{" "}
               <a
                 href="https://docs.livekit.io/agents/worker/dispatch#explicit"
