@@ -39,6 +39,7 @@ export type UserSettings = {
   room_name: string;
   participant_id: string;
   participant_name: string;
+  agent_name?: string;
   metadata?: string;
   attributes?: AttributeItem[];
 };
@@ -77,7 +78,7 @@ const useAppConfig = (): AppConfig => {
     if (process.env.NEXT_PUBLIC_APP_CONFIG) {
       try {
         const parsedConfig = jsYaml.load(
-          process.env.NEXT_PUBLIC_APP_CONFIG
+          process.env.NEXT_PUBLIC_APP_CONFIG,
         ) as AppConfig;
         if (parsedConfig.settings === undefined) {
           parsedConfig.settings = defaultConfig.settings;
@@ -105,7 +106,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
   const appConfig = useAppConfig();
   const router = useRouter();
   const [localColorOverride, setLocalColorOverride] = useState<string | null>(
-    null
+    null,
   );
 
   const getSettingsFromUrl = useCallback(() => {
@@ -168,7 +169,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       // Note: We don't set ws_url and token to the URL on purpose
       router.replace("/#" + obj.toString());
     },
-    [router]
+    [router],
   );
 
   const setCookieSettings = useCallback((us: UserSettings) => {
@@ -228,7 +229,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         };
       });
     },
-    [appConfig, setCookieSettings, setUrlSettings]
+    [appConfig, setCookieSettings, setUrlSettings],
   );
 
   const [config, _setConfig] = useState<AppConfig>(getConfig());

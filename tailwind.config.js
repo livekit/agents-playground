@@ -1,9 +1,42 @@
 /** @type {import('tailwindcss').Config} */
 
-const colors = require('tailwindcss/colors')
-const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
-const colorList = ['gray', 'green', 'cyan', 'amber', 'violet', 'blue', 'rose', 'pink', 'teal', "red"];
-const uiElements = ['bg', 'selection:bg', 'border', 'text', 'hover:bg', 'hover:border', 'hover:text', 'ring', 'focus:ring'];
+const colors = require("tailwindcss/colors");
+const shades = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+  "950",
+];
+const colorList = [
+  "gray",
+  "green",
+  "cyan",
+  "amber",
+  "violet",
+  "blue",
+  "rose",
+  "pink",
+  "teal",
+  "red",
+];
+const uiElements = [
+  "bg",
+  "selection:bg",
+  "border",
+  "text",
+  "hover:bg",
+  "hover:border",
+  "hover:text",
+  "ring",
+  "focus:ring",
+];
 const customColors = {
   cyan: colors.cyan,
   green: colors.green,
@@ -32,43 +65,50 @@ for (const [name, color] of Object.entries(customColors)) {
 }
 
 const safelist = [
-  'bg-black',
-  'bg-white',
-  'transparent',
-  'object-cover',
-  'object-contain',
+  "bg-black",
+  "bg-white",
+  "transparent",
+  "object-cover",
+  "object-contain",
   ...shadowNames,
   ...textShadowNames,
-  ...shades.flatMap(shade => [
-    ...colorList.flatMap(color => [
-      ...uiElements.flatMap(element => [
-        `${element}-${color}-${shade}`,
-      ]),
+  ...shades.flatMap((shade) => [
+    ...colorList.flatMap((color) => [
+      ...uiElements.flatMap((element) => [`${element}-${color}-${shade}`]),
     ]),
   ]),
 ];
 
 module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     colors: {
-      transparent: 'transparent',
-      current: 'currentColor',
+      transparent: "transparent",
+      current: "currentColor",
       black: colors.black,
       white: colors.white,
       gray: colors.neutral,
-      ...customColors
+      ...customColors,
     },
     extend: {
       dropShadow: {
-       ...textShadows,
+        ...textShadows,
       },
       boxShadow: {
         ...customShadows,
-      }
-    }
+      },
+      keyframes: {
+        "fade-in-out": {
+          "0%": { opacity: "0" },
+          "20%": { opacity: "1" },
+          "80%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
+      },
+      animation: {
+        "fade-in-out": "fade-in-out 1s ease-in-out",
+      },
+    },
   },
   plugins: [],
   safelist,

@@ -29,7 +29,7 @@ export function TranscriptionTile({
   });
 
   const [transcripts, setTranscripts] = useState<Map<string, ChatMessageType>>(
-    new Map()
+    new Map(),
   );
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const { chatMessages, send: sendChat } = useChat();
@@ -43,21 +43,21 @@ export function TranscriptionTile({
           segmentToChatMessage(
             s,
             transcripts.get(s.id),
-            agentAudioTrack.participant
-          )
-        )
+            agentAudioTrack.participant,
+          ),
+        ),
       );
     }
-    
+
     localMessages.segments.forEach((s) =>
       transcripts.set(
         s.id,
         segmentToChatMessage(
           s,
           transcripts.get(s.id),
-          localParticipant.localParticipant
-        )
-      )
+          localParticipant.localParticipant,
+        ),
+      ),
     );
 
     const allMessages = Array.from(transcripts.values());
@@ -104,7 +104,7 @@ export function TranscriptionTile({
 function segmentToChatMessage(
   s: TranscriptionSegment,
   existingMessage: ChatMessageType | undefined,
-  participant: Participant
+  participant: Participant,
 ): ChatMessageType {
   const msg: ChatMessageType = {
     message: s.final ? s.text : `${s.text} ...`,

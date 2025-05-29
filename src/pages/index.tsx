@@ -12,7 +12,11 @@ import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
-import { ConnectionMode, ConnectionProvider, useConnection } from "@/hooks/useConnection";
+import {
+  ConnectionMode,
+  ConnectionProvider,
+  useConnection,
+} from "@/hooks/useConnection";
 import { useMemo } from "react";
 import { ToastProvider, useToast } from "@/components/toast/ToasterProvider";
 
@@ -44,26 +48,26 @@ export default function Home() {
 export function HomeInner() {
   const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
     useConnection();
-  
-  const {config} = useConfig();
+
+  const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
 
   const handleConnect = useCallback(
     async (c: boolean, mode: ConnectionMode) => {
       c ? connect(mode) : disconnect();
     },
-    [connect, disconnect]
+    [connect, disconnect],
   );
 
   const showPG = useMemo(() => {
     if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
       return true;
     }
-    if(wsUrl) {
+    if (wsUrl) {
       return true;
     }
     return false;
-  }, [wsUrl])
+  }, [wsUrl]);
 
   return (
     <>

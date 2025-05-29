@@ -2,21 +2,36 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { generateRandomAlphanumeric } from "@/lib/util";
 
 import { AccessToken } from "livekit-server-sdk";
+import { RoomAgentDispatch, RoomConfiguration } from "@livekit/protocol";
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
 import { TokenResult } from "../../lib/types";
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 
-const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant) => {
+const createToken = (
+  userInfo: AccessTokenOptions,
+  grant: VideoGrant,
+  agentName?: string,
+) => {
   const at = new AccessToken(apiKey, apiSecret, userInfo);
   at.addGrant(grant);
+  if (agentName) {
+    at.roomConfig = new RoomConfiguration({
+      agents: [
+        new RoomAgentDispatch({
+          agentName: agentName,
+          metadata: '{"user_id": "12345"}',
+        }),
+      ],
+    });
+  }
   return at.toJwt();
 };
 
 export default async function handleToken(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   try {
     if (req.method !== "POST") {
@@ -32,24 +47,32 @@ export default async function handleToken(
 
     const {
       roomName: roomNameFromBody,
-      participantName,
+      participantName: participantNameFromBody,
       participantId: participantIdFromBody,
       metadata: metadataFromBody,
       attributes: attributesFromBody,
+      agentName: agentNameFromBody,
     } = req.body;
 
     // Get room name from query params or generate random one
-    const roomName = roomNameFromBody as string ||
+    const roomName =
+      (roomNameFromBody as string) ||
       `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
 
     // Get participant name from query params or generate random one
-    const identity = participantIdFromBody as string ||
+    const identity =
+      (participantIdFromBody as string) ||
       `identity-${generateRandomAlphanumeric(4)}`;
+
+    // Get agent name from query params or use none (automatic dispatch)
+    const agentName = (agentNameFromBody as string) || undefined;
 
     // Get metadata and attributes from query params
     const metadata = metadataFromBody as string | undefined;
     const attributesStr = attributesFromBody as string | undefined;
     const attributes = attributesStr || {};
+
+    const participantName = participantNameFromBody || identity;
 
     const grant: VideoGrant = {
       room: roomName,
@@ -57,9 +80,14 @@ export default async function handleToken(
       canPublish: true,
       canPublishData: true,
       canSubscribe: true,
+      canUpdateOwnMetadata: true,
     };
 
-    const token = await createToken({ identity, metadata, attributes, name: participantName }, grant);
+    const token = await createToken(
+      { identity, metadata, attributes, name: participantName },
+      grant,
+      agentName,
+    );
     const result: TokenResult = {
       identity,
       accessToken: token,

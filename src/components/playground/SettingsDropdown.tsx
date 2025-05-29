@@ -2,7 +2,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronIcon } from "./icons";
 import { useConfig } from "@/hooks/useConfig";
 
-type SettingType = "inputs" | "outputs" | "chat" | "theme_color"
+type SettingType = "inputs" | "outputs" | "chat" | "theme_color";
 
 type SettingValue = {
   title: string;
@@ -55,18 +55,19 @@ const settingsDropdown: SettingValue[] = [
 ];
 
 export const SettingsDropdown = () => {
-  const {config, setUserSettings} = useConfig();
+  const { config, setUserSettings } = useConfig();
 
   const isEnabled = (setting: SettingValue) => {
-    if (setting.type === "separator" || setting.type === "theme_color") return false;
+    if (setting.type === "separator" || setting.type === "theme_color")
+      return false;
     if (setting.type === "chat") {
       return config.settings[setting.type];
     }
 
-    if(setting.type === "inputs") {
+    if (setting.type === "inputs") {
       const key = setting.key as "camera" | "mic" | "screen";
       return config.settings.inputs[key];
-    } else if(setting.type === "outputs") {
+    } else if (setting.type === "outputs") {
       const key = setting.key as "video" | "audio";
       return config.settings.outputs[key];
     }
@@ -77,13 +78,13 @@ export const SettingsDropdown = () => {
   const toggleSetting = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color") return;
     const newValue = !isEnabled(setting);
-    const newSettings = {...config.settings}
+    const newSettings = { ...config.settings };
 
-    if(setting.type === "chat") {
+    if (setting.type === "chat") {
       newSettings.chat = newValue;
-    } else if(setting.type === "inputs") {
+    } else if (setting.type === "inputs") {
       newSettings.inputs[setting.key as "camera" | "mic" | "screen"] = newValue;
-    } else if(setting.type === "outputs") {
+    } else if (setting.type === "outputs") {
       newSettings.outputs[setting.key as "video" | "audio"] = newValue;
     }
     setUserSettings(newSettings);
@@ -91,11 +92,9 @@ export const SettingsDropdown = () => {
 
   return (
     <DropdownMenu.Root modal={false}>
-      <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 p-1 pr-2 text-gray-100">
-        <button className="my-auto text-sm flex gap-1 pl-2 py-1 h-full items-center">
-          Settings
-          <ChevronIcon />
-        </button>
+      <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 p-1 pr-2 text-gray-100 my-auto text-sm flex gap-1 pl-2 py-1 h-full items-center">
+        Settings
+        <ChevronIcon />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content

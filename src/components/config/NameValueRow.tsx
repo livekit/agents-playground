@@ -52,11 +52,5 @@ export const EditableNameValueRow: React.FC<EditableNameValueRowProps> = ({
       </div>
     );
   }
-  return (
-    <NameValueRow
-      name={name}
-      value={value}
-      valueColor={valueColor}
-    />
-  );
+  return <NameValueRow name={name} value={value} valueColor={valueColor} />;
 };
