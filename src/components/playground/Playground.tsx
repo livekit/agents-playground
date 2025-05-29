@@ -318,7 +318,7 @@ export default function Playground({
                 ) : roomState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
                 ) : (
-                  "Disconnected"
+                  "No agent connected"
                 )
               }
               valueColor={
@@ -388,7 +388,7 @@ export default function Playground({
                 newSettings.participant_id = value;
                 setUserSettings(newSettings);
               }}
-              placeholder="Enter participant id"
+              placeholder="Auto"
               editable={roomState !== ConnectionState.Connected}
             />
             <AttributesInspector

@@ -27,6 +27,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
   const [isMetadataExpanded, setIsMetadataExpanded] = useState(false);
   const [localAttributes, setLocalAttributes] = useState<AttributeItem[]>(attributes);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSyncFlash, setShowSyncFlash] = useState(false);
   const { localParticipant } = useLocalParticipant();
 
   // Update local attributes when props change
@@ -38,7 +39,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     if (!localParticipant || connectionState !== ConnectionState.Connected) return;
 
     const attributesMap = localAttributes.reduce((acc, attr) => {
-      if (attr.key) {
+      if (attr.key && attr.key.trim() !== '') {
         acc[attr.key] = attr.value;
       }
       return acc;
@@ -46,6 +47,8 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
 
     localParticipant.setAttributes(attributesMap);
     setHasUnsavedChanges(false);
+    setShowSyncFlash(true);
+    setTimeout(() => setShowSyncFlash(false), 1000);
   }, [localAttributes, localParticipant, connectionState]);
 
   // Auto-save after 1 second of no changes, but only when connected
@@ -54,7 +57,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
 
     const timeoutId = setTimeout(() => {
       syncAttributesWithRoom();
-    }, 1000);
+    }, 2000);
 
     return () => clearTimeout(timeoutId);
   }, [hasUnsavedChanges, syncAttributesWithRoom, connectionState]);
@@ -65,7 +68,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     );
     setLocalAttributes(updatedAttributes);
     onAttributesChange(updatedAttributes);
-    if (connectionState === ConnectionState.Connected) {
+    if (connectionState === ConnectionState.Connected && newKey.trim() !== '') {
       setHasUnsavedChanges(true);
     }
   };
@@ -137,7 +140,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
                     value={attribute.key}
                     onChange={(e) => handleKeyChange(attribute.id, e.target.value)}
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Key"
+                    placeholder="Name"
                     disabled
                   />
                   <input
@@ -158,7 +161,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
                     value={attribute.key}
                     onChange={(e) => handleKeyChange(attribute.id, e.target.value)}
                     className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Key"
+                    placeholder="Name"
                     disabled={disabled}
                   />
                   <input
@@ -213,14 +216,10 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
                   </svg>
                   Attribute
                 </Button>
-                {hasUnsavedChanges && connectionState === ConnectionState.Connected && (
-                  <Button
-                    accentColor={themeColor}
-                    onClick={syncAttributesWithRoom}
-                    className="text-xs"
-                  >
-                    Save Changes
-                  </Button>
+                {showSyncFlash && (
+                  <div className="text-xs text-gray-400 animate-fade-in-out">
+                    Changes saved
+                  </div>
                 )}
               </div>
             </>
@@ -249,7 +248,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
           </svg>
         </div>
         {isMetadataExpanded && (
-          disabled ? (
+          disabled || connectionState === ConnectionState.Connected ? (
             <div className="border border-gray-800 rounded-sm bg-gray-900/30 px-3 py-2 mb-4 min-h-[40px] flex items-center">
               {metadata ? (
                 <pre className="w-full text-gray-400 text-xs bg-transparent font-mono whitespace-pre-wrap break-words m-0 p-0 border-0">
