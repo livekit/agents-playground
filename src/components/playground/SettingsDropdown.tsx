@@ -92,11 +92,9 @@ export const SettingsDropdown = () => {
 
   return (
     <DropdownMenu.Root modal={false}>
-      <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 p-1 pr-2 text-gray-100">
-        <button className="my-auto text-sm flex gap-1 pl-2 py-1 h-full items-center">
-          Settings
-          <ChevronIcon />
-        </button>
+      <DropdownMenu.Trigger className="group inline-flex max-h-12 items-center gap-1 rounded-md hover:bg-gray-800 bg-gray-900 border-gray-800 p-1 pr-2 text-gray-100 my-auto text-sm flex gap-1 pl-2 py-1 h-full items-center">
+        Settings
+        <ChevronIcon />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
