@@ -405,7 +405,8 @@ export default function Playground({
                 setUserSettings(newSettings);
               }}
               themeColor={config.settings.theme_color}
-              disabled={roomState === ConnectionState.Connected}
+              disabled={false}
+              connectionState={roomState}
             />
           </div>
         </ConfigurationPanelItem>
