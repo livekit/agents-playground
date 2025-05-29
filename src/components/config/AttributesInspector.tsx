@@ -3,6 +3,7 @@ import { ConnectionState } from "livekit-client";
 import { AttributeItem } from "@/lib/types";
 import { Button } from "@/components/button/Button";
 import { useLocalParticipant } from "@livekit/components-react";
+import { AttributeRow } from "./AttributeRow";
 
 interface AttributesInspectorProps {
   attributes: AttributeItem[];
@@ -153,78 +154,26 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
               </div>
             ) : (
               localAttributes.map((attribute) => (
-                <div
+                <AttributeRow
                   key={attribute.id}
-                  className="flex items-center gap-2 mb-2"
-                >
-                  <input
-                    value={attribute.key}
-                    onChange={(e) =>
-                      handleKeyChange(attribute.id, e.target.value)
-                    }
-                    className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Name"
-                    disabled
-                  />
-                  <input
-                    value={attribute.value}
-                    onChange={(e) =>
-                      handleValueChange(attribute.id, e.target.value)
-                    }
-                    className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Value"
-                    disabled
-                  />
-                </div>
+                  attribute={attribute}
+                  onKeyChange={handleKeyChange}
+                  onValueChange={handleValueChange}
+                  disabled={true}
+                />
               ))
             )
           ) : (
             <>
               {localAttributes.map((attribute) => (
-                <div
+                <AttributeRow
                   key={attribute.id}
-                  className="flex items-center gap-2 mb-2"
-                >
-                  <input
-                    value={attribute.key}
-                    onChange={(e) =>
-                      handleKeyChange(attribute.id, e.target.value)
-                    }
-                    className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Name"
-                    disabled={disabled}
-                  />
-                  <input
-                    value={attribute.value}
-                    onChange={(e) =>
-                      handleValueChange(attribute.id, e.target.value)
-                    }
-                    className="flex-1 min-w-0 text-gray-400 text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-1 font-mono"
-                    placeholder="Value"
-                    disabled={disabled}
-                  />
-                  <button
-                    onClick={() => handleRemoveAttribute(attribute.id)}
-                    className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-white"
-                    disabled={disabled}
-                    style={{ display: disabled ? "none" : "flex" }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
+                  attribute={attribute}
+                  onKeyChange={handleKeyChange}
+                  onValueChange={handleValueChange}
+                  onRemove={handleRemoveAttribute}
+                  disabled={disabled}
+                />
               ))}
               <div className="flex justify-between items-center">
                 <Button
