@@ -1,6 +1,7 @@
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
 import { useState } from "react";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
+import { Button } from "@/components/button/Button";
 
 interface RpcPanelProps {
   config: any;
@@ -41,18 +42,6 @@ export function RpcPanel({
   return (
     <ConfigurationPanelItem title="RPC" collapsible={true} defaultCollapsed={true}>
       <div className="flex flex-col gap-2">
-        <p className="text-xs text-gray-500">
-          Perform an{" "}
-          <a
-            href="https://docs.livekit.io/home/client/data/rpc/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-500 hover:text-gray-300 underline"
-          >
-            RPC call
-          </a>{" "}
-          on the agent.
-        </p>
         <div className="text-xs text-gray-500 mt-2">Method Name</div>
         <input
           type="text"
@@ -71,15 +60,11 @@ export function RpcPanel({
           rows={2}
         />
 
-        <button
+        <Button
+          accentColor={config.settings.theme_color}
           onClick={handleCall}
           disabled={!rpcMethod || isLoading}
-          className={`mt-2 px-2 py-1 rounded-sm text-xs flex items-center justify-center gap-2
-            ${
-              rpcMethod && !isLoading
-                ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600`
-                : "bg-gray-700 cursor-not-allowed"
-            } text-white`}
+          className="mt-2 text-xs flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
@@ -89,7 +74,7 @@ export function RpcPanel({
           ) : (
             "Perform RPC"
           )}
-        </button>
+        </Button>
 
         {rpcResult && (
           <>
