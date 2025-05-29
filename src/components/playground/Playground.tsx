@@ -32,6 +32,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
+import { RpcPanel } from "./RpcPanel";
 
 export interface PlaygroundMeta {
   name: string;
@@ -229,18 +230,16 @@ export default function Playground({
   ]);
 
   const handleRpcCall = useCallback(async () => {
-    if (!voiceAssistant.agent || !room) return;
-
-    try {
-      const response = await room.localParticipant.performRpc({
-        destinationIdentity: voiceAssistant.agent.identity,
-        method: rpcMethod,
-        payload: rpcPayload,
-      });
-      console.log("RPC response:", response);
-    } catch (e) {
-      console.error("RPC call failed:", e);
+    if (!voiceAssistant.agent || !room) {
+      throw new Error("No agent or room available");
     }
+
+    const response = await room.localParticipant.performRpc({
+      destinationIdentity: voiceAssistant.agent.identity,
+      method: rpcMethod,
+      payload: rpcPayload,
+    });
+    return response;
   }, [room, rpcMethod, rpcPayload, voiceAssistant.agent]);
 
   const agentAttributes = useParticipantAttributes({
@@ -432,56 +431,14 @@ export default function Playground({
             </ConfigurationPanelItem>
           )}
         {roomState === ConnectionState.Connected && voiceAssistant.agent && (
-          <ConfigurationPanelItem
-            title="RPC"
-            collapsible={true}
-            defaultCollapsed={true}
-          >
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-gray-500">
-                Perform an{" "}
-                <a
-                  href="https://docs.livekit.io/home/client/data/rpc/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-500 hover:text-gray-300 underline"
-                >
-                  RPC call
-                </a>{" "}
-                on the agent.
-              </p>
-              <div className="text-xs text-gray-500 mt-2">Method Name</div>
-              <input
-                type="text"
-                value={rpcMethod}
-                onChange={(e) => setRpcMethod(e.target.value)}
-                className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-                placeholder="my_method"
-              />
-
-              <div className="text-xs text-gray-500 mt-2">Payload</div>
-              <textarea
-                value={rpcPayload}
-                onChange={(e) => setRpcPayload(e.target.value)}
-                className="w-full text-white text-sm bg-transparent border border-gray-800 rounded-sm px-3 py-2"
-                placeholder='{"my": "payload"}'
-                rows={2}
-              />
-
-              <button
-                onClick={handleRpcCall}
-                disabled={!rpcMethod}
-                className={`mt-2 px-2 py-1 rounded-sm text-xs 
-                  ${
-                    rpcMethod
-                      ? `bg-${config.settings.theme_color}-500 hover:bg-${config.settings.theme_color}-600`
-                      : "bg-gray-700 cursor-not-allowed"
-                  } text-white`}
-              >
-                Perform RPC
-              </button>
-            </div>
-          </ConfigurationPanelItem>
+          <RpcPanel
+            config={config}
+            rpcMethod={rpcMethod}
+            rpcPayload={rpcPayload}
+            setRpcMethod={setRpcMethod}
+            setRpcPayload={setRpcPayload}
+            handleRpcCall={handleRpcCall}
+          />
         )}
         {localCameraTrack && (
           <ConfigurationPanelItem title="Camera" source={Track.Source.Camera}>
