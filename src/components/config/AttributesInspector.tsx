@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { ConnectionState } from "livekit-client";
 import { AttributeItem } from "@/lib/types";
 import { Button } from "@/components/button/Button";
@@ -30,6 +30,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showSyncFlash, setShowSyncFlash] = useState(false);
   const { localParticipant } = useLocalParticipant();
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   // Update local attributes when props change
   useEffect(() => {
@@ -56,17 +57,26 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     setTimeout(() => setShowSyncFlash(false), 1000);
   }, [localAttributes, localParticipant, connectionState]);
 
-  // Auto-save after 1 second of no changes, but only when connected
+  // Handle debounced sync
   useEffect(() => {
-    if (!hasUnsavedChanges || connectionState !== ConnectionState.Connected)
-      return;
+    if (!hasUnsavedChanges) return;
 
-    const timeoutId = setTimeout(() => {
-      syncAttributesWithRoom();
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      if (connectionState === ConnectionState.Connected && localParticipant) {
+        syncAttributesWithRoom();
+      }
     }, 2000);
 
-    return () => clearTimeout(timeoutId);
-  }, [hasUnsavedChanges, syncAttributesWithRoom, connectionState]);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [hasUnsavedChanges, syncAttributesWithRoom, connectionState, localParticipant]);
 
   const handleKeyChange = (id: string, newKey: string) => {
     const updatedAttributes = localAttributes.map((attr) =>
