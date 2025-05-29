@@ -20,7 +20,10 @@ export function RpcPanel({
   setRpcPayload,
   handleRpcCall,
 }: RpcPanelProps) {
-  const [rpcResult, setRpcResult] = useState<{ success: boolean; data: any } | null>(null);
+  const [rpcResult, setRpcResult] = useState<{
+    success: boolean;
+    data: any;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCall = async () => {
@@ -30,9 +33,9 @@ export function RpcPanel({
       const result = await handleRpcCall();
       setRpcResult({ success: true, data: result });
     } catch (error) {
-      setRpcResult({ 
-        success: false, 
-        data: error instanceof Error ? error.message : String(error)
+      setRpcResult({
+        success: false,
+        data: error instanceof Error ? error.message : String(error),
       });
     } finally {
       setIsLoading(false);
@@ -40,7 +43,11 @@ export function RpcPanel({
   };
 
   return (
-    <ConfigurationPanelItem title="RPC" collapsible={true} defaultCollapsed={true}>
+    <ConfigurationPanelItem
+      title="RPC"
+      collapsible={true}
+      defaultCollapsed={true}
+    >
       <div className="flex flex-col gap-2">
         <div className="text-xs text-gray-500 mt-2">Method Name</div>
         <input
@@ -97,4 +104,4 @@ export function RpcPanel({
       </div>
     </ConfigurationPanelItem>
   );
-} 
+}

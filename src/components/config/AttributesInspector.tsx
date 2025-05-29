@@ -59,7 +59,10 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     if (syncFlashTimeoutRef.current) {
       clearTimeout(syncFlashTimeoutRef.current);
     }
-    syncFlashTimeoutRef.current = setTimeout(() => setShowSyncFlash(false), 1000);
+    syncFlashTimeoutRef.current = setTimeout(
+      () => setShowSyncFlash(false),
+      1000,
+    );
   }, [localAttributes, localParticipant, connectionState]);
 
   // Handle debounced sync
@@ -81,7 +84,12 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [hasUnsavedChanges, syncAttributesWithRoom, connectionState, localParticipant]);
+  }, [
+    hasUnsavedChanges,
+    syncAttributesWithRoom,
+    connectionState,
+    localParticipant,
+  ]);
 
   const handleKeyChange = (id: string, newKey: string) => {
     const updatedAttributes = localAttributes.map((attr) =>
