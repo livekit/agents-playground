@@ -32,9 +32,11 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   className = "",
 }) => {
   const [pressedKey, setPressedKey] = useState<string | null>(null);
+  const [pressedSequence, setPressedSequence] = useState<string[]>([]);
 
   const handleKeyPress = async (keyConfig: KeyConfig) => {
     setPressedKey(keyConfig.label);
+    setPressedSequence((seq) => [...seq, keyConfig.label]);
     console.log("Publishing DTMF:", keyConfig.label);
     
     try {
@@ -51,6 +53,9 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   return (
     <div className={`w-full ${className}`}>
       <div className="flex flex-col gap-4">
+        <div className="mb-2 text-center text-gray-400 text-sm tracking-widest">
+          {pressedSequence.length > 0 ? pressedSequence.join(' ') : ''}
+        </div>
         <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
           {keyConfigs.map((keyConfig) => (
             <button
