@@ -5,6 +5,7 @@ import { ChatMessageType } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
+import { Keyboard } from "@/components/config/Keyboard";
 import { NameValueRow } from "@/components/config/NameValueRow";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
@@ -252,6 +253,15 @@ export default function Playground({
         {config.description && (
           <ConfigurationPanelItem title="Description">
             {config.description}
+          </ConfigurationPanelItem>
+        )}
+
+        {localParticipant && (
+          <ConfigurationPanelItem title="Phone Keyboard">
+            <Keyboard 
+              localParticipant={localParticipant}
+              className="px-2"
+            />
           </ConfigurationPanelItem>
         )}
 
