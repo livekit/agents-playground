@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useImperativeHandle, forwardRef } from "react";
 import { LocalParticipant } from "livekit-client";
 
 interface KeyboardProps {
@@ -27,41 +27,47 @@ const keyConfigs: KeyConfig[] = [
   { label: "#", intKey: 11, strKey: "#" },
 ];
 
-export const Keyboard: React.FC<KeyboardProps> = ({
-  localParticipant,
-  className = "",
-}) => {
-  const [pressedKey, setPressedKey] = useState<string | null>(null);
-  const [pressedSequence, setPressedSequence] = useState<string[]>([]);
+export interface KeyboardRef {
+  setPressedSequence: (key: string[]) => void;
+}
 
-  const handleKeyPress = async (keyConfig: KeyConfig) => {
-    setPressedKey(keyConfig.label);
-    setPressedSequence((seq) => [...seq, keyConfig.label]);
-    console.log("Publishing DTMF:", keyConfig.label);
-    
-    try {
-      await localParticipant.publishDtmf(keyConfig.intKey, keyConfig.strKey);
-    } catch (error) {
-      console.error("Failed to publish DTMF:", error);
-    } finally {
-      setTimeout(() => {
-        setPressedKey(null);
-      }, 150);
-    }
-  };
+export const Keyboard = forwardRef<KeyboardRef, KeyboardProps>(
+  ({ localParticipant, className = "" }, ref) => {
+    const [pressedKey, setPressedKey] = useState<string | null>(null);
+    const [pressedSequence, setPressedSequence] = useState<string[]>([]);
 
-  return (
-    <div className={`w-full ${className}`}>
-      <div className="flex flex-col gap-4">
-        <div className="mb-2 text-center text-gray-400 text-sm tracking-widest">
-          {pressedSequence.length > 0 ? pressedSequence.join(' ') : ''}
-        </div>
-        <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
-          {keyConfigs.map((keyConfig) => (
-            <button
-              key={keyConfig.label}
-              onClick={() => handleKeyPress(keyConfig)}
-              className={`
+    useImperativeHandle(ref, () => ({
+      setPressedSequence,
+    }));
+
+    const handleKeyPress = async (keyConfig: KeyConfig) => {
+      setPressedKey(keyConfig.label);
+      setPressedSequence((seq) => [...seq, keyConfig.label]);
+      console.log("Publishing DTMF:", keyConfig.label);
+
+      try {
+        await localParticipant.publishDtmf(keyConfig.intKey, keyConfig.strKey);
+      } catch (error) {
+        console.error("Failed to publish DTMF:", error);
+      } finally {
+        setTimeout(() => {
+          setPressedKey(null);
+        }, 150);
+      }
+    };
+
+    return (
+      <div className={`w-full ${className}`}>
+        <div className="flex flex-col gap-4">
+          <div className="mb-2 text-center text-gray-400 text-sm tracking-widest">
+            {pressedSequence.length > 0 ? pressedSequence.join(" ") : ""}
+          </div>
+          <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+            {keyConfigs.map((keyConfig) => (
+              <button
+                key={keyConfig.label}
+                onClick={() => handleKeyPress(keyConfig)}
+                className={`
                 h-14 w-14 flex items-center justify-center
                 text-lg font-semibold rounded-lg
                 border transition-all duration-150 ease-out
@@ -72,13 +78,16 @@ export const Keyboard: React.FC<KeyboardProps> = ({
                     : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:bg-gray-700"
                 }
               `}
-              disabled={pressedKey !== null}
-            >
-              {keyConfig.label}
-            </button>
-          ))}
+                disabled={pressedKey !== null}
+              >
+                {keyConfig.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+Keyboard.displayName = "Keyboard";
