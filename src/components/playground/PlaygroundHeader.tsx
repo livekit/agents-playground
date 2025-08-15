@@ -27,7 +27,7 @@ export const PlaygroundHeader = ({
   const { config } = useConfig();
   return (
     <div
-      className={`flex gap-4 pt-4 text-${accentColor}-500 justify-between items-center shrink-0`}
+      className={`flex text-${accentColor}-500 justify-between items-center bg-[#1c2536]`}
       style={{
         height: height + "px",
       }}
@@ -40,16 +40,7 @@ export const PlaygroundHeader = ({
           {title}
         </div>
       </div>
-      <div className="flex basis-1/3 justify-end items-center gap-2">
-        {/* {githubLink && (
-          <a
-            href={githubLink}
-            target="_blank"
-            className={`text-white hover:text-white/80`}
-          >
-            <GithubSVG />
-          </a>
-        )} */}
+      <div className="flex basis-1/3 justify-end items-center gap-2 pr-4">
         {config.settings.editable && <SettingsDropdown />}
         <Button
           accentColor={

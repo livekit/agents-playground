@@ -36,6 +36,9 @@ export function TranscriptionTile({
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const { chatMessages, send: sendChat } = useChat();
 
+  console.log(chatMessages);
+  // console.log(sendChat);
+
   // store transcripts
   useEffect(() => {
     agentMessages.segments.forEach((s) =>
