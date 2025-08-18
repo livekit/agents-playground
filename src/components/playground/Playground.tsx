@@ -33,6 +33,7 @@ import {
 } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { PlaygroundFooter } from "./PlaygroundFooter";
 
 export interface PlaygroundMeta {
   name: string;
@@ -402,13 +403,8 @@ export default function Playground({
       <PlaygroundHeader
         title={config.title}
         logo={logo}
-        githubLink={config.github_link}
         height={headerHeight}
         accentColor={config.settings.theme_color}
-        connectionState={roomState}
-        onConnectClicked={() =>
-          onConnect(roomState === ConnectionState.Disconnected)
-        }
       />
       <div
         className={`flex gap-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
@@ -464,6 +460,14 @@ export default function Playground({
           {settingsTileContent}
         </PlaygroundTile>
       </div>
+      <PlaygroundFooter
+        height={headerHeight}
+        accentColor={config.settings.theme_color}
+        connectionState={roomState}
+        onConnectClicked={() =>
+          onConnect(roomState === ConnectionState.Disconnected)
+        }
+      />
     </>
   );
 }

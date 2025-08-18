@@ -48,3 +48,13 @@ body {
     opacity: 1;
   }
 }
+
+.svg-red {
+  svg {
+    g {
+      rect {
+        fill: red;
+      }
+    }
+  }
+}
