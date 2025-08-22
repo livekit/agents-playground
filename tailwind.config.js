@@ -105,7 +105,8 @@ module.exports = {
       },
       textColor: {
         skin: {
-          primary: "var(--color-fill-primary)",
+          primary: "var(--color-text-primary)",
+          secondary: "var(--color-text-secondary)",
         },
       },
       borderColor: {

@@ -41,7 +41,7 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
             height: `${titleHeight}px`,
           }}
         >
-          <h2>{title}</h2>
+          <h2 className="text-skin-secondary">{title}</h2>
         </div>
       )}
       <div

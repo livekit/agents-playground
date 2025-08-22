@@ -3,15 +3,28 @@
 @tailwind utilities;
 
 @layer base {
+  /* default is "dark mode" */
   :root {
     --color-fill-base: #000000;
     --color-fill-accent: #1c2536;
     --color-fill-inverted: #ffffff;
     --color-fill-primary: #0099cc;
     --color-button-primary: #0099cc;
+    --color-button-active: #003242;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #a3a0b0;
+  }
+  .light {
+    --color-fill-base: #f7f8f8;
+    --color-fill-accent: #fff;
+    --color-fill-inverted: #000000;
+    --color-fill-primary: #0099cc;
+    --color-button-primary: #0099cc;
+    --color-button-active: #0099cc63;
+    --color-text-primary: #5e6a70;
+    --color-text-secondary: #949ba4;
   }
 }
-
 body {
   background: black;
 }
@@ -59,12 +72,19 @@ body {
   }
 }
 
-.svg-red {
+.button-active {
   svg {
     g {
       rect {
-        fill: red;
+        fill: var(--color-button-active);
       }
+    }
+  }
+}
+.header-button-active {
+  svg {
+    path:first-child {
+      fill: var(--color-button-active);
     }
   }
 }

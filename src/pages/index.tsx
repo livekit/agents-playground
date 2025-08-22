@@ -93,7 +93,7 @@ export function HomeInner() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main
-        className={`${myFont.className} relative flex flex-col justify-center items-center h-full w-full bg-skin-fill repeating-square-background`}
+        className={`${myFont.className} relative flex flex-col justify-center items-center h-full w-full bg-skin-fill-base repeating-square-background`}
       >
         <AnimatePresence>
           {toastMessage && (

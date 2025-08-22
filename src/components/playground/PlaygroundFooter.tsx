@@ -77,7 +77,7 @@ export const PlaygroundFooter = ({
             return (
               <div
                 onClick={() => toggleSetting(setting)}
-                className={isEnabled(setting) ? "svg-red" : ""}
+                className={isEnabled(setting) ? "button-active" : ""}
               >
                 {setting.icon}
               </div>
