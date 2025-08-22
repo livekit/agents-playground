@@ -44,7 +44,7 @@ const customColors = {
     200: "#daeeff",
     300: "#bde1ff",
     400: "#90d0ff",
-    500: "#47abff",
+    500: "#0099CC",
     600: "#3594fc",
     700: "#1f75f1",
     800: "#175ede",
@@ -82,6 +82,7 @@ const safelist = [
   "transparent",
   "object-cover",
   "object-contain",
+  "textColor",
   ...shadowNames,
   ...textShadowNames,
   ...shades.flatMap((shade) => [
@@ -94,22 +95,42 @@ const safelist = [
 module.exports = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
-    colors: {
-      transparent: "transparent",
-      current: "currentColor",
-      black: colors.black,
-      white: colors.white,
-      gray: colors.neutral,
-      ...customColors,
-    },
     extend: {
-      dropShadow: {
-        ...textShadows,
+      backgroundColor: {
+        skin: {
+          "fill-base": "var(--color-fill-base)",
+          "fill-accent": "var(--color-fill-accent)",
+          "button-primary": "var(--color-button-primary)",
+        },
       },
-      boxShadow: {
-        ...customShadows,
+      textColor: {
+        skin: {
+          primary: "var(--color-fill-primary)",
+        },
+      },
+      borderColor: {
+        skin: {
+          "fill-primary": "var(--color-fill-primary)",
+        },
       },
     },
+
+    // colors: {
+    //   transparent: "transparent",
+    //   current: "currentColor",
+    //   black: colors.black,
+    //   white: colors.white,
+    //   gray: colors.neutral,
+    //   ...customColors,
+    // },
+    // extend: {
+    //   dropShadow: {
+    //     ...textShadows,
+    //   },
+    //   boxShadow: {
+    //     ...customShadows,
+    //   },
+    // },
   },
   plugins: [],
   safelist,

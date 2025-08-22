@@ -30,6 +30,8 @@ export const PlaygroundFooter = ({
 }: PlaygroundFooter) => {
   const { config, setUserSettings } = useConfig();
 
+  console.log(accentColor);
+
   const isEnabled = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color")
       return false;
@@ -64,7 +66,7 @@ export const PlaygroundFooter = ({
   };
   return (
     <div
-      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-[#1c2536]`}
+      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent`}
       style={{
         height: height + "px",
       }}

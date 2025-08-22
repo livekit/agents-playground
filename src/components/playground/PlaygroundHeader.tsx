@@ -21,7 +21,7 @@ export const PlaygroundHeader = ({
   const { config } = useConfig();
   return (
     <div
-      className={`flex text-${accentColor}-500 justify-between items-center bg-[#1c2536]`}
+      className={`flex text-skin-primary justify-between items-center bg-skin-fill-accent`}
       style={{
         height: height + "px",
       }}

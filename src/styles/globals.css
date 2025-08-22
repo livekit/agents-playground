@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --color-fill-base: #000000;
+    --color-fill-accent: #1c2536;
+    --color-fill-inverted: #ffffff;
+    --color-fill-primary: #0099cc;
+    --color-button-primary: #0099cc;
+  }
+}
+
 body {
   background: black;
 }
