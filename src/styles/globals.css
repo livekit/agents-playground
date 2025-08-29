@@ -9,8 +9,11 @@
     --color-fill-accent: #1c2536;
     --color-fill-inverted: #ffffff;
     --color-fill-primary: #0099cc;
+    --color-button-fill: #000000;
+    --color-button-accent: #ffffff;
+    --color-button-accent-secondary: #a3a0b0;
     --color-button-primary: #0099cc;
-    --color-button-active: #003242;
+    --color-button-active: #00171f;
     --color-text-primary: #ffffff;
     --color-text-secondary: #a3a0b0;
   }
@@ -19,8 +22,11 @@
     --color-fill-accent: #fff;
     --color-fill-inverted: #000000;
     --color-fill-primary: #0099cc;
+    --color-button-fill: #ebf7fb;
+    --color-button-accent: #0099cc;
+    --color-button-accent-secondary: #0099cc63;
     --color-button-primary: #0099cc;
-    --color-button-active: #0099cc63;
+    --color-button-active: #c8e9f4;
     --color-text-primary: #5e6a70;
     --color-text-secondary: #949ba4;
   }
