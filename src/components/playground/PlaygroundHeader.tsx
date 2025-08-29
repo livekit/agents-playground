@@ -5,7 +5,7 @@ import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
 import React from "react";
 import { ReactNode } from "react";
-import { DarkModeIcon, LightModeIcon } from "./icons";
+import { DarkModeIcon, LightModeIcon, LKLogo } from "./icons";
 
 type PlaygroundHeader = {
   logo?: ReactNode;
@@ -68,17 +68,3 @@ export const PlaygroundHeader = ({
     </div>
   );
 };
-
-// TODO replace with SVG
-const LKLogo = () => (
-  <>
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img
-      style={{
-        height: 56,
-      }}
-      src="/logotrans.png"
-      alt="LiveKit Logo"
-    />
-  </>
-);

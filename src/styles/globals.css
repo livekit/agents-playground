@@ -16,6 +16,7 @@
     --color-button-active: #00171f;
     --color-text-primary: #ffffff;
     --color-text-secondary: #a3a0b0;
+    --color-text-danger: #e62c13;
   }
   .light {
     --color-fill-base: #f7f8f8;
@@ -25,10 +26,11 @@
     --color-button-fill: #ebf7fb;
     --color-button-accent: #0099cc;
     --color-button-accent-secondary: #0099cc63;
-    --color-button-primary: #0099cc;
+    --color-button-primary: #ebf7fb;
     --color-button-active: #c8e9f4;
     --color-text-primary: #5e6a70;
     --color-text-secondary: #949ba4;
+    --color-text-danger: #e62c13;
   }
 }
 body {

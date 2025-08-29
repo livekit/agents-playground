@@ -101,12 +101,15 @@ module.exports = {
           "fill-base": "var(--color-fill-base)",
           "fill-accent": "var(--color-fill-accent)",
           "button-primary": "var(--color-button-primary)",
+          "button-fill-base": "var(--color-button-fill)"
         },
       },
       textColor: {
         skin: {
           primary: "var(--color-text-primary)",
           secondary: "var(--color-text-secondary)",
+          danger: "var(--color-text-danger)",
+          accent: "var(--color-button-accent)"
         },
       },
       borderColor: {

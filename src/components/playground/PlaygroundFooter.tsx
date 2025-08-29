@@ -105,12 +105,15 @@ export const PlaygroundFooter = ({
         })}
       </div>
       <div className="flex basis-1/3 justify-end items-center gap-2 pr-4">
-        {config.settings.editable && <SettingsDropdown />}
+        {/* {config.settings.editable && <SettingsDropdown />} */}
         <Button
-          accentColor={
-            connectionState === ConnectionState.Connected ? "red" : accentColor
-          }
           disabled={connectionState === ConnectionState.Connecting}
+          className={
+            connectionState === ConnectionState.Disconnected ||
+            connectionState === ConnectionState.Connecting
+              ? "border-transparent text-skin-accent bg-skin-button-primary transition ease-out duration-250 hover:bg-transparent hover:shadow-bg-skin-fill-accent hover:border-skin-fill-primary hover:text-skin-primary"
+              : "border-red-500 text-skin-danger"
+          }
           onClick={() => {
             onConnectClicked();
           }}
