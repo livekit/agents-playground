@@ -165,11 +165,7 @@ export default function Playground({
       content = loadingContent;
     }
 
-    return (
-      <div className="flex flex-col w-full grow rounded-sm border border-gray-800 relative">
-        {content}
-      </div>
-    );
+    return <div className="flex flex-col w-full grow relative">{content}</div>;
   }, [agentVideoTrack, config, roomState]);
 
   const audioTileContent = useMemo(() => {

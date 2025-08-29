@@ -115,6 +115,7 @@ module.exports = {
       borderColor: {
         skin: {
           "fill-primary": "var(--color-fill-primary)",
+          "fill-accent": "var(--color-border-accent)"
         },
       },
     },

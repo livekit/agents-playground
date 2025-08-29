@@ -3,30 +3,13 @@ import { LoadingSVG } from "@/components/button/LoadingSVG";
 import { SettingsDropdown } from "@/components/playground/SettingsDropdown";
 import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
-import { ReactNode } from "react";
-import {
-  AudioIcon,
-  CameraVideoIcon,
-  ChatIcon,
-  MicIcon,
-  VideoIcon,
-} from "./icons";
+import { settingsButtons, SettingValue } from "@/hooks/useSettings";
 
 type PlaygroundFooter = {
   height: number;
   accentColor: string;
   connectionState: ConnectionState;
   onConnectClicked: () => void;
-};
-
-type SettingType = "inputs" | "outputs" | "chat" | "theme_color";
-
-type SettingValue = {
-  title: string;
-  type: SettingType | "separator";
-  key: string;
-  icon: ReactNode;
-  group: number;
 };
 
 export const PlaygroundFooter = ({
@@ -36,8 +19,6 @@ export const PlaygroundFooter = ({
   connectionState,
 }: PlaygroundFooter) => {
   const { config, setUserSettings } = useConfig();
-
-  console.log(accentColor);
 
   const isEnabled = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color")
@@ -73,13 +54,13 @@ export const PlaygroundFooter = ({
   };
   return (
     <div
-      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent`}
+      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent pt-3 pb-3 pl-4 pr-4`}
       style={{
         height: height + "px",
       }}
     >
       <div className="flex justify-start gap-2">
-        {settingsButtons.map((setting) => {
+        {settingsButtons.map((setting: SettingValue) => {
           if (setting.group === 1)
             return (
               <div
@@ -130,42 +111,3 @@ export const PlaygroundFooter = ({
     </div>
   );
 };
-
-const settingsButtons: SettingValue[] = [
-  {
-    title: "Enable mic",
-    type: "inputs",
-    key: "mic",
-    icon: <MicIcon />,
-    group: 1,
-  },
-  {
-    title: "Enable camera",
-    type: "inputs",
-    key: "camera",
-    icon: <CameraVideoIcon />,
-    group: 1,
-  },
-  {
-    title: "Show chat",
-    type: "chat",
-    key: "N/A",
-    icon: <ChatIcon />,
-    group: 2,
-  },
-
-  {
-    title: "Show audio",
-    type: "outputs",
-    key: "audio",
-    icon: <AudioIcon />,
-    group: 2,
-  },
-  {
-    title: "Show video",
-    type: "outputs",
-    key: "video",
-    icon: <VideoIcon />,
-    group: 2,
-  },
-];
