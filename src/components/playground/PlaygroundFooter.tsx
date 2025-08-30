@@ -60,10 +60,11 @@ export const PlaygroundFooter = ({
       }}
     >
       <div className="flex justify-start gap-2">
-        {settingsButtons.map((setting: SettingValue) => {
+        {settingsButtons.map((setting: SettingValue, idx) => {
           if (setting.group === 1)
             return (
               <div
+                key={idx}
                 onClick={() => toggleSetting(setting)}
                 className={isEnabled(setting) ? "button-active" : ""}
               >
@@ -73,10 +74,11 @@ export const PlaygroundFooter = ({
         })}
       </div>
       <div className="flex justify-center gap-2">
-        {settingsButtons.map((setting) => {
+        {settingsButtons.map((setting, idx) => {
           if (setting.group === 2)
             return (
               <div
+                key={idx}
                 onClick={() => toggleSetting(setting)}
                 className={isEnabled(setting) ? "button-active" : ""}
               >
@@ -86,7 +88,7 @@ export const PlaygroundFooter = ({
         })}
       </div>
       <div className="flex basis-1/3 justify-end items-center gap-2 pr-4">
-        {/* {config.settings.editable && <SettingsDropdown />} */}
+        <SettingsDropdown />
         <Button
           disabled={connectionState === ConnectionState.Connecting}
           className={
