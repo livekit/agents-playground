@@ -6,6 +6,7 @@ import { useConfig } from "@/hooks/useConfig";
 const titleHeight = 32;
 
 type PlaygroundTileProps = {
+  toggleSetting: (setting: SettingValue) => void;
   title?: string;
   children?: ReactNode;
   className?: string;
@@ -25,6 +26,7 @@ export type PlaygroundTabbedTileProps = {
 } & PlaygroundTileProps;
 
 export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
+  toggleSetting,
   children,
   title,
   className,
@@ -32,40 +34,6 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
   padding = true,
   backgroundColor = "transparent",
 }) => {
-  const { config, setUserSettings } = useConfig();
-
-  const isEnabled = (setting: SettingValue) => {
-    if (setting.type === "separator" || setting.type === "theme_color")
-      return false;
-    if (setting.type === "chat") {
-      return config.settings[setting.type];
-    }
-
-    if (setting.type === "inputs") {
-      const key = setting.key as "camera" | "mic";
-      return config.settings.inputs[key];
-    } else if (setting.type === "outputs") {
-      const key = setting.key as "video" | "audio";
-      return config.settings.outputs[key];
-    }
-
-    return false;
-  };
-
-  const toggleSetting = (setting: SettingValue) => {
-    if (setting.type === "separator" || setting.type === "theme_color") return;
-    const newValue = !isEnabled(setting);
-    const newSettings = { ...config.settings };
-
-    if (setting.type === "chat") {
-      newSettings.chat = newValue;
-    } else if (setting.type === "inputs") {
-      newSettings.inputs[setting.key as "camera" | "mic"] = newValue;
-    } else if (setting.type === "outputs") {
-      newSettings.outputs[setting.key as "video" | "audio"] = newValue;
-    }
-    setUserSettings(newSettings);
-  };
   return (
     <div
       className={`flex flex-col flex-start p-[24px] text-white bg-${backgroundColor} ${className}`}
@@ -82,7 +50,12 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
             onClick={() =>
               toggleSetting({
                 title: `Show ${title.toLowerCase()}`,
-                type: title.toLowerCase() === "chat" ? "chat" : "outputs",
+                type:
+                  title.toLowerCase() === "chat"
+                    ? "chat"
+                    : title.toLowerCase() === "room details"
+                    ? "room"
+                    : "outputs",
                 key: `${title.toLowerCase()}`,
               })
             }

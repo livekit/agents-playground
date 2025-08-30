@@ -24,6 +24,7 @@ export type UserSettings = {
   editable: boolean;
   theme_color: string;
   chat: boolean;
+  room: boolean;
   inputs: {
     camera: boolean;
     mic: boolean;
@@ -45,6 +46,7 @@ const defaultConfig: AppConfig = {
     editable: true,
     theme_color: "cyan",
     chat: true,
+    room: true,
     inputs: {
       camera: true,
       mic: true,
@@ -115,6 +117,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       editable: true,
       chat: params.get("chat") === "1",
       theme_color: params.get("theme_color"),
+      room: true,
       inputs: {
         camera: params.get("cam") === "1",
         mic: params.get("mic") === "1",

@@ -5,9 +5,15 @@ import {
   ChatIcon,
   MicIcon,
   VideoIcon,
+  GearIcon,
 } from "../components/playground/icons";
 
-export type SettingType = "inputs" | "outputs" | "chat" | "theme_color";
+export type SettingType =
+  | "inputs"
+  | "outputs"
+  | "chat"
+  | "theme_color"
+  | "room";
 
 export type SettingValue = {
   title: string;
@@ -53,5 +59,12 @@ export const settingsButtons: SettingValue[] = [
     key: "video",
     icon: <VideoIcon />,
     group: 2,
+  },
+  {
+    title: "Show room details",
+    type: "room",
+    key: "room details",
+    icon: <GearIcon />,
+    group: 3,
   },
 ];

@@ -34,6 +34,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { PlaygroundFooter } from "./PlaygroundFooter";
+import { SettingValue } from "@/hooks/useSettings";
 
 export interface PlaygroundMeta {
   name: string;
@@ -132,6 +133,41 @@ export default function Playground({
   );
 
   useDataChannel(onDataReceived);
+
+  const isEnabled = (setting: SettingValue) => {
+    if (setting.type === "separator" || setting.type === "theme_color")
+      return false;
+    if (setting.type === "chat" || setting.type === "room") {
+      return config.settings[setting.type];
+    }
+
+    if (setting.type === "inputs") {
+      const key = setting.key as "camera" | "mic";
+      return config.settings.inputs[key];
+    } else if (setting.type === "outputs") {
+      const key = setting.key as "video" | "audio";
+      return config.settings.outputs[key];
+    }
+
+    return false;
+  };
+
+  const toggleSetting = (setting: SettingValue) => {
+    if (setting.type === "separator" || setting.type === "theme_color") return;
+    const newValue = !isEnabled(setting);
+    const newSettings = { ...config.settings };
+
+    if (setting.type === "chat") {
+      newSettings.chat = newValue;
+    } else if (setting.type === "inputs") {
+      newSettings.inputs[setting.key as "camera" | "mic"] = newValue;
+    } else if (setting.type === "outputs") {
+      newSettings.outputs[setting.key as "video" | "audio"] = newValue;
+    } else if (setting.type === "room") {
+      newSettings.room = newValue;
+    }
+    setUserSettings(newSettings);
+  };
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "cover"}`;
@@ -351,6 +387,7 @@ export default function Playground({
       title: "Video",
       content: (
         <PlaygroundTile
+          toggleSetting={toggleSetting}
           className="w-full h-full grow"
           childrenClassName="justify-center"
         >
@@ -365,6 +402,7 @@ export default function Playground({
       title: "Audio",
       content: (
         <PlaygroundTile
+          toggleSetting={toggleSetting}
           className="w-full h-full grow"
           childrenClassName="justify-center"
         >
@@ -385,6 +423,8 @@ export default function Playground({
     title: "Settings",
     content: (
       <PlaygroundTile
+        // title={config.title}
+        toggleSetting={toggleSetting}
         padding={false}
         className="h-full w-full basis-1/4 items-start overflow-y-auto flex"
         childrenClassName="h-full grow items-start"
@@ -408,6 +448,7 @@ export default function Playground({
       >
         <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
           <PlaygroundTabbedTile
+            toggleSetting={toggleSetting}
             className="h-full"
             tabs={mobileTabs}
             initialTab={mobileTabs.length - 1}
@@ -422,6 +463,7 @@ export default function Playground({
         >
           {config.settings.outputs.video && (
             <PlaygroundTile
+              toggleSetting={toggleSetting}
               title="Video"
               className="w-full h-full grow"
               childrenClassName="justify-center"
@@ -431,6 +473,7 @@ export default function Playground({
           )}
           {config.settings.outputs.audio && (
             <PlaygroundTile
+              toggleSetting={toggleSetting}
               title="Audio"
               className="w-full h-full grow"
               childrenClassName="justify-center"
@@ -442,19 +485,24 @@ export default function Playground({
 
         {config.settings.chat && (
           <PlaygroundTile
+            toggleSetting={toggleSetting}
             title="Chat"
             className="h-full grow basis-1/4 hidden lg:flex"
           >
             {chatTileContent}
           </PlaygroundTile>
         )}
-        <PlaygroundTile
-          padding={false}
-          className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
-          childrenClassName="h-full grow items-start"
-        >
-          {settingsTileContent}
-        </PlaygroundTile>
+        {config.settings.room && (
+          <PlaygroundTile
+            toggleSetting={toggleSetting}
+            title="Room Details"
+            padding={false}
+            className="h-full w-full basis-1/4 lg:flex overflow-y-auto hidden"
+            // childrenClassName="h-full grow items-start"
+          >
+            {settingsTileContent}
+          </PlaygroundTile>
+        )}
       </div>
       <PlaygroundFooter
         height={headerHeight}
@@ -463,6 +511,8 @@ export default function Playground({
         onConnectClicked={() =>
           onConnect(roomState === ConnectionState.Disconnected)
         }
+        isEnabled={isEnabled}
+        toggleSetting={toggleSetting}
       />
     </>
   );

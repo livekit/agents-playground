@@ -1,15 +1,17 @@
 import { Button } from "@/components/button/Button";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
-import { SettingsDropdown } from "@/components/playground/SettingsDropdown";
 import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
 import { settingsButtons, SettingValue } from "@/hooks/useSettings";
+import { SettingsDropdown } from "./SettingsDropdown";
 
 type PlaygroundFooter = {
   height: number;
   accentColor: string;
   connectionState: ConnectionState;
   onConnectClicked: () => void;
+  isEnabled: (setting: SettingValue) => boolean;
+  toggleSetting: (setting: SettingValue) => void;
 };
 
 export const PlaygroundFooter = ({
@@ -17,41 +19,9 @@ export const PlaygroundFooter = ({
   height,
   onConnectClicked,
   connectionState,
+  isEnabled,
+  toggleSetting,
 }: PlaygroundFooter) => {
-  const { config, setUserSettings } = useConfig();
-
-  const isEnabled = (setting: SettingValue) => {
-    if (setting.type === "separator" || setting.type === "theme_color")
-      return false;
-    if (setting.type === "chat") {
-      return config.settings[setting.type];
-    }
-
-    if (setting.type === "inputs") {
-      const key = setting.key as "camera" | "mic";
-      return config.settings.inputs[key];
-    } else if (setting.type === "outputs") {
-      const key = setting.key as "video" | "audio";
-      return config.settings.outputs[key];
-    }
-
-    return false;
-  };
-
-  const toggleSetting = (setting: SettingValue) => {
-    if (setting.type === "separator" || setting.type === "theme_color") return;
-    const newValue = !isEnabled(setting);
-    const newSettings = { ...config.settings };
-
-    if (setting.type === "chat") {
-      newSettings.chat = newValue;
-    } else if (setting.type === "inputs") {
-      newSettings.inputs[setting.key as "camera" | "mic"] = newValue;
-    } else if (setting.type === "outputs") {
-      newSettings.outputs[setting.key as "video" | "audio"] = newValue;
-    }
-    setUserSettings(newSettings);
-  };
   return (
     <div
       className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent pt-3 pb-3 pl-4 pr-4`}
@@ -88,7 +58,20 @@ export const PlaygroundFooter = ({
         })}
       </div>
       <div className="flex basis-1/3 justify-end items-center gap-2 pr-4">
-        <SettingsDropdown />
+        {/* <SettingsDropdown /> */}
+        {settingsButtons.map((setting, idx) => {
+          console.log(setting);
+          if (setting.group === 3)
+            return (
+              <div
+                key={idx}
+                onClick={() => toggleSetting(setting)}
+                className={isEnabled(setting) ? "button-active" : ""}
+              >
+                <>{setting.icon}</>
+              </div>
+            );
+        })}
         <Button
           disabled={connectionState === ConnectionState.Connecting}
           className={
