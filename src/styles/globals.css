@@ -18,6 +18,10 @@
     --color-text-primary: #ffffff;
     --color-text-secondary: #a3a0b0;
     --color-text-danger: #e62c13;
+    --color-text-connected: #1ca16c;
+    --color-fill-connected: #2a5644;
+    --color-fill-disconnected: #613b36;
+    --color-fill-unselected: #f5f8ff1c;
     --color-border-accent: #384250;
   }
   .light {
@@ -34,6 +38,10 @@
     --color-text-primary: #5e6a70;
     --color-text-secondary: #949ba4;
     --color-text-danger: #e62c13;
+    --color-text-connected: #1ca16c;
+    --color-fill-connected: #c3e4d7;
+    --color-fill-disconnected: #f3d7d3;
+    --color-fill-unselected: #5e6a7017;
     --color-border-accent: #dfe1e2;
   }
 }

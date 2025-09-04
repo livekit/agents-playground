@@ -267,21 +267,23 @@ export default function Playground({
     return (
       <div className="flex flex-col gap-4 h-full w-full items-start overflow-y-auto">
         {config.description && (
-          <ConfigurationPanelItem title="Description">
+          <ConfigurationPanelItem title="">
             {config.description}
           </ConfigurationPanelItem>
         )}
 
-        <ConfigurationPanelItem title="Settings">
+        <ConfigurationPanelItem title="">
           {localParticipant && (
             <div className="flex flex-col gap-2">
               <NameValueRow
                 name="Room"
                 value={name}
+                roomState={roomState}
                 valueColor={`${config.settings.theme_color}-500`}
               />
               <NameValueRow
                 name="Participant"
+                roomState={roomState}
                 value={localParticipant.identity}
               />
             </div>

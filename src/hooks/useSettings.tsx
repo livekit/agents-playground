@@ -5,7 +5,7 @@ import {
   ChatIcon,
   MicIcon,
   VideoIcon,
-  GearIcon,
+  MessagesIcon,
 } from "../components/playground/icons";
 
 export type SettingType =
@@ -64,7 +64,7 @@ export const settingsButtons: SettingValue[] = [
     title: "Show room details",
     type: "room",
     key: "room details",
-    icon: <GearIcon />,
-    group: 3,
+    icon: <MessagesIcon />,
+    group: 2,
   },
 ];
