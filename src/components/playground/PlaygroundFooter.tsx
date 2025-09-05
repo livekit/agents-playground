@@ -24,7 +24,7 @@ export const PlaygroundFooter = ({
 }: PlaygroundFooter) => {
   return (
     <div
-      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent pt-3 pb-3 pl-4 pr-4`}
+      className={`flex text-${accentColor}-500 justify-between items-center justify-end bg-skin-fill-accent py-3 px-4`}
       style={{
         height: height + "px",
       }}

@@ -38,7 +38,7 @@ export const PlaygroundHeader = ({
 
   return (
     <div
-      className={`flex justify-between items-center bg-skin-fill-accent`}
+      className={`flex justify-between items-center bg-skin-fill-accent py-3 px-8`}
       style={{
         height: height + "px",
       }}
