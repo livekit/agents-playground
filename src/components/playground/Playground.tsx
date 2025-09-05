@@ -35,6 +35,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { PlaygroundFooter } from "./PlaygroundFooter";
 import { SettingValue } from "@/hooks/useSettings";
+import { ChatIcon, ChatText, VideoOffIcon } from "./icons";
+import DisconnectedPill from "./DisconnectedPill";
 
 export interface PlaygroundMeta {
   name: string;
@@ -173,9 +175,14 @@ export default function Playground({
     const videoFitClassName = `object-${config.video_fit || "cover"}`;
 
     const disconnectedContent = (
-      <div className="flex items-center justify-center text-skin-secondary text-center w-full h-full">
-        No video track. Connect to get started.
-      </div>
+      // <div className="flex items-center justify-center text-skin-secondary px-6 py-3 gap-3 rounded-full bg-skin-fill-accent w-full h-full">
+      //   <VideoOffIcon /> No video track. Connect to get started.
+      // </div>
+      <DisconnectedPill
+        icon={<VideoOffIcon />}
+        prefix="No Video - "
+        title="to get started."
+      />
     );
 
     const loadingContent = (
@@ -201,14 +208,19 @@ export default function Playground({
       content = loadingContent;
     }
 
-    return <div className="flex flex-col w-full grow relative">{content}</div>;
+    return <div className="flex flex-col">{content}</div>;
   }, [agentVideoTrack, config, roomState]);
 
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
-      <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center w-full">
-        No audio track. Connect to get started.
-      </div>
+      // <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center w-full">
+      //   No audio track. Connect to get started.
+      // </div>
+      <DisconnectedPill
+        icon={<VideoOffIcon />}
+        prefix="No audio - "
+        title="to get started."
+      />
     );
 
     const waitingContent = (
@@ -236,7 +248,7 @@ export default function Playground({
     );
 
     if (roomState === ConnectionState.Disconnected) {
-      return disconnectedContent;
+      return <div className="flex flex-col">{disconnectedContent}</div>;
     }
 
     if (!agentAudioTrack) {
@@ -252,6 +264,21 @@ export default function Playground({
   ]);
 
   const chatTileContent = useMemo(() => {
+    const disconnectedContent = (
+      // <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center w-full">
+      //   No audio track. Connect to get started.
+      // </div>
+      <DisconnectedPill
+        icon={<ChatText />}
+        prefix="No audio - "
+        title="to get started."
+      />
+    );
+
+    if (roomState === ConnectionState.Disconnected) {
+      return <div className="flex flex-col">{disconnectedContent}</div>;
+    }
+
     if (agentAudioTrack) {
       return (
         <TranscriptionTile
@@ -289,7 +316,7 @@ export default function Playground({
             </div>
           )}
         </ConfigurationPanelItem>
-        <ConfigurationPanelItem title="Status">
+        {/* <ConfigurationPanelItem title="Status">
           <div className="flex flex-col gap-2">
             <NameValueRow
               name="Room connected"
@@ -324,7 +351,7 @@ export default function Playground({
               }
             />
           </div>
-        </ConfigurationPanelItem>
+        </ConfigurationPanelItem> */}
         {localVideoTrack && (
           <ConfigurationPanelItem
             title="Camera"
@@ -490,6 +517,8 @@ export default function Playground({
             toggleSetting={toggleSetting}
             title="Chat"
             className="h-full grow basis-1/4 hidden lg:flex"
+            childrenClassName="justify-center"
+            backgroundColor="skin-fill-alternate"
           >
             {chatTileContent}
           </PlaygroundTile>

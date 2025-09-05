@@ -6,7 +6,8 @@
   /* default is "dark mode" */
   :root {
     --color-fill-base: #000000;
-    --color-fill-accent: #1c2536;
+    --color-fill-accent: #001f29;
+    --color-fill-alternate: #252a2c;
     --color-fill-inverted: #ffffff;
     --color-fill-primary: #0099cc;
     --color-button-fill: #000000;
@@ -19,6 +20,7 @@
     --color-text-secondary: #a3a0b0;
     --color-text-danger: #e62c13;
     --color-text-connected: #1ca16c;
+    --color-text-connect: #09c;
     --color-fill-connected: #2a5644;
     --color-fill-disconnected: #613b36;
     --color-fill-unselected: #f5f8ff1c;
@@ -27,6 +29,7 @@
   .light {
     --color-fill-base: #f7f8f8;
     --color-fill-accent: #fff;
+    --color-fill-alternate: #252a2c;
     --color-fill-inverted: #000000;
     --color-fill-primary: #0099cc;
     --color-button-fill: #ebf7fb;
@@ -39,6 +42,7 @@
     --color-text-secondary: #949ba4;
     --color-text-danger: #e62c13;
     --color-text-connected: #1ca16c;
+    --color-text-connect: #09c;
     --color-fill-connected: #c3e4d7;
     --color-fill-disconnected: #f3d7d3;
     --color-fill-unselected: #5e6a7017;

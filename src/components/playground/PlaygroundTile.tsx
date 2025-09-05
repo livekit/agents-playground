@@ -34,6 +34,7 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
   padding = true,
   backgroundColor = "transparent",
 }) => {
+  console.log(backgroundColor);
   return (
     <div
       className={`flex flex-col flex-start p-[24px] text-white bg-${backgroundColor} ${className}`}

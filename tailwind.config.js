@@ -104,7 +104,8 @@ module.exports = {
           "button-fill-base": "var(--color-button-fill)",
           "fill-connected":  "var(--color-fill-connected)",
           "fill-disconnected" : "var(--color-fill-disconnected)",
-          "fill-unselected" : "var(--color-fill-unselected)"
+          "fill-unselected" : "var(--color-fill-unselected)",
+          "fill-alternate": "var(--color-fill-alternate)"
         },
       },
       textColor: {
@@ -113,7 +114,8 @@ module.exports = {
           secondary: "var(--color-text-secondary)",
           danger: "var(--color-text-danger)",
           accent: "var(--color-button-accent)",
-          connected: "var(--color-text-connected)"
+          connected: "var(--color-text-connected)",
+          connect: "var(--color-text-connect)"
         },
       },
       borderColor: {
