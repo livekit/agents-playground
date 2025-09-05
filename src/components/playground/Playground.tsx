@@ -472,7 +472,7 @@ export default function Playground({
         accentColor={config.settings.theme_color}
       />
       <div
-        className={`flex gap-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
+        className={`flex gap-1 grow w-full selection:bg-${config.settings.theme_color}-900`}
         style={{ height: `calc(100% - ${headerHeight}px)` }}
       >
         <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
@@ -530,6 +530,7 @@ export default function Playground({
             padding={false}
             className="h-full w-full basis-1/4 lg:flex overflow-y-auto hidden"
             // childrenClassName="h-full grow items-start"
+            backgroundColor="skin-fill-alternate"
           >
             {settingsTileContent}
           </PlaygroundTile>
