@@ -94,6 +94,7 @@ const safelist = [
 
 module.exports = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
+
   theme: {
     extend: {
       backgroundColor: {
@@ -102,10 +103,10 @@ module.exports = {
           "fill-accent": "var(--color-fill-accent)",
           "button-primary": "var(--color-button-primary)",
           "button-fill-base": "var(--color-button-fill)",
-          "fill-connected":  "var(--color-fill-connected)",
-          "fill-disconnected" : "var(--color-fill-disconnected)",
-          "fill-unselected" : "var(--color-fill-unselected)",
-          "fill-alternate": "var(--color-fill-alternate)"
+          "fill-connected": "var(--color-fill-connected)",
+          "fill-disconnected": "var(--color-fill-disconnected)",
+          "fill-unselected": "var(--color-fill-unselected)",
+          "fill-alternate": "var(--color-fill-alternate)",
         },
       },
       textColor: {
@@ -115,13 +116,17 @@ module.exports = {
           danger: "var(--color-text-danger)",
           accent: "var(--color-button-accent)",
           connected: "var(--color-text-connected)",
-          connect: "var(--color-text-connect)"
+          connect: "var(--color-text-connect)",
         },
       },
       borderColor: {
         skin: {
           "fill-primary": "var(--color-fill-primary)",
-          "fill-accent": "var(--color-border-accent)"
+          "fill-accent": "var(--color-border-accent)",
+          "fill-secondary": "var(--color-border-secondary)",
+        },
+        ring: {
+          skin: {},
         },
       },
     },
