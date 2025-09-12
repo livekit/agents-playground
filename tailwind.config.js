@@ -108,7 +108,7 @@ module.exports = {
           "fill-disconnected": "var(--color-fill-disconnected)",
           "fill-unselected": "var(--color-fill-unselected)",
           "fill-alternate": "var(--color-fill-alternate)",
-          "fill-bubble": "var(--color-chat-accent)"
+          "fill-bubble": "var(--color-chat-accent)",
         },
       },
       textColor: {

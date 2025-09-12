@@ -17,12 +17,9 @@ export const ChatMessage = ({
   hideName,
   timestamp,
 }: ChatMessageProps) => {
-  const date = new Date(timestamp).toLocaleTimeString(
-    {},
-    {
-      timeStyle: "short",
-    }
-  );
+  const date = new Date(timestamp).toLocaleTimeString(undefined, {
+    timeStyle: "short",
+  });
   return (
     <>
       {/* <div className={`flex flex-col gap-1 ${hideName ? "pt-0" : "pt-6"}`}>
