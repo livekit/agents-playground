@@ -43,9 +43,10 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
             return (
               <ChatMessage
                 key={index}
-                hideName={hideName}
+                hideName={false}
                 name={message.name}
                 message={message.message}
+                timestamp={message.timestamp}
                 isSelf={message.isSelf}
                 accentColor={accentColor}
               />

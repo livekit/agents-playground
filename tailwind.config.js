@@ -99,6 +99,7 @@ module.exports = {
     extend: {
       backgroundColor: {
         skin: {
+          "fill-primary": "var(--color-fill-primary)",
           "fill-base": "var(--color-fill-base)",
           "fill-accent": "var(--color-fill-accent)",
           "button-primary": "var(--color-button-primary)",
@@ -107,6 +108,7 @@ module.exports = {
           "fill-disconnected": "var(--color-fill-disconnected)",
           "fill-unselected": "var(--color-fill-unselected)",
           "fill-alternate": "var(--color-fill-alternate)",
+          "fill-bubble": "var(--color-chat-accent)"
         },
       },
       textColor: {
@@ -122,7 +124,7 @@ module.exports = {
       borderColor: {
         skin: {
           "fill-primary": "var(--color-fill-primary)",
-          "fill-accent": "var(--color-border-accent)",
+          "fill-accent": "var(--color-chat-accent)",
           "fill-secondary": "var(--color-border-secondary)",
         },
         ring: {

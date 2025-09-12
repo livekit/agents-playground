@@ -108,7 +108,7 @@ function segmentToChatMessage(
 ): ChatMessageType {
   const msg: ChatMessageType = {
     message: s.final ? s.text : `${s.text} ...`,
-    name: participant instanceof LocalParticipant ? "You" : "Agent",
+    name: participant instanceof LocalParticipant ? "Me" : "Agent",
     isSelf: participant instanceof LocalParticipant,
     timestamp: existingMessage?.timestamp ?? Date.now(),
   };
