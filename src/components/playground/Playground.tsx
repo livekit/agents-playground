@@ -180,7 +180,7 @@ export default function Playground({
       // </div>
       <DisconnectedPill
         icon={<VideoOffIcon />}
-        prefix="No Video - "
+        prefix="No Video"
         title="to get started."
       />
     );
@@ -218,7 +218,7 @@ export default function Playground({
       // </div>
       <DisconnectedPill
         icon={<VideoOffIcon />}
-        prefix="No audio - "
+        prefix="No audio"
         title="to get started."
       />
     );
@@ -270,7 +270,7 @@ export default function Playground({
       // </div>
       <DisconnectedPill
         icon={<ChatText />}
-        prefix="No audio - "
+        prefix="No audio"
         title="to get started."
       />
     );
