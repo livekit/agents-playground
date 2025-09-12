@@ -18,6 +18,7 @@
     --color-button-active: #00171f;
     --color-text-primary: #ffffff;
     --color-text-secondary: #a3a0b0;
+    --color-text-tertiary: #fff;
     --color-text-danger: #e62c13;
     --color-text-connected: #1ca16c;
     --color-text-connect: #09c;
@@ -25,6 +26,7 @@
     --color-fill-disconnected: #613b36;
     --color-fill-unselected: #f5f8ff1c;
     --color-chat-accent: #384250;
+    --color-chat-alternate: #fff;
     --color-border-secondary: #6c737f;
   }
   .light {
@@ -32,7 +34,7 @@
     --color-fill-accent: #fff;
     --color-fill-alternate: #eff0f0;
     --color-fill-inverted: #000000;
-    --color-fill-primary: #0099cc;
+    --color-fill-primary: #0099cc17;
     --color-button-fill: #ebf7fb;
     --color-button-accent: #0099cc;
     --color-button-accent-primary: #bcc4c7;
@@ -41,6 +43,7 @@
     --color-button-active: #c8e9f4;
     --color-text-primary: #5e6a70;
     --color-text-secondary: #949ba4;
+    --color-text-tertiary: #006b8f;
     --color-text-danger: #e62c13;
     --color-text-connected: #1ca16c;
     --color-text-connect: #09c;
@@ -48,6 +51,7 @@
     --color-fill-disconnected: #f3d7d3;
     --color-fill-unselected: #5e6a7017;
     --color-chat-accent: #dfe1e2;
+    --color-chat-alternate: #5e6a7070;
     --color-border-secondary: #cccfd1;
   }
 }

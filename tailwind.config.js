@@ -115,10 +115,12 @@ module.exports = {
         skin: {
           primary: "var(--color-text-primary)",
           secondary: "var(--color-text-secondary)",
+          tertiary: "var(--color-text-tertiary)",
           danger: "var(--color-text-danger)",
           accent: "var(--color-button-accent)",
           connected: "var(--color-text-connected)",
           connect: "var(--color-text-connect)",
+          alternate: "var(--color-chat-alternate)",
         },
       },
       borderColor: {

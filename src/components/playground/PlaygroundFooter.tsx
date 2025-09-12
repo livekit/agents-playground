@@ -60,7 +60,6 @@ export const PlaygroundFooter = ({
       <div className="flex basis-1/3 justify-end items-center gap-2 pr-4">
         {/* <SettingsDropdown /> */}
         {settingsButtons.map((setting, idx) => {
-          console.log(setting);
           if (setting.group === 3)
             return (
               <div
