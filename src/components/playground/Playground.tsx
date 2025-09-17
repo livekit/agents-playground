@@ -35,8 +35,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { PlaygroundFooter } from "./PlaygroundFooter";
 import { SettingValue } from "@/hooks/useSettings";
-import { ChatIcon, ChatText, VideoOffIcon } from "./icons";
+import { CameraOffIcon, ChatText, VideoOffIcon } from "./icons";
 import DisconnectedPill from "./DisconnectedPill";
+import ConnectingPill from "./ConnectingPill";
 
 export interface PlaygroundMeta {
   name: string;
@@ -175,9 +176,6 @@ export default function Playground({
     const videoFitClassName = `object-${config.video_fit || "cover"}`;
 
     const disconnectedContent = (
-      // <div className="flex items-center justify-center text-skin-secondary px-6 py-3 gap-3 rounded-full bg-skin-fill-accent w-full h-full">
-      //   <VideoOffIcon /> No video track. Connect to get started.
-      // </div>
       <DisconnectedPill
         icon={<VideoOffIcon />}
         prefix="No Video"
@@ -186,10 +184,7 @@ export default function Playground({
     );
 
     const loadingContent = (
-      <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center h-full w-full">
-        <LoadingSVG />
-        Waiting for video track
-      </div>
+      <ConnectingPill icon={<VideoOffIcon />} title="Connecting to video..." />
     );
 
     const videoContent = (
@@ -213,21 +208,15 @@ export default function Playground({
 
   const audioTileContent = useMemo(() => {
     const disconnectedContent = (
-      // <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center w-full">
-      //   No audio track. Connect to get started.
-      // </div>
       <DisconnectedPill
-        icon={<VideoOffIcon />}
+        icon={<CameraOffIcon />}
         prefix="No audio"
         title="to get started."
       />
     );
 
     const waitingContent = (
-      <div className="flex flex-col items-center gap-2 text-skin-secondary text-center w-full">
-        <LoadingSVG />
-        Waiting for audio track
-      </div>
+      <ConnectingPill icon={<CameraOffIcon />} title="Connecting to audio..." />
     );
 
     // TODO: keep it in the speaking state until we come up with a better protocol for agent states
@@ -252,7 +241,7 @@ export default function Playground({
     }
 
     if (!agentAudioTrack) {
-      return waitingContent;
+      return <div className="flex flex-col">{waitingContent}</div>;
     }
 
     return visualizerContent;
@@ -265,18 +254,22 @@ export default function Playground({
 
   const chatTileContent = useMemo(() => {
     const disconnectedContent = (
-      // <div className="flex flex-col items-center justify-center gap-2 text-skin-secondary text-center w-full">
-      //   No audio track. Connect to get started.
-      // </div>
       <DisconnectedPill
         icon={<ChatText />}
-        prefix="No audio"
-        title="to get started."
+        showSeparator={false}
+        title="to start sending messages."
       />
     );
-
     if (roomState === ConnectionState.Disconnected) {
       return <div className="flex flex-col">{disconnectedContent}</div>;
+    }
+
+    const waitingContent = (
+      <ConnectingPill icon={<ChatText />} title="Connecting to messages..." />
+    );
+
+    if (!agentAudioTrack) {
+      return <div className="flex flex-col">{waitingContent}</div>;
     }
 
     if (agentAudioTrack) {
@@ -287,8 +280,9 @@ export default function Playground({
         />
       );
     }
+
     return <></>;
-  }, [config.settings.theme_color, agentAudioTrack]);
+  }, [config.settings.theme_color, agentAudioTrack, roomState]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -370,7 +364,10 @@ export default function Playground({
             title="Microphone"
             deviceSelectorKind="audioinput"
           >
-            <AudioInputTile frequencies={localMultibandVolume} />
+            <AudioInputTile
+              frequencies={localMultibandVolume}
+              accentColor={config.settings.theme_color}
+            />
           </ConfigurationPanelItem>
         )}
         {/* <div className="w-full">
