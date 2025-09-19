@@ -28,6 +28,8 @@
     --color-chat-accent: #384250;
     --color-chat-alternate: #fff;
     --color-border-secondary: #6c737f;
+    --color-setting-primary: #00171f;
+    --color-setting-secondary: #1c2021;
   }
   .light {
     --color-fill-base: #f7f8f8;
@@ -53,6 +55,8 @@
     --color-chat-accent: #dfe1e2;
     --color-chat-alternate: #5e6a7070;
     --color-border-secondary: #cccfd1;
+    --color-setting-primary: #e2e4e4;
+    --color-setting-secondary: #fafafa;
   }
 }
 body {
