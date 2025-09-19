@@ -36,7 +36,7 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col flex-start p-[24px] text-white bg-${backgroundColor} ${className}`}
+      className={`flex flex-col flex-start lg:p-6 text-white bg-${backgroundColor} ${className}`}
     >
       {title && (
         <div
@@ -94,7 +94,7 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
       className={`flex flex-col h-full border rounded-sm border-gray-500 text-white bg-${backgroundColor} ${className}`}
     >
       <div
-        className="flex items-center justify-start text-xs uppercase border-b border-b-gray-800 tracking-wider"
+        className="flex items-center justify-start text-xs uppercase tracking-wider gap-4 px-1"
         style={{
           height: `${titleHeight}px`,
         }}
@@ -102,10 +102,10 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
         {tabs.map((tab, index) => (
           <button
             key={index}
-            className={`px-4 py-2 rounded-sm hover:bg-gray-500 hover:text-gray-300 border-r border-r-gray-500 ${
+            className={`px-4 pt-3 pb-2 text-sm ${
               index === activeTab
-                ? `bg-gray-900 text-gray-300`
-                : `bg-transparent text-gray-500`
+                ? `text-skin-connect border-b border-skin-fill-primary`
+                : `text-skin-accent-primary`
             }`}
             onClick={() => setActiveTab(index)}
           >

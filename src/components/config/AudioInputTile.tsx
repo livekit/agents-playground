@@ -12,7 +12,7 @@ export const AudioInputTile = ({
 }: AudioInputTileProps) => {
   return (
     <div
-      className={`flex flex-row gap-2 h-[100px] items-center w-full justify-center border rounded-sm border-gray-800 bg-gray-900`}
+      className={`flex flex-row gap-2 h-[100px] items-center w-full justify-center bg-skin-fill-track-detail`}
     >
       <AgentMultibandAudioVisualizer
         state="speaking"

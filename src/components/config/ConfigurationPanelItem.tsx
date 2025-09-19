@@ -15,13 +15,13 @@ export const ConfigurationPanelItem: React.FC<ConfigurationPanelItemProps> = ({
   deviceSelectorKind,
 }) => {
   return (
-    <div className="w-full text-gray-300 py-4 border-b border-b-gray-800 relative">
+    <div className="w-full text-skin-primary py-4 border-b border-b-gray-800 relative">
       <div className="flex flex-row justify-between items-center px-4 text-xs uppercase tracking-wider">
         <h3>{title}</h3>
         {deviceSelectorKind && (
           <span className="flex flex-row gap-2">
             <TrackToggle
-              className="px-2 py-1 bg-gray-900 text-gray-300 border border-gray-800 rounded-sm hover:bg-gray-800"
+              className="px-2 py-1 bg-fill-track-detail text-skin-primary border border-gray-800 rounded-sm hover:bg-gray-800"
               source={
                 deviceSelectorKind === "audioinput"
                   ? Track.Source.Microphone

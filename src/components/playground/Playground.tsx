@@ -440,8 +440,16 @@ export default function Playground({
 
   if (config.settings.chat) {
     mobileTabs.push({
-      title: "Chat",
-      content: chatTileContent,
+      title: "Messages",
+      content: (
+        <PlaygroundTile
+          toggleSetting={toggleSetting}
+          className="w-full h-full grow"
+          childrenClassName="justify-center"
+        >
+          {chatTileContent}
+        </PlaygroundTile>
+      ),
     });
   }
 
@@ -512,7 +520,7 @@ export default function Playground({
         {config.settings.chat && (
           <PlaygroundTile
             toggleSetting={toggleSetting}
-            title="Chat"
+            title="Messages"
             className="h-full grow basis-1/4 hidden lg:flex"
             childrenClassName="justify-center"
             backgroundColor="skin-fill-alternate"

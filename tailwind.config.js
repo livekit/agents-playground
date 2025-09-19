@@ -109,6 +109,8 @@ module.exports = {
           "fill-unselected": "var(--color-fill-unselected)",
           "fill-alternate": "var(--color-fill-alternate)",
           "fill-bubble": "var(--color-chat-accent)",
+          "fill-track-icon": "var(--color-setting-primary)",
+          "fill-track-detail": "var(--color-setting-secondary)"
         },
       },
       textColor: {
@@ -118,6 +120,7 @@ module.exports = {
           tertiary: "var(--color-text-tertiary)",
           danger: "var(--color-text-danger)",
           accent: "var(--color-button-accent)",
+          "accent-primary": "var(--color-button-accent-primary)",
           connected: "var(--color-text-connected)",
           connect: "var(--color-text-connect)",
           alternate: "var(--color-chat-alternate)",
