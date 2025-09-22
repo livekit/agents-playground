@@ -48,9 +48,13 @@ export const ChatMessage = ({
         } gap-4 self-stretch pt-4`}
       >
         {!isSelf && <div className="rounded-full avatar-agent"></div>}
-        <div className="flex flex-col grow shrink-0 flex-end gap-4">
+        <div
+          className={`flex flex-col shrink-0 flex-end gap-4 ${
+            !isSelf ? "grow" : ""
+          }`}
+        >
           <div
-            className={`flex flex-col gap-2 align-start rounded-lg px-4 py-2 text-base text-skin-primary ${
+            className={`flex flex-col gap-2 align-start rounded-lg px-4 py-2 text-base text-skin-primary overflow-y max-w-64 lg:max-w-72 ${
               isSelf
                 ? "bg-skin-fill-primary text-skin-tertiary"
                 : "bg-skin-fill-bubble text-skin-primary"
