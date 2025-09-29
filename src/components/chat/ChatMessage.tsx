@@ -1,5 +1,3 @@
-import { time } from "console";
-
 type ChatMessageProps = {
   message: string;
   accentColor: string;
