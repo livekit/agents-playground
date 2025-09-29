@@ -1,7 +1,6 @@
 export interface DisconnectedPillProps {
   icon: JSX.Element;
   prefix?: string;
-  // keyword: string;
   title: string;
   showSeparator?: boolean;
 }

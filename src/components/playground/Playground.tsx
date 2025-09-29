@@ -310,42 +310,6 @@ export default function Playground({
             </div>
           )}
         </ConfigurationPanelItem>
-        {/* <ConfigurationPanelItem title="Status">
-          <div className="flex flex-col gap-2">
-            <NameValueRow
-              name="Room connected"
-              value={
-                roomState === ConnectionState.Connecting ? (
-                  <LoadingSVG diameter={16} strokeWidth={2} />
-                ) : (
-                  roomState.toUpperCase()
-                )
-              }
-              valueColor={
-                roomState === ConnectionState.Connected
-                  ? `${config.settings.theme_color}-500`
-                  : "gray-500"
-              }
-            />
-            <NameValueRow
-              name="Agent connected"
-              value={
-                isAgentConnected ? (
-                  "TRUE"
-                ) : roomState === ConnectionState.Connected ? (
-                  <LoadingSVG diameter={12} strokeWidth={2} />
-                ) : (
-                  "FALSE"
-                )
-              }
-              valueColor={
-                isAgentConnected
-                  ? `${config.settings.theme_color}-500`
-                  : "gray-500"
-              }
-            />
-          </div>
-        </ConfigurationPanelItem> */}
         {localVideoTrack && (
           <ConfigurationPanelItem
             title="Camera"
@@ -370,19 +334,6 @@ export default function Playground({
             />
           </ConfigurationPanelItem>
         )}
-        {/* <div className="w-full">
-          <ConfigurationPanelItem title="Color">
-            <ColorPicker
-              colors={themeColors}
-              selectedColor={config.settings.theme_color}
-              onSelect={(color) => {
-                const userSettings = { ...config.settings };
-                userSettings.theme_color = color;
-                setUserSettings(userSettings);
-              }}
-            />
-          </ConfigurationPanelItem>
-        </div> */}
         {config.show_qr && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
