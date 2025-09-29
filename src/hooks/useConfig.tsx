@@ -68,9 +68,6 @@ const useAppConfig = (): AppConfig => {
         const parsedConfig = jsYaml.load(
           process.env.NEXT_PUBLIC_APP_CONFIG
         ) as AppConfig;
-
-        console.log("parsedConfig");
-        console.log(parsedConfig);
         parsedConfig.settings.editable = true;
         if (parsedConfig.settings === undefined) {
           parsedConfig.settings = defaultConfig.settings;
