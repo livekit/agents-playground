@@ -24,7 +24,6 @@ export const ChatMessageInput = ({
   const [inputHasFocus, setInputHasFocus] = useState(false);
 
   const handleSend = useCallback(() => {
-    console.log(message);
     if (!onSend) {
       return;
     }
