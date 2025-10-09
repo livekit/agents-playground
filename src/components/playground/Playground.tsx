@@ -26,13 +26,24 @@ import {
   useRoomContext,
   useParticipantAttributes,
 } from "@livekit/components-react";
-import { ConnectionState, LocalParticipant, Track } from "livekit-client";
+import {
+  ConnectionState,
+  DataPacket_Kind,
+  LocalParticipant,
+  Participant,
+  RoomEvent,
+  Track,
+} from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { RpcPanel } from "./RpcPanel";
+import {
+  DataChannelLog,
+  DataChannelLogEntry,
+} from "./DataChannelLog";
 
 export interface PlaygroundMeta {
   name: string;
@@ -55,6 +66,7 @@ export default function Playground({
   const { config, setUserSettings } = useConfig();
   const { name } = useRoomInfo();
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
+  const [dataEvents, setDataEvents] = useState<DataChannelLogEntry[]>([]);
   const { localParticipant } = useLocalParticipant();
 
   const voiceAssistant = useVoiceAssistant();
@@ -66,6 +78,9 @@ export default function Playground({
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [showRpc, setShowRpc] = useState(false);
+  const handleClearDataEvents = useCallback(() => {
+    setDataEvents([]);
+  }, []);
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -93,31 +108,105 @@ export default function Playground({
     ({ source }) => source === Track.Source.Microphone,
   );
 
-  const onDataReceived = useCallback(
-    (msg: any) => {
-      if (msg.topic === "transcription") {
-        const decoded = JSON.parse(
-          new TextDecoder("utf-8").decode(msg.payload),
-        );
-        let timestamp = new Date().getTime();
-        if ("timestamp" in decoded && decoded.timestamp > 0) {
-          timestamp = decoded.timestamp;
-        }
-        setTranscripts([
-          ...transcripts,
-          {
-            name: "You",
-            message: decoded.text,
-            timestamp: timestamp,
-            isSelf: true,
-          },
-        ]);
+  const onDataReceived = useCallback((msg: any) => {
+    if (msg.topic === "transcription") {
+      const decoded = JSON.parse(
+        new TextDecoder("utf-8").decode(msg.payload),
+      );
+      let timestamp = new Date().getTime();
+      if ("timestamp" in decoded && decoded.timestamp > 0) {
+        timestamp = decoded.timestamp;
       }
-    },
-    [transcripts],
-  );
+      setTranscripts((prev) => [
+        ...prev,
+        {
+          name: "You",
+          message: decoded.text,
+          timestamp: timestamp,
+          isSelf: true,
+        },
+      ]);
+    }
+  }, []);
 
   useDataChannel(onDataReceived);
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    const decoder = new TextDecoder("utf-8");
+
+    const handleDataReceived = (
+      payload: Uint8Array,
+      participant?: Participant,
+      kind?: DataPacket_Kind,
+      topic?: string,
+    ) => {
+      const timestamp = Date.now();
+      let payloadText = "";
+      let payloadFormat: DataChannelLogEntry["payloadFormat"] = "binary";
+
+      try {
+        payloadText = decoder.decode(payload);
+        if (payloadText.length > 0) {
+          payloadFormat = "text";
+          const trimmed = payloadText.trim();
+          if (
+            (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))
+          ) {
+            try {
+              const parsed = JSON.parse(payloadText);
+              payloadText = JSON.stringify(parsed, null, 2);
+              payloadFormat = "json";
+            } catch {
+              payloadFormat = "text";
+            }
+          }
+        }
+      } catch (error) {
+        payloadText = Array.from(payload)
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join(" ");
+        payloadFormat = "binary";
+      }
+
+      const kindLabel: DataChannelLogEntry["kind"] =
+        kind === DataPacket_Kind.RELIABLE
+          ? "reliable"
+          : kind === DataPacket_Kind.LOSSY
+            ? "lossy"
+            : "unknown";
+
+      setDataEvents((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: `${timestamp}-${Math.random().toString(16).slice(2)}`,
+            timestamp,
+            topic,
+            participantIdentity: participant?.identity,
+            participantName: participant?.name,
+            kind: kindLabel,
+            payload: payloadText,
+            payloadFormat,
+          },
+        ];
+        const maxEntries = 200;
+        if (next.length > maxEntries) {
+          return next.slice(next.length - maxEntries);
+        }
+        return next;
+      });
+    };
+
+    room.on(RoomEvent.DataReceived, handleDataReceived);
+
+    return () => {
+      room.off(RoomEvent.DataReceived, handleDataReceived);
+    };
+  }, [room]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -228,6 +317,14 @@ export default function Playground({
     voiceAssistant.audioTrack,
     voiceAssistant.agent,
   ]);
+  const dataEventsContent = useMemo(() => {
+    return (
+      <DataChannelLog
+        entries={dataEvents}
+        onClear={handleClearDataEvents}
+      />
+    );
+  }, [dataEvents, handleClearDataEvents]);
 
   const handleRpcCall = useCallback(async () => {
     if (!voiceAssistant.agent || !room) {
@@ -537,6 +634,11 @@ export default function Playground({
   }
 
   mobileTabs.push({
+    title: "Events",
+    content: <div className="h-full">{dataEventsContent}</div>,
+  });
+
+  mobileTabs.push({
     title: "Settings",
     content: (
       <PlaygroundTile
@@ -574,8 +676,21 @@ export default function Playground({
             initialTab={mobileTabs.length - 1}
           />
         </div>
+
+        {/* Data Events - Left Column */}
+        {config.settings.outputs.data_events && (
+          <PlaygroundTile
+            title="Data Events"
+            className="hidden lg:flex h-full basis-3/12 flex-col"
+            childrenClassName="!items-stretch"
+          >
+            {dataEventsContent}
+          </PlaygroundTile>
+        )}
+
+        {/* Video/Audio - Center-Left Column */}
         <div
-          className={`flex-col grow basis-1/2 gap-4 h-full hidden lg:${
+          className={`flex-col grow basis-1/3 gap-4 h-full hidden lg:${
             !config.settings.outputs.audio && !config.settings.outputs.video
               ? "hidden"
               : "flex"
@@ -601,18 +716,24 @@ export default function Playground({
           )}
         </div>
 
+        {/* Chat - Center-Right Column */}
         {config.settings.chat && (
-          <PlaygroundTile
-            title="Chat"
-            className="h-full grow basis-1/4 hidden lg:flex"
-          >
-            {chatTileContent}
-          </PlaygroundTile>
+          <div className="hidden h-full basis-3/12 flex-col gap-4 lg:flex">
+            <PlaygroundTile
+              title="Chat"
+              className="h-full grow"
+              childrenClassName="!items-stretch"
+            >
+              {chatTileContent}
+            </PlaygroundTile>
+          </div>
         )}
+
+        {/* Settings - Right Column */}
         <PlaygroundTile
           padding={false}
           backgroundColor="gray-950"
-          className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
+          className="h-full w-full basis-3/12 items-start overflow-y-auto hidden lg:flex"
           childrenClassName="h-full grow items-start"
         >
           {settingsTileContent}
