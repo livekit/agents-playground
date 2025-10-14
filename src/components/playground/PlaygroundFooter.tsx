@@ -1,9 +1,7 @@
 import { Button } from "@/components/button/Button";
 import { LoadingSVG } from "@/components/button/LoadingSVG";
-import { useConfig } from "@/hooks/useConfig";
 import { ConnectionState } from "livekit-client";
 import { settingsButtons, SettingValue } from "@/hooks/useSettings";
-import { SettingsDropdown } from "./SettingsDropdown";
 
 type PlaygroundFooter = {
   height: number;
@@ -38,7 +36,11 @@ export const PlaygroundFooter = ({
                 onClick={() => toggleSetting(setting)}
                 className={isEnabled(setting) ? "button-active" : ""}
               >
-                {setting.icon}
+                {!isEnabled(setting) && setting.iconOff ? (
+                  <>{setting.iconOff}</>
+                ) : (
+                  <>{setting.icon}</>
+                )}
               </div>
             );
         })}

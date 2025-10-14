@@ -6,6 +6,8 @@ import {
   MicIcon,
   VideoIcon,
   MessagesIcon,
+  MicIconOff,
+  CameraVideoIconOff,
 } from "../components/playground/icons";
 
 export type SettingType =
@@ -20,6 +22,7 @@ export type SettingValue = {
   type: SettingType | "separator";
   key: string;
   icon?: ReactNode;
+  iconOff?: ReactNode;
   group?: number;
 };
 
@@ -29,6 +32,7 @@ export const settingsButtons: SettingValue[] = [
     type: "inputs",
     key: "mic",
     icon: <MicIcon />,
+    iconOff: <MicIconOff />,
     group: 1,
   },
   {
@@ -36,6 +40,7 @@ export const settingsButtons: SettingValue[] = [
     type: "inputs",
     key: "camera",
     icon: <CameraVideoIcon />,
+    iconOff: <CameraVideoIconOff />,
     group: 1,
   },
   {
