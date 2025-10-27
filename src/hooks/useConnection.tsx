@@ -14,7 +14,10 @@ type TokenGeneratorData = {
   token: string;
   mode: ConnectionMode;
   disconnect: () => Promise<void>;
-  connect: (mode: ConnectionMode) => Promise<void>;
+  connect: (
+    mode: ConnectionMode,
+    opts?: { token?: string; wsUrl?: string },
+  ) => Promise<void>;
 };
 
 const ConnectionContext = createContext<TokenGeneratorData | undefined>(
@@ -37,7 +40,10 @@ export const ConnectionProvider = ({
   }>({ wsUrl: "", token: "", shouldConnect: false, mode: "manual" });
 
   const connect = useCallback(
-    async (mode: ConnectionMode) => {
+    async (
+      mode: ConnectionMode,
+      opts?: { token?: string; wsUrl?: string },
+    ) => {
       let token = "";
       let url = "";
       if (mode === "cloud") {
@@ -96,8 +102,8 @@ export const ConnectionProvider = ({
         }).then((res) => res.json());
         token = accessToken;
       } else {
-        token = config.settings.token;
-        url = config.settings.ws_url;
+        token = opts?.token ?? config.settings.token;
+        url = opts?.wsUrl ?? config.settings.ws_url;
       }
       setConnectionDetails({ wsUrl: url, token, shouldConnect: true, mode });
     },

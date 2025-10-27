@@ -53,8 +53,12 @@ export function HomeInner() {
   const { toastMessage, setToastMessage } = useToast();
 
   const handleConnect = useCallback(
-    async (c: boolean, mode: ConnectionMode) => {
-      c ? connect(mode) : disconnect();
+    async (
+      c: boolean,
+      mode: ConnectionMode,
+      opts?: { token?: string; url?: string },
+    ) => {
+      c ? connect(mode, { token: opts?.token, wsUrl: opts?.url }) : disconnect();
     },
     [connect, disconnect],
   );
@@ -114,9 +118,9 @@ export function HomeInner() {
           >
             <Playground
               themeColors={themeColors}
-              onConnect={(c) => {
+              onConnect={(c, opts) => {
                 const m = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : mode;
-                handleConnect(c, m);
+                handleConnect(c, m, opts);
               }}
             />
             <RoomAudioRenderer />
@@ -125,8 +129,8 @@ export function HomeInner() {
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={(mode) => {
-              handleConnect(true, mode);
+            onConnectClicked={(mode, opts) => {
+              handleConnect(true, mode, opts);
             }}
           />
         )}
