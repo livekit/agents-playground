@@ -402,21 +402,6 @@ export default function Playground({
     });
   }
 
-  mobileTabs.push({
-    title: "Settings",
-    content: (
-      <PlaygroundTile
-        // title={config.title}
-        toggleSetting={toggleSetting}
-        padding={false}
-        className="h-full w-full basis-1/4 items-start overflow-y-auto flex"
-        childrenClassName="h-full grow items-start"
-      >
-        {settingsTileContent}
-      </PlaygroundTile>
-    ),
-  });
-
   return (
     <>
       <PlaygroundHeader
@@ -434,7 +419,7 @@ export default function Playground({
             toggleSetting={toggleSetting}
             className="h-full"
             tabs={mobileTabs}
-            initialTab={mobileTabs.length - 1}
+            initialTab={1}
           />
         </div>
         <div
@@ -483,7 +468,6 @@ export default function Playground({
             title="Room Details"
             padding={false}
             className="h-full w-full basis-1/4 lg:flex overflow-y-auto hidden"
-            // childrenClassName="h-full grow items-start"
             backgroundColor="skin-fill-alternate"
           >
             {settingsTileContent}
