@@ -419,7 +419,6 @@ export default function Playground({
             toggleSetting={toggleSetting}
             className="h-full"
             tabs={mobileTabs}
-            initialTab={1}
           />
         </div>
         <div
