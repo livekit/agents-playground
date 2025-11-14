@@ -45,7 +45,7 @@ export const PlaygroundFooter = ({
             );
         })}
       </div>
-      <div className="flex justify-center gap-2 max-sm:hidden">
+      <div className="flex justify-center gap-2 max-lg:hidden">
         {settingsButtons.map((setting, idx) => {
           if (setting.group === 2)
             return (
