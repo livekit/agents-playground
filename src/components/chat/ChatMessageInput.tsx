@@ -61,7 +61,7 @@ export const ChatMessageInput = ({
       className="flex flex-col gap-2 border-t border-t-gray-800"
       style={{ height: height }}
     >
-      <div className="flex flex-row pt-6 gap-4 items-center relative">
+      <div className="flex flex-row pt-2 gap-4 items-center relative">
         <div
           className={`w-2 h-4 bg-${inputHasFocus ? accentColor : "gray"}-${
             inputHasFocus ? 500 : 800

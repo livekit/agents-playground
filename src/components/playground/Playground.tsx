@@ -259,7 +259,7 @@ export default function Playground({
       />
     );
     if (roomState === ConnectionState.Disconnected) {
-      return <div className="flex flex-col">{disconnectedContent}</div>;
+      return disconnectedContent;
     }
 
     const waitingContent = (
@@ -267,7 +267,7 @@ export default function Playground({
     );
 
     if (!agentAudioTrack) {
-      return <div className="flex flex-col">{waitingContent}</div>;
+      return waitingContent;
     }
 
     if (agentAudioTrack) {
@@ -417,7 +417,7 @@ export default function Playground({
   });
 
   return (
-    <>
+    <div className="flex flex-col h-full w-full overflow-hidden">
       <PlaygroundHeader
         title={config.title}
         logo={logo}
@@ -425,13 +425,12 @@ export default function Playground({
         accentColor={config.settings.theme_color}
       />
       <div
-        className={`flex gap-1 grow w-full selection:bg-${config.settings.theme_color}-900`}
-        style={{ height: `calc(100% - ${headerHeight}px)` }}
+        className={`flex gap-1 w-full flex-1 min-h-0 selection:bg-${config.settings.theme_color}-900`}
       >
-        <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
+        <div className="flex flex-col grow basis-1/2 gap-4 h-full min-h-0 lg:hidden">
           <PlaygroundTabbedTile
             toggleSetting={toggleSetting}
-            className="h-full"
+            className="h-full min-h-0"
             tabs={mobileTabs}
           />
         </div>
@@ -497,6 +496,6 @@ export default function Playground({
         isEnabled={isEnabled}
         toggleSetting={toggleSetting}
       />
-    </>
+    </div>
   );
 }

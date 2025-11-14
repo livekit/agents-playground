@@ -66,7 +66,7 @@ export const PlaygroundTile: React.FC<PlaygroundTileProps> = ({
       )}
 
       <div
-        className={`flex flex-col items-center grow w-full ${childrenClassName}`}
+        className={`flex flex-col items-center grow w-full overflow-hidden ${childrenClassName}`}
         style={{
           height: `calc(100% - ${title ? titleHeight + "px" : "0px"})`,
         }}
@@ -91,10 +91,10 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
   }
   return (
     <div
-      className={`flex flex-col h-full border rounded-sm border-gray-500 text-white bg-${backgroundColor} ${className}`}
+      className={`flex flex-col h-full min-h-0 border rounded-sm border-gray-500 text-white bg-${backgroundColor} ${className}`}
     >
       <div
-        className="flex items-center justify-start text-xs uppercase tracking-wider gap-4 px-1"
+        className="flex items-center justify-start text-xs uppercase tracking-wider gap-4 px-1 flex-shrink-0"
         style={{
           height: `${titleHeight}px`,
         }}
@@ -114,9 +114,8 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
         ))}
       </div>
       <div
-        className={`w-full ${childrenClassName}`}
+        className={`w-full flex-1 min-h-0 overflow-hidden ${childrenClassName}`}
         style={{
-          height: `calc(100% - ${titleHeight}px)`,
           padding: `${contentPadding * 4}px`,
         }}
       >

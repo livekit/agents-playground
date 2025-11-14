@@ -12,7 +12,7 @@ export default function DisconnectedPill({
   showSeparator = true,
 }: DisconnectedPillProps) {
   return (
-    <div className="flex items-center justify-center text-skin-primary px-6 py-3 gap-2 rounded-full bg-skin-fill-accent w-full h-full">
+    <div className="flex items-center justify-center text-skin-primary px-6 py-3 gap-2 rounded-full bg-skin-fill-accent">
       {icon}
       {prefix}
       {showSeparator && <span>-</span>}
