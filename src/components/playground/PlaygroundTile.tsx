@@ -106,7 +106,7 @@ export const PlaygroundTabbedTile: React.FC<PlaygroundTabbedTileProps> = ({
               index === activeTab
                 ? `text-skin-connect border-b border-skin-fill-primary`
                 : `text-skin-accent-primary`
-            }`}
+            } ${index === tabs.length - 1 ? "max-lg:hidden" : ""}`} // hide Settings tab for mobile view
             onClick={() => setActiveTab(index)}
           >
             {tab.title}

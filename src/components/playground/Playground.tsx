@@ -402,6 +402,20 @@ export default function Playground({
     });
   }
 
+  mobileTabs.push({
+    title: "Settings",
+    content: (
+      <PlaygroundTile
+        toggleSetting={toggleSetting}
+        padding={false}
+        className="h-full w-full basis-1/4 items-start overflow-y-auto flex max-lg:hidden"
+        childrenClassName="h-full grow items-start"
+      >
+        {settingsTileContent}
+      </PlaygroundTile>
+    ),
+  });
+
   return (
     <>
       <PlaygroundHeader
