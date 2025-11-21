@@ -5,7 +5,8 @@ const withNextPluginPreval = createNextPluginPreval();
 const nextConfig = {
   reactStrictMode: false,
   output: 'standalone', // Required for Docker deployment
-  // Note: basePath not needed - DigitalOcean ingress handles /playground routing
+  basePath: process.env.NODE_ENV === 'production' ? '/playground' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/playground' : '',
 };
 
 module.exports = withNextPluginPreval(nextConfig);
