@@ -30,7 +30,7 @@ You can try out a demo of the playground with [KITT](https://kitt.livekit.io) or
 1. Install dependencies
 
 ```bash
-  npm install
+pnpm install
 ```
 
 2. Copy and rename the `.env.example` file to `.env.local` and fill in the necessary environment variables.
@@ -44,7 +44,7 @@ NEXT_PUBLIC_LIVEKIT_URL=wss://<Your Cloud URL>
 3. Run the development server:
 
 ```bash
-  npm run dev
+pnpm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
