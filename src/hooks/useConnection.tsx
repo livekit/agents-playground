@@ -87,14 +87,29 @@ export const ConnectionProvider = ({
           );
           body.attributes = attributes;
         }
-        const { accessToken } = await fetch(`/api/token`, {
+        const tokenEndpoint =
+          process.env.NEXT_PUBLIC_TOKEN_ENDPOINT?.trim() ||
+          "/api/livekit/token";
+        const tokenResponse = await fetch(tokenEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(body),
-        }).then((res) => res.json());
-        token = accessToken;
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error(
+            `Token endpoint returned ${tokenResponse.status} ${tokenResponse.statusText}`,
+          );
+        }
+
+        const tokenPayload = await tokenResponse.json();
+        token = tokenPayload.accessToken ?? tokenPayload.token ?? "";
+
+        if (!token) {
+          throw new Error("Token endpoint did not return an access token");
+        }
       } else {
         token = config.settings.token;
         url = config.settings.ws_url;
