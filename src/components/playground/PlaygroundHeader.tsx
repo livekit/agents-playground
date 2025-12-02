@@ -12,6 +12,7 @@ type PlaygroundHeader = {
   height: number;
   accentColor: string;
   connectionState: ConnectionState;
+  onClickSIPCall: () => void;
   onConnectClicked: () => void;
 };
 
@@ -21,6 +22,7 @@ export const PlaygroundHeader = ({
   githubLink,
   accentColor,
   height,
+  onClickSIPCall,
   onConnectClicked,
   connectionState,
 }: PlaygroundHeader) => {
@@ -51,6 +53,21 @@ export const PlaygroundHeader = ({
           </a>
         )}
         {config.settings.editable && <SettingsDropdown />}
+        <Button
+          accentColor={connectionState === ConnectionState.Connected ? "red" : "green"}
+          disabled={connectionState === ConnectionState.Connecting}
+          onClick={() => {
+            onClickSIPCall();
+          }}
+        >
+          {connectionState === ConnectionState.Connecting ? (
+            <LoadingSVG />
+          ) : connectionState === ConnectionState.Connected ? (
+            "SIP Disabled"
+          ) : (
+            "SIP Call"
+          )}
+        </Button>
         <Button
           accentColor={
             connectionState === ConnectionState.Connected ? "red" : accentColor

@@ -550,6 +550,56 @@ export default function Playground({
     ),
   });
 
+  const handleClickSIPCall = async () => {
+    if (roomState === ConnectionState.Connected) {
+      alert("SIP Call functionality is disabled while connected to a room.");
+      return;
+    }
+    let phoneNumber;
+    if (!config.settings.metadata || !config.settings.agent_name) {
+      alert("Need to set both phone number in metadata and agent name to make SIP Call.");
+      return;
+    }
+    phoneNumber = config.settings.metadata;
+
+    if (phoneNumber.length < 11) {
+      alert("Make sure phone number entered in metadata is valid.");
+      return;
+    }
+    const receiverPhoneNumber = parseInt(phoneNumber);
+
+    const timestamp = Date.now();
+    const roomName = `cornet-sip-room-${receiverPhoneNumber}-${timestamp}`;
+    const metadata = {
+      phoneNumber: `+${receiverPhoneNumber}`,
+      roomName,
+    };
+
+    try {
+      const response = await fetch("/api/dispatch-agent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomName,
+          agentName: config.settings.agent_name,
+          metadata,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`Failed to initiate SIP call: ${error.error}`);
+        return;
+      }
+
+      alert(`SIP Call initiated successfully to +${receiverPhoneNumber}!`);
+    } catch (error) {
+      alert(`Error initiating SIP call: ${error}`);
+    }
+  };
+
   return (
     <>
       <PlaygroundHeader
@@ -559,6 +609,7 @@ export default function Playground({
         height={headerHeight}
         accentColor={config.settings.theme_color}
         connectionState={roomState}
+        onClickSIPCall={handleClickSIPCall}
         onConnectClicked={() =>
           onConnect(roomState === ConnectionState.Disconnected)
         }
