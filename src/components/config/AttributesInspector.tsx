@@ -31,8 +31,8 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showSyncFlash, setShowSyncFlash] = useState(false);
   const { localParticipant } = useLocalParticipant();
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const syncFlashTimeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update local attributes when props change
   useEffect(() => {

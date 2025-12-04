@@ -143,12 +143,12 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     } as UserSettings;
   }, [appConfig]);
 
-  const getSettingsFromCookies = useCallback(() => {
+  const getSettingsFromCookies = useCallback(async () => {
     const appConfigFromSettings = appConfig;
     if (appConfigFromSettings.settings.editable === false) {
       return null;
     }
-    const jsonSettings = getCookie("lk_settings");
+    const jsonSettings = await getCookie("lk_settings");
     if (!jsonSettings) {
       return null;
     }
@@ -177,7 +177,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     setCookie("lk_settings", json);
   }, []);
 
-  const getConfig = useCallback(() => {
+  const getConfig = useCallback(async () => {
     const appConfigFromSettings = appConfig;
 
     if (appConfigFromSettings.settings.editable === false) {
@@ -186,7 +186,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return appConfigFromSettings;
     }
-    const cookieSettigs = getSettingsFromCookies();
+    const cookieSettigs = await getSettingsFromCookies();
     const urlSettings = getSettingsFromUrl();
     if (!cookieSettigs) {
       if (urlSettings) {
@@ -198,7 +198,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         setUrlSettings(cookieSettigs);
       }
     }
-    const newCookieSettings = getSettingsFromCookies();
+    const newCookieSettings = await getSettingsFromCookies();
     if (!newCookieSettings) {
       return appConfigFromSettings;
     }
@@ -232,11 +232,13 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     [appConfig, setCookieSettings, setUrlSettings],
   );
 
-  const [config, _setConfig] = useState<AppConfig>(getConfig());
+  const [config, _setConfig] = useState<AppConfig>(defaultConfig);
 
   // Run things client side because we use cookies
   useEffect(() => {
-    _setConfig(getConfig());
+    getConfig().then((config) => {
+      _setConfig(config);
+    });
   }, [getConfig]);
 
   return (
