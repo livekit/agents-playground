@@ -6,7 +6,10 @@ import { ConnectionMode } from "@/hooks/useConnection";
 
 type PlaygroundConnectProps = {
   accentColor: string;
-  onConnectClicked: (mode: ConnectionMode) => void;
+  onConnectClicked: (
+    mode: ConnectionMode,
+    opts?: { token?: string; url?: string },
+  ) => void;
 };
 
 const ConnectTab = ({ active, onClick, children }: any) => {
@@ -58,7 +61,7 @@ const TokenConnect = ({
             newSettings.ws_url = url;
             newSettings.token = token;
             setUserSettings(newSettings);
-            onConnectClicked("manual");
+            onConnectClicked("manual", { token, url });
           }}
         >
           Connect
