@@ -31,6 +31,11 @@ const settingsDropdown: SettingValue[] = [
     type: "outputs",
     key: "audio",
   },
+  {
+    title: "Show data events",
+    type: "outputs",
+    key: "data_events",
+  },
 
   {
     title: "---",
@@ -68,7 +73,7 @@ export const SettingsDropdown = () => {
       const key = setting.key as "camera" | "mic" | "screen";
       return config.settings.inputs[key];
     } else if (setting.type === "outputs") {
-      const key = setting.key as "video" | "audio";
+      const key = setting.key as "video" | "audio" | "data_events";
       return config.settings.outputs[key];
     }
 
@@ -85,7 +90,7 @@ export const SettingsDropdown = () => {
     } else if (setting.type === "inputs") {
       newSettings.inputs[setting.key as "camera" | "mic" | "screen"] = newValue;
     } else if (setting.type === "outputs") {
-      newSettings.outputs[setting.key as "video" | "audio"] = newValue;
+      newSettings.outputs[setting.key as "video" | "audio" | "data_events"] = newValue;
     }
     setUserSettings(newSettings);
   };
