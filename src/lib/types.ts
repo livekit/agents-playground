@@ -1,4 +1,13 @@
-import { LocalAudioTrack, LocalVideoTrack } from "livekit-client";
+import {
+  LocalAudioTrack,
+  LocalVideoTrack,
+  TokenSourceConfigurable,
+} from "livekit-client";
+
+export type PlaygroundConnectProps = {
+  accentColor: string;
+  onConnectClicked: (tokenSource: TokenSourceConfigurable) => void;
+};
 
 export interface SessionProps {
   roomName: string;

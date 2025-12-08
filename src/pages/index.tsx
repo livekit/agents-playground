@@ -1,24 +1,14 @@
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  StartAudio,
-} from "@livekit/components-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Inter } from "next/font/google";
 import Head from "next/head";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConfigProvider, useConfig } from "@/hooks/useConfig";
-import {
-  ConnectionMode,
-  ConnectionProvider,
-  useConnection,
-} from "@/hooks/useConnection";
-import { useMemo } from "react";
 import { ToastProvider, useToast } from "@/components/toast/ToasterProvider";
+import { TokenSourceConfigurable, TokenSource } from "livekit-client";
 
 const themeColors = [
   "cyan",
@@ -37,37 +27,26 @@ export default function Home() {
   return (
     <ToastProvider>
       <ConfigProvider>
-        <ConnectionProvider>
-          <HomeInner />
-        </ConnectionProvider>
+        <HomeInner />
       </ConfigProvider>
     </ToastProvider>
   );
 }
 
 export function HomeInner() {
-  const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
-    useConnection();
+  // const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
+  //   useConnection();
 
   const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
-
-  const handleConnect = useCallback(
-    async (c: boolean, mode: ConnectionMode) => {
-      c ? connect(mode) : disconnect();
-    },
-    [connect, disconnect],
-  );
-
-  const showPG = useMemo(() => {
+  const [tokenSource, setTokenSource] = useState<
+    TokenSourceConfigurable | undefined
+  >(() => {
     if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-      return true;
+      return TokenSource.endpoint("/api/token");
     }
-    if (wsUrl) {
-      return true;
-    }
-    return false;
-  }, [wsUrl]);
+    return undefined;
+  });
 
   return (
     <>
@@ -101,32 +80,13 @@ export function HomeInner() {
             </motion.div>
           )}
         </AnimatePresence>
-        {showPG ? (
-          <LiveKitRoom
-            className="flex flex-col h-full w-full"
-            serverUrl={wsUrl}
-            token={token}
-            connect={shouldConnect}
-            onError={(e) => {
-              setToastMessage({ message: e.message, type: "error" });
-              console.error(e);
-            }}
-          >
-            <Playground
-              themeColors={themeColors}
-              onConnect={(c) => {
-                const m = process.env.NEXT_PUBLIC_LIVEKIT_URL ? "env" : mode;
-                handleConnect(c, m);
-              }}
-            />
-            <RoomAudioRenderer />
-            <StartAudio label="Click to enable audio playback" />
-          </LiveKitRoom>
+        {tokenSource ? (
+          <Playground themeColors={themeColors} tokenSource={tokenSource} />
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={(mode) => {
-              handleConnect(true, mode);
+            onConnectClicked={(tokenSource) => {
+              setTokenSource(tokenSource);
             }}
           />
         )}

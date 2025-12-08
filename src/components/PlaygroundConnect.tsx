@@ -2,12 +2,8 @@ import { useConfig } from "@/hooks/useConfig";
 import { CLOUD_ENABLED, CloudConnect } from "../cloud/CloudConnect";
 import { Button } from "./button/Button";
 import { useState } from "react";
-import { ConnectionMode } from "@/hooks/useConnection";
-
-type PlaygroundConnectProps = {
-  accentColor: string;
-  onConnectClicked: (mode: ConnectionMode) => void;
-};
+import { TokenSource, TokenSourceConfigurable } from "livekit-client";
+import { PlaygroundConnectProps } from "@/lib/types";
 
 const ConnectTab = ({ active, onClick, children }: any) => {
   let className = "px-2 py-1 text-sm";
@@ -30,8 +26,8 @@ const TokenConnect = ({
   onConnectClicked,
 }: PlaygroundConnectProps) => {
   const { setUserSettings, config } = useConfig();
-  const [url, setUrl] = useState(config.settings.ws_url);
-  const [token, setToken] = useState(config.settings.token);
+  const [url, setUrl] = useState<string>("");
+  const [token, setToken] = useState<string>("");
 
   return (
     <div className="flex left-0 top-0 w-full h-full bg-black/80 items-center justify-center text-center">
@@ -54,11 +50,13 @@ const TokenConnect = ({
           accentColor={accentColor}
           className="w-full"
           onClick={() => {
-            const newSettings = { ...config.settings };
-            newSettings.ws_url = url;
-            newSettings.token = token;
-            setUserSettings(newSettings);
-            onConnectClicked("manual");
+            const source = TokenSource.custom((options) => {
+              return {
+                serverUrl: url,
+                participantToken: token,
+              };
+            });
+            onConnectClicked(source);
           }}
         >
           Connect
@@ -115,7 +113,10 @@ export const PlaygroundConnect = ({
           </div>
           <div className="flex flex-col bg-gray-900/30 flex-grow">
             {showCloud && CLOUD_ENABLED ? (
-              <CloudConnect accentColor={accentColor} />
+              <CloudConnect
+                accentColor={accentColor}
+                onConnectClicked={onConnectClicked}
+              />
             ) : (
               <TokenConnect
                 accentColor={accentColor}

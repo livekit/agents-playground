@@ -1,4 +1,9 @@
-export const CloudConnect = ({ accentColor }: { accentColor: string }) => {
+import { PlaygroundConnectProps } from "@/lib/types";
+
+export const CloudConnect = ({
+  accentColor,
+  onConnectClicked,
+}: PlaygroundConnectProps) => {
   return null;
 };
 

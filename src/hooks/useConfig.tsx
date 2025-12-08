@@ -3,6 +3,14 @@
 import { AttributeItem } from "@/lib/types";
 import { getCookie, setCookie } from "cookies-next";
 import jsYaml from "js-yaml";
+import {
+  TokenSourceConfigurable,
+  TokenSourceFetchOptions,
+  TokenSourceFixed,
+  TokenSourceLiteral,
+} from "livekit-client";
+import { RoomAgentDispatch } from "livekit-server-sdk";
+import { PartialMessage } from "@bufbuild/protobuf";
 import { useRouter } from "next/navigation";
 import React, {
   createContext,
@@ -19,6 +27,8 @@ export type AppConfig = {
   video_fit?: "cover" | "contain";
   settings: UserSettings;
   show_qr?: boolean;
+  // configure it to support a specific agent
+  agent_dispatch?: PartialMessage<RoomAgentDispatch>;
 };
 
 export type UserSettings = {
@@ -34,14 +44,6 @@ export type UserSettings = {
     audio: boolean;
     video: boolean;
   };
-  ws_url: string;
-  token: string;
-  room_name: string;
-  participant_id: string;
-  participant_name: string;
-  agent_name?: string;
-  metadata?: string;
-  attributes?: AttributeItem[];
 };
 
 // Fallback if NEXT_PUBLIC_APP_CONFIG is not set
@@ -62,13 +64,6 @@ const defaultConfig: AppConfig = {
       audio: true,
       video: true,
     },
-    ws_url: "",
-    token: "",
-    room_name: "",
-    participant_id: "",
-    participant_name: "",
-    metadata: "",
-    attributes: [],
   },
   show_qr: false,
 };
@@ -135,11 +130,6 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         video: params.get("video") === "1",
         chat: params.get("chat") === "1",
       },
-      ws_url: "",
-      token: "",
-      room_name: "",
-      participant_id: "",
-      participant_name: "",
     } as UserSettings;
   }, [appConfig]);
 
@@ -166,7 +156,6 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         chat: boolToString(us.chat),
         theme_color: us.theme_color || "cyan",
       });
-      // Note: We don't set ws_url and token to the URL on purpose
       router.replace("/#" + obj.toString());
     },
     [router],
@@ -213,6 +202,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     setUrlSettings,
   ]);
 
+  const [config, _setConfig] = useState<AppConfig>(defaultConfig);
+
   const setUserSettings = useCallback(
     (settings: UserSettings) => {
       const appConfigFromSettings = appConfig;
@@ -231,8 +222,6 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     },
     [appConfig, setCookieSettings, setUrlSettings],
   );
-
-  const [config, _setConfig] = useState<AppConfig>(defaultConfig);
 
   // Run things client side because we use cookies
   useEffect(() => {
