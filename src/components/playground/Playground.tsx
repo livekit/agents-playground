@@ -74,7 +74,7 @@ export default function Playground({
       agentMetadata: initialAgentOptions?.metadata,
     });
   }, []);
-  
+
   const session = useSession(tokenSource, tokenFetchOptions);
   const { connectionState } = session;
   const agent = useAgent(session);
@@ -82,7 +82,7 @@ export default function Playground({
 
   useEffect(() => {
     // to debug room.incomingDataStreamManager
-    console.log('room handle', session.room);
+    console.log("room handle", session.room);
   }, [session.connectionState]);
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
@@ -197,7 +197,11 @@ export default function Playground({
   const chatTileContent = useMemo(() => {
     if (agent.internal.agentParticipant) {
       return (
-        <ChatTile messages={messages.messages} accentColor={config.settings.theme_color} onSend={messages.send} />
+        <ChatTile
+          messages={messages.messages}
+          accentColor={config.settings.theme_color}
+          onSend={messages.send}
+        />
       );
     }
     return <></>;
@@ -444,11 +448,11 @@ export default function Playground({
           <ConfigurationPanelItem title="Camera" source={Track.Source.Camera}>
             {session.local.cameraTrack ? (
               <div className="relative">
-              <VideoTrack
-                className="rounded-sm border border-gray-800 opacity-70 w-full"
-                trackRef={session.local.cameraTrack}
-              />
-            </div>
+                <VideoTrack
+                  className="rounded-sm border border-gray-800 opacity-70 w-full"
+                  trackRef={session.local.cameraTrack}
+                />
+              </div>
             ) : null}
           </ConfigurationPanelItem>
         )}
@@ -460,7 +464,6 @@ export default function Playground({
             {session.local.microphoneTrack ? (
               <AudioInputTile trackRef={session.local.microphoneTrack} />
             ) : null}
-            
           </ConfigurationPanelItem>
         )}
         <div className="w-full">

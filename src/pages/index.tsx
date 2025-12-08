@@ -39,18 +39,14 @@ export function HomeInner() {
 
   const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
-  const [tokenSource, setTokenSource] = useState<TokenSourceConfigurable>();
-
-  useEffect(() => {
-    if (tokenSource) {
-      return;
-    }
-
+  const [tokenSource, setTokenSource] = useState<
+    TokenSourceConfigurable | undefined
+  >(() => {
     if (process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-      // use embedded token server
-      setTokenSource(TokenSource.endpoint("/api/token"));
+      return TokenSource.endpoint("/api/token");
     }
-  }, [tokenSource]);
+    return undefined;
+  });
 
   return (
     <>
