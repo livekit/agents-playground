@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { PlaygroundDeviceSelector } from "@/components/playground/PlaygroundDeviceSelector";
-import { TrackToggle, } from "@livekit/components-react";
-import type { ToggleSource } from '@livekit/components-core';
+import { TrackToggle } from "@livekit/components-react";
+import type { ToggleSource } from "@livekit/components-core";
 import { Track } from "livekit-client";
 
 type ConfigurationPanelItemProps = {

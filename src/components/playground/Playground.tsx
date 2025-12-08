@@ -1,7 +1,7 @@
 "use client";
 
 import { LoadingSVG } from "@/components/button/LoadingSVG";
-import { ChatMessageType } from "@/components/chat/ChatTile";
+import { ChatTile } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
@@ -13,26 +13,31 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { useConfig } from "@/hooks/useConfig";
-import { TranscriptionTile } from "@/transcriptions/TranscriptionTile";
 import {
   BarVisualizer,
   VideoTrack,
-  useConnectionState,
-  useDataChannel,
-  useLocalParticipant,
-  useRoomInfo,
-  useTracks,
-  useVoiceAssistant,
-  useRoomContext,
   useParticipantAttributes,
+  SessionProvider,
+  StartAudio,
+  RoomAudioRenderer,
+  useSession,
+  useAgent,
+  useSessionMessages,
 } from "@livekit/components-react";
-import { ConnectionState, LocalParticipant, Track } from "livekit-client";
+import {
+  ConnectionState,
+  TokenSourceConfigurable,
+  TokenSourceFetchOptions,
+  Track,
+} from "livekit-client";
+import { PartialMessage } from "@bufbuild/protobuf";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { RpcPanel } from "./RpcPanel";
+import { RoomAgentDispatch } from "livekit-server-sdk";
 
 export interface PlaygroundMeta {
   name: string;
@@ -42,7 +47,8 @@ export interface PlaygroundMeta {
 export interface PlaygroundProps {
   logo?: ReactNode;
   themeColors: string[];
-  onConnect: (connect: boolean, opts?: { token: string; url: string }) => void;
+  tokenSource: TokenSourceConfigurable;
+  agentOptions?: PartialMessage<RoomAgentDispatch>;
 }
 
 const headerHeight = 56;
@@ -50,74 +56,49 @@ const headerHeight = 56;
 export default function Playground({
   logo,
   themeColors,
-  onConnect,
+  tokenSource,
+  agentOptions: initialAgentOptions,
 }: PlaygroundProps) {
   const { config, setUserSettings } = useConfig();
-  const { name } = useRoomInfo();
-  const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
-  const { localParticipant } = useLocalParticipant();
-
-  const voiceAssistant = useVoiceAssistant();
-
-  const roomState = useConnectionState();
-  const tracks = useTracks();
-  const room = useRoomContext();
 
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [showRpc, setShowRpc] = useState(false);
+  const [tokenFetchOptions, setTokenFetchOptions] =
+    useState<TokenSourceFetchOptions>({});
+
+  // initialize token fetch options from initial values, which can come from config
+  useEffect(() => {
+    setTokenFetchOptions({
+      agentName: initialAgentOptions?.agentName,
+      agentMetadata: initialAgentOptions?.metadata,
+    });
+  }, []);
+  
+  const session = useSession(tokenSource, tokenFetchOptions);
+  const { connectionState } = session;
+  const agent = useAgent(session);
+  const messages = useSessionMessages(session);
 
   useEffect(() => {
-    if (roomState === ConnectionState.Connected) {
-      localParticipant.setCameraEnabled(config.settings.inputs.camera);
-      localParticipant.setMicrophoneEnabled(config.settings.inputs.mic);
+    // to debug room.incomingDataStreamManager
+    console.log('room handle', session.room);
+  }, [session.connectionState]);
+
+  const localScreenTrack = session.room.localParticipant.getTrackPublication(
+    Track.Source.ScreenShare,
+  );
+
+  useEffect(() => {
+    if (connectionState === ConnectionState.Connected) {
+      session.room.localParticipant.setCameraEnabled(
+        config.settings.inputs.camera,
+      );
+      session.room.localParticipant.setMicrophoneEnabled(
+        config.settings.inputs.mic,
+      );
     }
-  }, [config, localParticipant, roomState]);
-
-  const agentVideoTrack = tracks.find(
-    (trackRef) =>
-      trackRef.publication.kind === Track.Kind.Video &&
-      trackRef.participant.isAgent,
-  );
-
-  const localTracks = tracks.filter(
-    ({ participant }) => participant instanceof LocalParticipant,
-  );
-  const localCameraTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Camera,
-  );
-  const localScreenTrack = localTracks.find(
-    ({ source }) => source === Track.Source.ScreenShare,
-  );
-  const localMicTrack = localTracks.find(
-    ({ source }) => source === Track.Source.Microphone,
-  );
-
-  const onDataReceived = useCallback(
-    (msg: any) => {
-      if (msg.topic === "transcription") {
-        const decoded = JSON.parse(
-          new TextDecoder("utf-8").decode(msg.payload),
-        );
-        let timestamp = new Date().getTime();
-        if ("timestamp" in decoded && decoded.timestamp > 0) {
-          timestamp = decoded.timestamp;
-        }
-        setTranscripts([
-          ...transcripts,
-          {
-            name: "You",
-            message: decoded.text,
-            timestamp: timestamp,
-            isSelf: true,
-          },
-        ]);
-      }
-    },
-    [transcripts],
-  );
-
-  useDataChannel(onDataReceived);
+  }, [config, session.room.localParticipant, connectionState]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -135,17 +116,17 @@ export default function Playground({
       </div>
     );
 
-    const videoContent = (
+    const videoContent = agent.cameraTrack ? (
       <VideoTrack
-        trackRef={agentVideoTrack}
+        trackRef={agent.cameraTrack}
         className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
       />
-    );
+    ) : null;
 
     let content = null;
-    if (roomState === ConnectionState.Disconnected) {
+    if (connectionState === ConnectionState.Disconnected) {
       content = disconnectedContent;
-    } else if (agentVideoTrack) {
+    } else if (agent.cameraTrack) {
       content = videoContent;
     } else {
       content = loadingContent;
@@ -156,7 +137,7 @@ export default function Playground({
         {content}
       </div>
     );
-  }, [agentVideoTrack, config, roomState]);
+  }, [agent.cameraTrack, config, connectionState]);
 
   useEffect(() => {
     document.body.style.setProperty(
@@ -189,61 +170,63 @@ export default function Playground({
         className={`flex items-center justify-center w-full h-48 [--lk-va-bar-width:30px] [--lk-va-bar-gap:20px] [--lk-fg:var(--lk-theme-color)]`}
       >
         <BarVisualizer
-          state={voiceAssistant.state}
-          trackRef={voiceAssistant.audioTrack}
+          state={agent.state}
+          track={agent.microphoneTrack}
           barCount={5}
           options={{ minHeight: 20 }}
         />
       </div>
     );
 
-    if (roomState === ConnectionState.Disconnected) {
+    if (connectionState === ConnectionState.Disconnected) {
       return disconnectedContent;
     }
 
-    if (!voiceAssistant.audioTrack) {
+    if (!agent.microphoneTrack) {
       return waitingContent;
     }
 
     return visualizerContent;
   }, [
-    voiceAssistant.audioTrack,
+    agent.microphoneTrack,
     config.settings.theme_color,
-    roomState,
-    voiceAssistant.state,
+    connectionState,
+    agent.state,
   ]);
 
   const chatTileContent = useMemo(() => {
-    if (voiceAssistant.agent) {
+    if (agent.internal.agentParticipant) {
       return (
-        <TranscriptionTile
-          agentAudioTrack={voiceAssistant.audioTrack}
-          accentColor={config.settings.theme_color}
-        />
+        <ChatTile messages={messages.messages} accentColor={config.settings.theme_color} onSend={messages.send} />
       );
     }
     return <></>;
   }, [
     config.settings.theme_color,
-    voiceAssistant.audioTrack,
-    voiceAssistant.agent,
+    agent.microphoneTrack,
+    agent.internal.agentParticipant,
   ]);
 
   const handleRpcCall = useCallback(async () => {
-    if (!voiceAssistant.agent || !room) {
+    if (!agent.internal.agentParticipant || !session.room) {
       throw new Error("No agent or room available");
     }
 
-    const response = await room.localParticipant.performRpc({
-      destinationIdentity: voiceAssistant.agent.identity,
+    const response = await session.room.localParticipant.performRpc({
+      destinationIdentity: agent.internal.agentParticipant.identity,
       method: rpcMethod,
       payload: rpcPayload,
     });
     return response;
-  }, [room, rpcMethod, rpcPayload, voiceAssistant.agent]);
+  }, [
+    session.room.localParticipant,
+    rpcMethod,
+    rpcPayload,
+    agent.internal.agentParticipant,
+  ]);
 
   const agentAttributes = useParticipantAttributes({
-    participant: voiceAssistant.agent,
+    participant: agent.internal.agentParticipant ?? undefined,
   });
 
   const settingsTileContent = useMemo(() => {
@@ -257,33 +240,27 @@ export default function Playground({
 
         <ConfigurationPanelItem title="Room">
           <div className="flex flex-col gap-2">
-            <EditableNameValueRow
+            <NameValueRow
               name="Room name"
               value={
-                roomState === ConnectionState.Connected
-                  ? name
-                  : config.settings.room_name
+                connectionState === ConnectionState.Connected
+                  ? session.room.name
+                  : ""
               }
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.room_name = value;
-                setUserSettings(newSettings);
-              }}
-              placeholder="Auto"
-              editable={roomState !== ConnectionState.Connected}
             />
             <NameValueRow
               name="Status"
               value={
-                roomState === ConnectionState.Connecting ? (
+                connectionState === ConnectionState.Connecting ? (
                   <LoadingSVG diameter={16} strokeWidth={2} />
                 ) : (
-                  roomState.charAt(0).toUpperCase() + roomState.slice(1)
+                  connectionState.charAt(0).toUpperCase() +
+                  connectionState.slice(1)
                 )
               }
               valueColor={
-                roomState === ConnectionState.Connected
+                connectionState === ConnectionState.Connected
                   ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
@@ -295,44 +272,42 @@ export default function Playground({
           <div className="flex flex-col gap-2">
             <EditableNameValueRow
               name="Agent name"
-              value={
-                roomState === ConnectionState.Connected
-                  ? config.settings.agent_name || "None"
-                  : config.settings.agent_name || ""
-              }
+              value={tokenFetchOptions?.agentName ?? ""}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.agent_name = value;
-                setUserSettings(newSettings);
+                console.log("agent name changed to", value);
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  agentName: value,
+                });
               }}
               placeholder="None"
-              editable={roomState !== ConnectionState.Connected}
+              editable={connectionState !== ConnectionState.Connected}
             />
             <NameValueRow
               name="Identity"
               value={
-                voiceAssistant.agent ? (
-                  voiceAssistant.agent.identity
-                ) : roomState === ConnectionState.Connected ? (
+                agent.internal.agentParticipant ? (
+                  agent.internal.agentParticipant.identity
+                ) : connectionState === ConnectionState.Connected ? (
                   <LoadingSVG diameter={12} strokeWidth={2} />
                 ) : (
                   "No agent connected"
                 )
               }
               valueColor={
-                voiceAssistant.agent
+                agent.isConnected
                   ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
             />
-            {roomState === ConnectionState.Connected &&
-              voiceAssistant.agent && (
+            {connectionState === ConnectionState.Connected &&
+              agent.internal.agentParticipant && (
                 <AttributesInspector
                   attributes={Object.entries(
                     agentAttributes.attributes || {},
-                  ).map(([key, value], index) => ({
-                    id: `agent-attr-${index}`,
+                  ).map(([key, value]) => ({
+                    id: key,
                     key,
                     value: String(value),
                   }))}
@@ -361,56 +336,73 @@ export default function Playground({
             <EditableNameValueRow
               name="Name"
               value={
-                roomState === ConnectionState.Connected
-                  ? localParticipant?.name || ""
-                  : config.settings.participant_name || ""
+                connectionState === ConnectionState.Connected
+                  ? session.room.localParticipant.name || ""
+                  : (tokenFetchOptions?.participantName ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.participant_name = value;
-                setUserSettings(newSettings);
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  participantName: value,
+                });
               }}
               placeholder="Auto"
-              editable={roomState !== ConnectionState.Connected}
+              editable={connectionState !== ConnectionState.Connected}
             />
             <EditableNameValueRow
               name="Identity"
               value={
-                roomState === ConnectionState.Connected
-                  ? localParticipant?.identity || ""
-                  : config.settings.participant_id || ""
+                connectionState === ConnectionState.Connected
+                  ? session.room.localParticipant.identity
+                  : (tokenFetchOptions?.participantIdentity ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                const newSettings = { ...config.settings };
-                newSettings.participant_id = value;
-                setUserSettings(newSettings);
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  participantIdentity: value,
+                });
               }}
               placeholder="Auto"
-              editable={roomState !== ConnectionState.Connected}
+              editable={connectionState !== ConnectionState.Connected}
             />
             <AttributesInspector
-              attributes={config.settings.attributes || []}
+              attributes={Object.entries(
+                tokenFetchOptions?.participantAttributes || {},
+              ).map(([key, value]) => ({
+                id: key,
+                key,
+                value: value,
+              }))}
               onAttributesChange={(newAttributes) => {
-                const newSettings = { ...config.settings };
-                newSettings.attributes = newAttributes;
-                setUserSettings(newSettings);
+                const newAttributesMap = newAttributes.reduce(
+                  (acc, attr) => {
+                    acc[attr.key] = attr.value;
+                    return acc;
+                  },
+                  {} as Record<string, string>,
+                );
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  participantAttributes: newAttributesMap,
+                });
               }}
-              metadata={config.settings.metadata}
+              metadata={tokenFetchOptions?.participantMetadata}
               onMetadataChange={(metadata) => {
-                const newSettings = { ...config.settings };
-                newSettings.metadata = metadata;
-                setUserSettings(newSettings);
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  participantMetadata: metadata,
+                });
               }}
               themeColor={config.settings.theme_color}
               disabled={false}
-              connectionState={roomState}
+              connectionState={connectionState}
             />
           </div>
         </ConfigurationPanelItem>
 
-        {roomState === ConnectionState.Connected &&
+        {connectionState === ConnectionState.Connected &&
           config.settings.inputs.screen && (
             <ConfigurationPanelItem
               title="Screen"
@@ -420,7 +412,15 @@ export default function Playground({
                 <div className="relative">
                   <VideoTrack
                     className="rounded-sm border border-gray-800 opacity-70 w-full"
-                    trackRef={localScreenTrack}
+                    trackRef={
+                      localScreenTrack
+                        ? {
+                            participant: session.room.localParticipant,
+                            publication: localScreenTrack,
+                            source: Track.Source.ScreenShare,
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : (
@@ -430,7 +430,7 @@ export default function Playground({
               )}
             </ConfigurationPanelItem>
           )}
-        {roomState === ConnectionState.Connected && voiceAssistant.agent && (
+        {connectionState === ConnectionState.Connected && agent.isConnected && (
           <RpcPanel
             config={config}
             rpcMethod={rpcMethod}
@@ -440,22 +440,27 @@ export default function Playground({
             handleRpcCall={handleRpcCall}
           />
         )}
-        {localCameraTrack && (
+        {config.settings.inputs.camera && (
           <ConfigurationPanelItem title="Camera" source={Track.Source.Camera}>
-            <div className="relative">
+            {session.local.cameraTrack ? (
+              <div className="relative">
               <VideoTrack
                 className="rounded-sm border border-gray-800 opacity-70 w-full"
-                trackRef={localCameraTrack}
+                trackRef={session.local.cameraTrack}
               />
             </div>
+            ) : null}
           </ConfigurationPanelItem>
         )}
-        {localMicTrack && (
+        {config.settings.inputs.mic && (
           <ConfigurationPanelItem
             title="Microphone"
             source={Track.Source.Microphone}
           >
-            <AudioInputTile trackRef={localMicTrack} />
+            {session.local.microphoneTrack ? (
+              <AudioInputTile trackRef={session.local.microphoneTrack} />
+            ) : null}
+            
           </ConfigurationPanelItem>
         )}
         <div className="w-full">
@@ -484,15 +489,15 @@ export default function Playground({
     config.description,
     config.settings,
     config.show_qr,
-    localParticipant,
-    name,
-    roomState,
-    localCameraTrack,
+    session.room.localParticipant,
+    session.room.name,
+    connectionState,
+    session.local.cameraTrack,
     localScreenTrack,
-    localMicTrack,
+    session.local.microphoneTrack,
     themeColors,
     setUserSettings,
-    voiceAssistant.agent,
+    agent.internal.agentParticipant,
     rpcMethod,
     rpcPayload,
     handleRpcCall,
@@ -551,73 +556,81 @@ export default function Playground({
   });
 
   return (
-    <>
-      <PlaygroundHeader
-        title={config.title}
-        logo={logo}
-        githubLink={config.github_link}
-        height={headerHeight}
-        accentColor={config.settings.theme_color}
-        connectionState={roomState}
-        onConnectClicked={() =>
-          onConnect(roomState === ConnectionState.Disconnected)
-        }
-      />
-      <div
-        className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
-        style={{ height: `calc(100% - ${headerHeight}px)` }}
-      >
-        <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
-          <PlaygroundTabbedTile
-            className="h-full"
-            tabs={mobileTabs}
-            initialTab={mobileTabs.length - 1}
-          />
-        </div>
+    <SessionProvider session={session}>
+      <div className="flex flex-col h-full w-full">
+        <PlaygroundHeader
+          title={config.title}
+          logo={logo}
+          githubLink={config.github_link}
+          height={headerHeight}
+          accentColor={config.settings.theme_color}
+          connectionState={connectionState}
+          onConnectClicked={() => {
+            if (connectionState === ConnectionState.Disconnected) {
+              session.start();
+            } else if (connectionState === ConnectionState.Connected) {
+              session.end();
+            }
+          }}
+        />
         <div
-          className={`flex-col grow basis-1/2 gap-4 h-full hidden lg:${
-            !config.settings.outputs.audio && !config.settings.outputs.video
-              ? "hidden"
-              : "flex"
-          }`}
+          className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
+          style={{ height: `calc(100% - ${headerHeight}px)` }}
         >
-          {config.settings.outputs.video && (
-            <PlaygroundTile
-              title="Agent Video"
-              className="w-full h-full grow"
-              childrenClassName="justify-center"
-            >
-              {videoTileContent}
-            </PlaygroundTile>
-          )}
-          {config.settings.outputs.audio && (
-            <PlaygroundTile
-              title="Agent Audio"
-              className="w-full h-full grow"
-              childrenClassName="justify-center"
-            >
-              {audioTileContent}
-            </PlaygroundTile>
-          )}
-        </div>
-
-        {config.settings.chat && (
-          <PlaygroundTile
-            title="Chat"
-            className="h-full grow basis-1/4 hidden lg:flex"
+          <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
+            <PlaygroundTabbedTile
+              className="h-full"
+              tabs={mobileTabs}
+              initialTab={mobileTabs.length - 1}
+            />
+          </div>
+          <div
+            className={`flex-col grow basis-1/2 gap-4 h-full hidden lg:${
+              !config.settings.outputs.audio && !config.settings.outputs.video
+                ? "hidden"
+                : "flex"
+            }`}
           >
-            {chatTileContent}
+            {config.settings.outputs.video && (
+              <PlaygroundTile
+                title="Agent Video"
+                className="w-full h-full grow"
+                childrenClassName="justify-center"
+              >
+                {videoTileContent}
+              </PlaygroundTile>
+            )}
+            {config.settings.outputs.audio && (
+              <PlaygroundTile
+                title="Agent Audio"
+                className="w-full h-full grow"
+                childrenClassName="justify-center"
+              >
+                {audioTileContent}
+              </PlaygroundTile>
+            )}
+          </div>
+
+          {config.settings.chat && (
+            <PlaygroundTile
+              title="Chat"
+              className="h-full grow basis-1/4 hidden lg:flex"
+            >
+              {chatTileContent}
+            </PlaygroundTile>
+          )}
+          <PlaygroundTile
+            padding={false}
+            backgroundColor="gray-950"
+            className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
+            childrenClassName="h-full grow items-start"
+          >
+            {settingsTileContent}
           </PlaygroundTile>
-        )}
-        <PlaygroundTile
-          padding={false}
-          backgroundColor="gray-950"
-          className="h-full w-full basis-1/4 items-start overflow-y-auto hidden max-w-[480px] lg:flex"
-          childrenClassName="h-full grow items-start"
-        >
-          {settingsTileContent}
-        </PlaygroundTile>
+        </div>
+        <RoomAudioRenderer />
+        <StartAudio label="Click to enable audio playback" />
       </div>
-    </>
+    </SessionProvider>
   );
 }
