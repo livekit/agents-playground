@@ -344,7 +344,7 @@ export default function Playground({
             <p className="text-xs text-gray-500 text-right">
               Set an agent name to use{" "}
               <a
-                href="https://docs.livekit.io/agents/worker/dispatch#explicit"
+                href="https://docs.livekit.io/agents/server/agent-dispatch/#explicit"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-500 hover:text-gray-300 underline"
