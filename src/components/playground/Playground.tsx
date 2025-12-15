@@ -49,6 +49,7 @@ export interface PlaygroundProps {
   themeColors: string[];
   tokenSource: TokenSourceConfigurable;
   agentOptions?: PartialMessage<RoomAgentDispatch>;
+  autoConnect?: boolean;
 }
 
 const headerHeight = 56;
@@ -58,12 +59,14 @@ export default function Playground({
   themeColors,
   tokenSource,
   agentOptions: initialAgentOptions,
+  autoConnect,
 }: PlaygroundProps) {
   const { config, setUserSettings } = useConfig();
 
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [showRpc, setShowRpc] = useState(false);
+  const [hasConnected, setHasConnected] = useState(false);
 
   const [tokenFetchOptions, setTokenFetchOptions] =
     useState<TokenSourceFetchOptions>({});
@@ -84,6 +87,20 @@ export default function Playground({
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
   );
+
+  const startSession = useCallback(() => {
+    if (session.isConnected) {
+      return;
+    }
+    session.start();
+    setHasConnected(true);
+  }, [session, hasConnected, session.isConnected]);
+
+  useEffect(() => {
+    if (autoConnect && !hasConnected) {
+      startSession();
+    }
+  }, [autoConnect, hasConnected]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.Connected) {
@@ -568,7 +585,7 @@ export default function Playground({
           connectionState={connectionState}
           onConnectClicked={() => {
             if (connectionState === ConnectionState.Disconnected) {
-              session.start();
+              startSession();
             } else if (connectionState === ConnectionState.Connected) {
               session.end();
             }

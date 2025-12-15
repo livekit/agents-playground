@@ -36,6 +36,7 @@ export default function Home() {
 export function HomeInner() {
   const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
+  const [autoConnect, setAutoConnect] = useState(false);
   const [tokenSource, setTokenSource] = useState<
     TokenSourceConfigurable | undefined
   >(() => {
@@ -78,12 +79,19 @@ export function HomeInner() {
           )}
         </AnimatePresence>
         {tokenSource ? (
-          <Playground themeColors={themeColors} tokenSource={tokenSource} />
+          <Playground
+            themeColors={themeColors}
+            tokenSource={tokenSource}
+            autoConnect={autoConnect}
+          />
         ) : (
           <PlaygroundConnect
             accentColor={themeColors[0]}
-            onConnectClicked={(tokenSource) => {
+            onConnectClicked={(tokenSource, shouldAutoConnect) => {
               setTokenSource(tokenSource);
+              if (shouldAutoConnect) {
+                setAutoConnect(true);
+              }
             }}
           />
         )}

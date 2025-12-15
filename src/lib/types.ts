@@ -6,7 +6,10 @@ import {
 
 export type PlaygroundConnectProps = {
   accentColor: string;
-  onConnectClicked: (tokenSource: TokenSourceConfigurable) => void;
+  onConnectClicked: (
+    tokenSource: TokenSourceConfigurable,
+    shouldAutoConnect?: boolean,
+  ) => void;
 };
 
 export interface SessionProps {

@@ -53,7 +53,7 @@ const TokenConnect = ({
               serverUrl: url,
               participantToken: token,
             });
-            onConnectClicked(source);
+            onConnectClicked(source, true);
           }}
         >
           Connect
