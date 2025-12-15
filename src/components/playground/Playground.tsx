@@ -64,14 +64,15 @@ export default function Playground({
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [showRpc, setShowRpc] = useState(false);
+
   const [tokenFetchOptions, setTokenFetchOptions] =
     useState<TokenSourceFetchOptions>({});
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
     setTokenFetchOptions({
-      agentName: initialAgentOptions?.agentName,
-      agentMetadata: initialAgentOptions?.metadata,
+      agentName: initialAgentOptions?.agentName ?? "",
+      agentMetadata: initialAgentOptions?.metadata ?? "",
     });
   }, []);
 
@@ -79,11 +80,6 @@ export default function Playground({
   const { connectionState } = session;
   const agent = useAgent(session);
   const messages = useSessionMessages(session);
-
-  useEffect(() => {
-    // to debug room.incomingDataStreamManager
-    console.log("room handle", session.room);
-  }, [session.connectionState]);
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
@@ -195,7 +191,7 @@ export default function Playground({
   ]);
 
   const chatTileContent = useMemo(() => {
-    if (agent.internal.agentParticipant) {
+    if (agent.isConnected) {
       return (
         <ChatTile
           messages={messages.messages}
@@ -206,13 +202,14 @@ export default function Playground({
     }
     return <></>;
   }, [
+    agent.isConnected,
     config.settings.theme_color,
-    agent.microphoneTrack,
-    agent.internal.agentParticipant,
+    messages.messages,
+    messages.send,
   ]);
 
   const handleRpcCall = useCallback(async () => {
-    if (!agent.internal.agentParticipant || !session.room) {
+    if (!agent.internal.agentParticipant) {
       throw new Error("No agent or room available");
     }
 
@@ -279,7 +276,6 @@ export default function Playground({
               value={tokenFetchOptions?.agentName ?? ""}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                console.log("agent name changed to", value);
                 setTokenFetchOptions({
                   ...tokenFetchOptions,
                   agentName: value,
@@ -506,6 +502,8 @@ export default function Playground({
     handleRpcCall,
     showRpc,
     setShowRpc,
+    tokenFetchOptions,
+    setTokenFetchOptions,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];

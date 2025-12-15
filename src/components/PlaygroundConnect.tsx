@@ -25,7 +25,6 @@ const TokenConnect = ({
   accentColor,
   onConnectClicked,
 }: PlaygroundConnectProps) => {
-  const { setUserSettings, config } = useConfig();
   const [url, setUrl] = useState<string>("");
   const [token, setToken] = useState<string>("");
 
@@ -50,11 +49,9 @@ const TokenConnect = ({
           accentColor={accentColor}
           className="w-full"
           onClick={() => {
-            const source = TokenSource.custom((options) => {
-              return {
-                serverUrl: url,
-                participantToken: token,
-              };
+            const source = TokenSource.literal({
+              serverUrl: url,
+              participantToken: token,
             });
             onConnectClicked(source);
           }}
@@ -62,11 +59,10 @@ const TokenConnect = ({
           Connect
         </Button>
         <a
-          href="https://kitt.livekit.io/"
+          href="https://livekit.io/"
           className={`text-xs text-${accentColor}-500 hover:underline`}
         >
-          Don’t have a URL or token? Try out our KITT example to see agents in
-          action!
+          Don’t have a URL or token? Try the demo agent!
         </a>
       </div>
     </div>

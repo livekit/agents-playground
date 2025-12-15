@@ -34,9 +34,6 @@ export default function Home() {
 }
 
 export function HomeInner() {
-  // const { shouldConnect, wsUrl, token, mode, connect, disconnect } =
-  //   useConnection();
-
   const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
   const [tokenSource, setTokenSource] = useState<
