@@ -69,8 +69,16 @@ export default function Playground({
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
-      localParticipant.setCameraEnabled(config.settings.inputs.camera);
-      localParticipant.setMicrophoneEnabled(config.settings.inputs.mic);
+      localParticipant.setCameraEnabled(
+        config.settings.inputs.camera,
+        undefined,
+        { name: "camera" }
+      );
+      localParticipant.setMicrophoneEnabled(
+        config.settings.inputs.mic,
+        undefined,
+        { name: "mic" }
+      );
     }
   }, [config, localParticipant, roomState]);
 
