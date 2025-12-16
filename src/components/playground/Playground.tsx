@@ -5,6 +5,7 @@ import { ChatMessageType } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
+import { Keyboard, KeyboardRef } from "@/components/config/Keyboard";
 import { NameValueRow } from "@/components/config/NameValueRow";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@livekit/components-react";
 import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
@@ -66,6 +67,8 @@ export default function Playground({
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [showRpc, setShowRpc] = useState(false);
+
+  const keyboardRef = useRef<KeyboardRef>(null);
 
   useEffect(() => {
     if (roomState === ConnectionState.Connected) {
@@ -252,6 +255,16 @@ export default function Playground({
         {config.description && (
           <ConfigurationPanelItem title="Description">
             {config.description}
+          </ConfigurationPanelItem>
+        )}
+
+        {localParticipant && (
+          <ConfigurationPanelItem title="Phone Keyboard">
+            <Keyboard 
+              ref={keyboardRef}
+              localParticipant={localParticipant}
+              className="px-2"
+            />
           </ConfigurationPanelItem>
         )}
 
@@ -550,6 +563,13 @@ export default function Playground({
     ),
   });
 
+  const handleConnectClick = () => {
+    if (roomState !== ConnectionState.Disconnected) {
+      keyboardRef.current?.setPressedSequence([]);
+    }
+    onConnect(roomState === ConnectionState.Disconnected);
+  };
+
   return (
     <>
       <PlaygroundHeader
@@ -559,9 +579,7 @@ export default function Playground({
         height={headerHeight}
         accentColor={config.settings.theme_color}
         connectionState={roomState}
-        onConnectClicked={() =>
-          onConnect(roomState === ConnectionState.Disconnected)
-        }
+        onConnectClicked={handleConnectClick}
       />
       <div
         className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
