@@ -33,6 +33,7 @@ export type UserSettings = {
   outputs: {
     audio: boolean;
     video: boolean;
+    data_events: boolean;
   };
   ws_url: string;
   token: string;
@@ -61,6 +62,7 @@ const defaultConfig: AppConfig = {
     outputs: {
       audio: true,
       video: true,
+      data_events: true,
     },
     ws_url: "",
     token: "",
@@ -133,7 +135,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       outputs: {
         audio: params.get("audio") === "1",
         video: params.get("video") === "1",
-        chat: params.get("chat") === "1",
+        data_events: params.get("data_events") === "1",
       },
       ws_url: "",
       token: "",
@@ -163,6 +165,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         screen: boolToString(us.inputs.screen),
         video: boolToString(us.outputs.video),
         audio: boolToString(us.outputs.audio),
+        data_events: boolToString(us.outputs.data_events),
         chat: boolToString(us.chat),
         theme_color: us.theme_color || "cyan",
       });
