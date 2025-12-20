@@ -1,4 +1,3 @@
-import { useConfig } from "@/hooks/useConfig";
 import { CLOUD_ENABLED, CloudConnect } from "../cloud/CloudConnect";
 import { Button } from "./button/Button";
 import { useState } from "react";
