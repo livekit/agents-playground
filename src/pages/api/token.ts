@@ -1,101 +1,89 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { generateRandomAlphanumeric } from "@/lib/util";
 
+import { TokenSourceRequestPayload } from "livekit-client";
 import { AccessToken } from "livekit-server-sdk";
-import { RoomAgentDispatch, RoomConfiguration } from "@livekit/protocol";
-import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
-import { TokenResult } from "../../lib/types";
+import { RoomConfiguration } from "@livekit/protocol";
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 
-const createToken = (
-  userInfo: AccessTokenOptions,
-  grant: VideoGrant,
-  agentName?: string,
-) => {
-  const at = new AccessToken(apiKey, apiSecret, userInfo);
-  at.addGrant(grant);
-  if (agentName) {
-    at.roomConfig = new RoomConfiguration({
-      agents: [
-        new RoomAgentDispatch({
-          agentName: agentName,
-          metadata: ''
-        }),
-      ],
-    });
-  }
-  return at.toJwt();
+type TokenRequest = {
+  room_name: string;
+  participant_identity: string;
+  participant_name?: string;
+  participant_metadata?: string;
+  participant_attributes?: Record<string, string>;
+  room_config?: ReturnType<RoomConfiguration["toJson"]>;
 };
+
+// This route handler creates a token for a given room and participant
+// it's compatible with LiveKit's TokenSourceEndpoint API
+async function createToken(request: TokenRequest) {
+  const at = new AccessToken(
+    process.env.LIVEKIT_API_KEY,
+    process.env.LIVEKIT_API_SECRET,
+    {
+      identity: request.participant_identity,
+      // Token to expire after 10 minutes
+      ttl: "10m",
+    },
+  );
+
+  // Token permissions can be added here based on the
+  // desired capabilities of the participant
+  at.addGrant({
+    roomJoin: true,
+    room: request.room_name,
+    canUpdateOwnMetadata: true,
+  });
+
+  if (request.participant_name) {
+    at.name = request.participant_name;
+  }
+  if (request.participant_identity) {
+    at.identity = request.participant_identity;
+  }
+  if (request.participant_metadata) {
+    at.metadata = request.participant_metadata;
+  }
+  if (request.participant_attributes) {
+    at.attributes = request.participant_attributes;
+  }
+  if (request.room_config) {
+    at.roomConfig = RoomConfiguration.fromJson(request.room_config);
+  }
+
+  return at.toJwt();
+}
 
 export default async function handleToken(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  try {
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST");
-      res.status(405).end("Method Not Allowed");
-      return;
-    }
-    if (!apiKey || !apiSecret) {
-      res.statusMessage = "Environment variables aren't set up correctly";
-      res.status(500).end();
-      return;
-    }
-
-    const {
-      roomName: roomNameFromBody,
-      participantName: participantNameFromBody,
-      participantId: participantIdFromBody,
-      metadata: metadataFromBody,
-      attributes: attributesFromBody,
-      agentName: agentNameFromBody,
-    } = req.body;
-
-    // Get room name from query params or generate random one
-    const roomName =
-      (roomNameFromBody as string) ||
-      `room-${generateRandomAlphanumeric(4)}-${generateRandomAlphanumeric(4)}`;
-
-    // Get participant name from query params or generate random one
-    const identity =
-      (participantIdFromBody as string) ||
-      `identity-${generateRandomAlphanumeric(4)}`;
-
-    // Get agent name from query params or use none (automatic dispatch)
-    const agentName = (agentNameFromBody as string) || undefined;
-
-    // Get metadata and attributes from query params
-    const metadata = metadataFromBody as string | undefined;
-    const attributesStr = attributesFromBody as string | undefined;
-    const attributes = attributesStr || {};
-
-    const participantName = participantNameFromBody || identity;
-
-    const grant: VideoGrant = {
-      room: roomName,
-      roomJoin: true,
-      canPublish: true,
-      canPublishData: true,
-      canSubscribe: true,
-      canUpdateOwnMetadata: true,
-    };
-
-    const token = await createToken(
-      { identity, metadata, attributes, name: participantName },
-      grant,
-      agentName,
-    );
-    const result: TokenResult = {
-      identity,
-      accessToken: token,
-    };
-
-    res.status(200).json(result);
-  } catch (e) {
-    res.statusMessage = (e as Error).message;
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    res.status(405).end("Method Not Allowed");
+    return;
+  }
+  if (!apiKey || !apiSecret) {
+    res.statusMessage = "Environment variables aren't set up correctly";
     res.status(500).end();
+    return;
+  }
+
+  const options = req.body ?? {};
+  const suffix = crypto.randomUUID().substring(0, 8);
+  options.room_name = options.room_name ?? options.roomName ?? `room-${suffix}`;
+  options.participant_identity =
+    options.participant_identity ?? options.participantName ?? `user-${suffix}`;
+
+  try {
+    res.status(200).json({
+      server_url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+      participant_token: await createToken(options),
+    });
+  } catch (err) {
+    console.error("Error generating token:", err);
+    res.status(500).send({ message: "Generating token failed" });
   }
 }
