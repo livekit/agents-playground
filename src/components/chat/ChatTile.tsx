@@ -30,7 +30,6 @@ export const ChatTile = ({ messages, accentColor, onSend }: ChatTileProps) => {
       >
         <div className="flex flex-col min-h-full justify-end">
           {messages.map((message, index, allMsg) => {
-            console.log("message", message);
             const hideName =
               index >= 1 && allMsg[index - 1].from === message.from;
 
