@@ -31,7 +31,7 @@ importers:
         version: 6.1.1(next@15.5.6(@babel/core@7.28.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       framer-motion:
         specifier: ^12.0.0
-        version: 12.23.24(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 12.23.26(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.1
@@ -2063,8 +2063,8 @@ packages:
   fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
-  framer-motion@12.23.24:
-    resolution: {integrity: sha512-HMi5HRoRCTou+3fb3h9oTLyJGBxHfW+HnNE25tAXOvVx/IvwMHK0cx7IR4a2ZU6sh3IX1Z+4ts32PcYBOqka8w==}
+  framer-motion@12.23.26:
+    resolution: {integrity: sha512-cPcIhgR42xBn1Uj+PzOyheMtZ73H927+uWPDVhUMqxy8UHt6Okavb6xIz9J/phFUHUj0OncR6UvMfJTXoc/LKA==}
     peerDependencies:
       '@emotion/is-prop-valid': '*'
       react: ^18.0.0 || ^19.0.0
@@ -2539,6 +2539,7 @@ packages:
   next@15.5.6:
     resolution: {integrity: sha512-zTxsnI3LQo3c9HSdSf91O1jMNsEzIXDShXd4wVdg9y5shwLqBXi4ZtUUJyB86KGVSJLZx0PFONvO54aheGX8QQ==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -5526,7 +5527,7 @@ snapshots:
 
   fraction.js@5.3.4: {}
 
-  framer-motion@12.23.24(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  framer-motion@12.23.26(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       motion-dom: 12.23.23
       motion-utils: 12.23.6
