@@ -65,19 +65,21 @@ export default function Playground({
 
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
-  const [showRpc, setShowRpc] = useState(false);
   const [hasConnected, setHasConnected] = useState(false);
 
-  const [tokenFetchOptions, setTokenFetchOptions] =
-    useState<TokenSourceFetchOptions>({});
+  const [tokenFetchOptions, setTokenFetchOptions] = useState<TokenSourceFetchOptions>();
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
+    // set initial options only if they haven't been set yet
+    if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
+      return;
+    }
     setTokenFetchOptions({
       agentName: initialAgentOptions?.agentName ?? "",
       agentMetadata: initialAgentOptions?.metadata ?? "",
     });
-  }, []);
+  }, [tokenFetchOptions, initialAgentOptions, initialAgentOptions?.agentName, initialAgentOptions?.metadata]);
 
   const session = useSession(tokenSource, tokenFetchOptions);
   const { connectionState } = session;
@@ -94,13 +96,13 @@ export default function Playground({
     }
     session.start();
     setHasConnected(true);
-  }, [session, hasConnected, session.isConnected]);
+  }, [session, session.isConnected]);
 
   useEffect(() => {
     if (autoConnect && !hasConnected) {
       startSession();
     }
-  }, [autoConnect, hasConnected]);
+  }, [autoConnect, hasConnected, startSession]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.Connected) {
@@ -202,7 +204,6 @@ export default function Playground({
     return visualizerContent;
   }, [
     agent.microphoneTrack,
-    config.settings.theme_color,
     connectionState,
     agent.state,
   ]);
@@ -502,9 +503,9 @@ export default function Playground({
       </div>
     );
   }, [
-    config.description,
-    config.settings,
-    config.show_qr,
+    config,
+    agent.isConnected,
+    agentAttributes.attributes,
     session.room.localParticipant,
     session.room.name,
     connectionState,
@@ -517,8 +518,6 @@ export default function Playground({
     rpcMethod,
     rpcPayload,
     handleRpcCall,
-    showRpc,
-    setShowRpc,
     tokenFetchOptions,
     setTokenFetchOptions,
   ]);
