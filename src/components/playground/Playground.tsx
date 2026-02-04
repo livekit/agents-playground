@@ -113,7 +113,7 @@ export default function Playground({
         config.settings.inputs.mic,
       );
     }
-  }, [config, session.room.localParticipant, connectionState]);
+  }, [config.settings.inputs.camera, config.settings.inputs.mic, session.room.localParticipant, connectionState]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
