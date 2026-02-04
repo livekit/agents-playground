@@ -27,6 +27,15 @@ export interface TokenResult {
   accessToken: string;
 }
 
+export type InterruptChatMessage = {
+  id: string;
+  timestamp: number;
+  type: "interruptEvent";
+  subtype: string;
+  detectionDelay?: number;
+  totalDuration?: number;
+};
+
 export interface AttributeItem {
   id: string;
   key: string;

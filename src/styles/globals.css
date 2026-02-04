@@ -51,3 +51,37 @@ body {
     opacity: 1;
   }
 }
+
+@keyframes interruptPulse {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes interruptPlus {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.animate-interrupt-pulse {
+  animation: interruptPulse 0.6s ease-out;
+}
+
+.animate-interrupt-plus {
+  animation: interruptPlus 0.9s ease-out;
+}
