@@ -26,6 +26,9 @@ import {
 } from "@livekit/components-react";
 import {
   ConnectionState,
+  ExternalE2EEKeyProvider,
+  RoomOptions,
+  Room,
   TokenSourceConfigurable,
   TokenSourceFetchOptions,
   Track,
@@ -67,7 +70,26 @@ export default function Playground({
   const [rpcPayload, setRpcPayload] = useState("");
   const [hasConnected, setHasConnected] = useState(false);
 
+  const [e2eePassphrase, setE2eePassphrase] = useState<string | undefined>(undefined);
   const [tokenFetchOptions, setTokenFetchOptions] = useState<TokenSourceFetchOptions>();
+
+
+  const keyProvider = useMemo(() => new ExternalE2EEKeyProvider(), []);
+
+  const roomOptions = useMemo<RoomOptions | undefined>(() => {
+    if (!e2eePassphrase) return undefined;
+
+    return {
+      encryption: {
+        keyProvider,
+        worker: new Worker(
+          new URL("livekit-client/e2ee-worker", import.meta.url),
+        ),
+      },
+    };
+  }, [e2eePassphrase, keyProvider]);
+
+  const room = useMemo(() => { return new Room(roomOptions); }, [roomOptions]);
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
@@ -75,13 +97,14 @@ export default function Playground({
     if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
       return;
     }
+
     setTokenFetchOptions({
       agentName: initialAgentOptions?.agentName ?? "",
       agentMetadata: initialAgentOptions?.metadata ?? "",
     });
   }, [tokenFetchOptions, initialAgentOptions, initialAgentOptions?.agentName, initialAgentOptions?.metadata]);
 
-  const session = useSession(tokenSource, tokenFetchOptions);
+  const session = useSession(tokenSource, {...tokenFetchOptions, room});
   const { connectionState } = session;
   const agent = useAgent(session);
   const messages = useSessionMessages(session);
@@ -103,6 +126,16 @@ export default function Playground({
       startSession();
     }
   }, [autoConnect, hasConnected, startSession]);
+
+  useEffect(() => {
+    if (connectionState !== ConnectionState.Connected) return;
+    if (!e2eePassphrase) return;
+
+    (async () => {
+      await keyProvider.setKey(encodeURIComponent(e2eePassphrase));
+      await session.room.setE2EEEnabled(true);
+    })();
+  }, [connectionState, e2eePassphrase, keyProvider, session.room]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.Connected) {
@@ -298,6 +331,16 @@ export default function Playground({
                   ...tokenFetchOptions,
                   agentName: value,
                 });
+              }}
+              placeholder="None"
+              editable={connectionState !== ConnectionState.Connected}
+            />
+            <EditableNameValueRow
+              name="E2EE passphrase"
+              value={e2eePassphrase ?? ""}
+              valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                setE2eePassphrase(value === "" ? undefined : value);
               }}
               placeholder="None"
               editable={connectionState !== ConnectionState.Connected}
