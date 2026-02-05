@@ -119,7 +119,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return {
       editable: true,
       chat: params.get("chat") === "1",
-      theme_color: params.get("theme_color"),
+      theme_color: params.get("theme_color") || "cyan",
       inputs: {
         camera: params.get("cam") === "1",
         screen: params.get("screen") === "1",
@@ -128,9 +128,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
       outputs: {
         audio: params.get("audio") === "1",
         video: params.get("video") === "1",
-        chat: params.get("chat") === "1",
       },
-    } as UserSettings;
+    } satisfies UserSettings;
   }, [appConfig]);
 
   const getSettingsFromCookies = useCallback(async () => {
