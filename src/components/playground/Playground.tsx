@@ -17,7 +17,7 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { useConfig } from "@/hooks/useConfig";
-import { ClientUserInterruptionEvent, InterruptChatMessage } from "@/lib/types";
+import { ClientUserInterruptionEvent } from "@/lib/types";
 import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
@@ -104,8 +104,9 @@ export default function Playground({
   const { connectionState } = session;
   const agent = useAgent(session);
   const messages = useSessionMessages(session);
-  const [latestInterrupt, setLatestInterrupt] =
-    useState<InterruptChatMessage | null>(null);
+  const [lastInterruptSubtype, setLastInterruptSubtype] = useState<
+    "interruption" | "backchannel" | null
+  >(null);
   const interruptCountsRef = useRef({ backchannel: 0, interruption: 0 });
   const [interruptCounts, setInterruptCounts] = useState({
     backchannel: 0,
@@ -145,7 +146,7 @@ export default function Playground({
     if (connectionState !== ConnectionState.Disconnected) return;
     interruptCountsRef.current = { backchannel: 0, interruption: 0 };
     setInterruptCounts({ backchannel: 0, interruption: 0 });
-    setLatestInterrupt(null);
+    setLastInterruptSubtype(null);
   }, [connectionState]);
 
   // Handle interruption events from livekit-agents text streams
@@ -153,33 +154,15 @@ export default function Playground({
     const room = session.room;
     if (!room) return;
 
-    const handleInterruptEvent = (
-      isInterruption: boolean,
-      createdAt?: number,
-    ) => {
+    const handleInterruptEvent = (isInterruption: boolean) => {
       const subtype = isInterruption ? "interruption" : "backchannel";
-      const timestamp = createdAt ? createdAt * 1000 : Date.now(); // convert seconds to ms
 
-      const next: InterruptChatMessage = {
-        id: `interrupt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        timestamp,
-        type: "interruptEvent",
-        subtype,
+      interruptCountsRef.current = {
+        ...interruptCountsRef.current,
+        [subtype]: interruptCountsRef.current[subtype] + 1,
       };
-
-      if (subtype === "backchannel") {
-        interruptCountsRef.current = {
-          ...interruptCountsRef.current,
-          backchannel: interruptCountsRef.current.backchannel + 1,
-        };
-      } else {
-        interruptCountsRef.current = {
-          ...interruptCountsRef.current,
-          interruption: interruptCountsRef.current.interruption + 1,
-        };
-      }
       setInterruptCounts(interruptCountsRef.current);
-      setLatestInterrupt(next);
+      setLastInterruptSubtype(subtype);
     };
 
     const onTextStream = async (
@@ -199,10 +182,7 @@ export default function Playground({
           created_at: interruptEvent.created_at,
         });
 
-        handleInterruptEvent(
-          interruptEvent.is_interruption,
-          interruptEvent.created_at,
-        );
+        handleInterruptEvent(interruptEvent.is_interruption);
       } catch (e) {
         console.warn("[interruption] failed to parse event", e);
       }
@@ -317,7 +297,7 @@ export default function Playground({
       return (
         <ChatTile
           messages={messages.messages}
-          latestInterrupt={latestInterrupt ?? undefined}
+          lastInterruptSubtype={lastInterruptSubtype ?? undefined}
           interruptCounts={interruptCounts}
           accentColor={config.settings.theme_color}
           onSend={messages.send}
@@ -330,7 +310,7 @@ export default function Playground({
     config.settings.theme_color,
     messages.messages,
     messages.send,
-    latestInterrupt,
+    lastInterruptSubtype,
     interruptCounts,
   ]);
 

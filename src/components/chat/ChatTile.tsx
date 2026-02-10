@@ -1,6 +1,5 @@
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatMessageInput } from "@/components/chat/ChatMessageInput";
-import { InterruptChatMessage } from "@/lib/types";
 import { ReceivedMessage } from "@livekit/components-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -11,7 +10,7 @@ type ChatTileProps = {
   messages: ReceivedMessage[];
   accentColor: string;
   onSend?: (message: string) => Promise<ReceivedMessage>;
-  latestInterrupt?: InterruptChatMessage;
+  lastInterruptSubtype?: "interruption" | "backchannel";
   interruptCounts: {
     backchannel: number;
     interruption: number;
@@ -22,7 +21,7 @@ export const ChatTile = ({
   messages,
   accentColor,
   onSend,
-  latestInterrupt,
+  lastInterruptSubtype,
   interruptCounts,
 }: ChatTileProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,6 +29,8 @@ export const ChatTile = ({
   const [flashType, setFlashType] = useState<
     "backchannel" | "interruption" | null
   >(null);
+  const totalInterrupts =
+    interruptCounts.backchannel + interruptCounts.interruption;
 
   useEffect(() => {
     if (!flashType) return;
@@ -46,10 +47,10 @@ export const ChatTile = ({
   }, [containerRef, messages]);
 
   useEffect(() => {
-    if (!latestInterrupt) return;
-    setFlashType(latestInterrupt.subtype);
+    if (!lastInterruptSubtype) return;
+    setFlashType(lastInterruptSubtype);
     setFlashKey((prev) => prev + 1);
-  }, [latestInterrupt]);
+  }, [totalInterrupts]);
 
   return (
     <div className="relative flex flex-col gap-4 w-full h-full">
@@ -78,9 +79,9 @@ export const ChatTile = ({
           })}
         </div>
       </div>
-      {latestInterrupt && (
+      {totalInterrupts > 0 && (
         <div
-          key={latestInterrupt.id}
+          key={totalInterrupts}
           className="pointer-events-none absolute left-0 right-0 grid grid-cols-2 items-center border-t border-gray-800 px-3 bg-black"
           style={{ bottom: inputHeight, height: interruptBarHeight }}
         >

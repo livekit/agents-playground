@@ -27,15 +27,6 @@ export interface TokenResult {
   accessToken: string;
 }
 
-export type InterruptChatMessage = {
-  id: string;
-  timestamp: number;
-  type: "interruptEvent";
-  subtype: "interruption" | "backchannel";
-  detectionDelay?: number;
-  totalDuration?: number;
-};
-
 /**
  * Event format from livekit-agents ClientUserInterruptionEvent
  * Sent via text stream on topic "lk.agent.events"
