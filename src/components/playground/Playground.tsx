@@ -3,9 +3,10 @@
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 import { ChatTile } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
+import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
-import { NameValueRow } from "@/components/config/NameValueRow";
+import { EditableNameValueRow, NameValueRow } from "@/components/config/NameValueRow";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
   PlaygroundTab,
@@ -13,34 +14,34 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { useConfig } from "@/hooks/useConfig";
+import { ClientUserInterruptionEvent, InterruptChatMessage } from "@/lib/types";
+import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
-  VideoTrack,
-  useParticipantAttributes,
+  RoomAudioRenderer,
   SessionProvider,
   StartAudio,
-  RoomAudioRenderer,
-  useSession,
+  VideoTrack,
   useAgent,
+  useParticipantAttributes,
+  useSession,
   useSessionMessages,
   useTracks,
 } from "@livekit/components-react";
 import {
   ConnectionState,
-  RoomEvent,
   TokenSourceConfigurable,
   TokenSourceFetchOptions,
   Track,
 } from "livekit-client";
-import { PartialMessage } from "@bufbuild/protobuf";
+import { RoomAgentDispatch } from "livekit-server-sdk";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
-import { EditableNameValueRow } from "@/components/config/NameValueRow";
-import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { RpcPanel } from "./RpcPanel";
-import { RoomAgentDispatch } from "livekit-server-sdk";
-import { InterruptChatMessage } from "@/lib/types";
+
+/** Topic for client events from livekit-agents */
+const TOPIC_CLIENT_EVENTS = "lk.agent.events";
 
 export interface PlaygroundMeta {
   name: string;
@@ -134,53 +135,20 @@ export default function Playground({
     setLatestInterrupt(null);
   }, [connectionState]);
 
+  // Handle interruption events from livekit-agents text streams
   useEffect(() => {
     const room = session.room;
     if (!room) return;
 
-    const onData = (
-      payload: Uint8Array,
-      participant?: any,
-      _kind?: any,
-      topic?: string,
-    ) => {
-      if (participant?.isLocal) return;
-      if (topic && topic !== "interrupt") return;
-
-      let parsed: any;
-      try {
-        parsed = JSON.parse(new TextDecoder().decode(payload));
-      } catch {
-        return;
-      }
-      console.debug("[interrupt] data received", {
-        topic,
-        from: participant?.identity,
-        payload: parsed,
-      });
-      if (!parsed || parsed.type !== "interrupt") return;
-
-      const subtype = typeof parsed.subtype === "string" ? parsed.subtype : "";
-      const detectionDelay =
-        typeof parsed.detection_delay === "number"
-          ? parsed.detection_delay
-          : typeof parsed.detectionDelay === "number"
-            ? parsed.detectionDelay
-            : undefined;
-      const totalDuration =
-        typeof parsed.total_duration === "number"
-          ? parsed.total_duration
-          : typeof parsed.totalDuration === "number"
-            ? parsed.totalDuration
-            : undefined;
+    const handleInterruptEvent = (isInterruption: boolean, createdAt?: number) => {
+      const subtype = isInterruption ? "interruption" : "backchannel";
+      const timestamp = createdAt ? createdAt * 1000 : Date.now(); // convert seconds to ms
 
       const next: InterruptChatMessage = {
         id: `interrupt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        timestamp: Date.now(),
+        timestamp,
         type: "interruptEvent",
         subtype,
-        detectionDelay,
-        totalDuration,
       };
 
       if (subtype === "backchannel") {
@@ -198,9 +166,42 @@ export default function Playground({
       setLatestInterrupt(next);
     };
 
-    room.on(RoomEvent.DataReceived, onData);
+    // Handler for livekit-agents text stream events (topic: lk.agent.events)
+    const onTextStream = async (
+      reader: { readAll: () => Promise<string>; info: { topic: string } },
+      participantInfo: { identity: string },
+    ) => {
+      try {
+        const data = await reader.readAll();
+        const event = JSON.parse(data) as { type: string };
+
+        if (event.type !== "user_interruption") return;
+
+        const interruptEvent = event as ClientUserInterruptionEvent;
+        console.debug("[interruption] received", {
+          from: participantInfo.identity,
+          is_interruption: interruptEvent.is_interruption,
+          created_at: interruptEvent.created_at,
+        });
+
+        handleInterruptEvent(interruptEvent.is_interruption, interruptEvent.created_at);
+      } catch (e) {
+        console.warn("[interruption] failed to parse event", e);
+      }
+    };
+
+    try {
+      room.registerTextStreamHandler(TOPIC_CLIENT_EVENTS, onTextStream);
+    } catch (e) {
+      console.warn("[interruption] failed to register text stream handler", e);
+    }
+
     return () => {
-      room.off(RoomEvent.DataReceived, onData);
+      try {
+        room.unregisterTextStreamHandler(TOPIC_CLIENT_EVENTS);
+      } catch {
+        // ignore if already unregistered
+      }
     };
   }, [session.room]);
 

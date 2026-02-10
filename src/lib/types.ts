@@ -31,10 +31,21 @@ export type InterruptChatMessage = {
   id: string;
   timestamp: number;
   type: "interruptEvent";
-  subtype: string;
+  /** "interruption" for true interruption, "backchannel" for non-interruption */
+  subtype: "interruption" | "backchannel";
   detectionDelay?: number;
   totalDuration?: number;
 };
+
+/**
+ * Event format from livekit-agents ClientUserInterruptionEvent
+ * Sent via text stream on topic "lk.agent.events"
+ */
+export interface ClientUserInterruptionEvent {
+  type: "user_interruption";
+  is_interruption: boolean;
+  created_at: number;
+}
 
 export interface AttributeItem {
   id: string;
