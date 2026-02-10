@@ -31,7 +31,6 @@ export type InterruptChatMessage = {
   id: string;
   timestamp: number;
   type: "interruptEvent";
-  /** "interruption" for true interruption, "backchannel" for non-interruption */
   subtype: "interruption" | "backchannel";
   detectionDelay?: number;
   totalDuration?: number;

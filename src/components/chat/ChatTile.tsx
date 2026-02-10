@@ -47,12 +47,7 @@ export const ChatTile = ({
 
   useEffect(() => {
     if (!latestInterrupt) return;
-    const isBackchannel = latestInterrupt.subtype === "backchannel";
-    if (isBackchannel) {
-      setFlashType("backchannel");
-    } else {
-      setFlashType("interruption");
-    }
+    setFlashType(latestInterrupt.subtype);
     setFlashKey((prev) => prev + 1);
   }, [latestInterrupt]);
 
@@ -68,9 +63,7 @@ export const ChatTile = ({
         <div className="flex flex-col min-h-full justify-end pb-3">
           {messages.map((message, index, allMsg) => {
             const prev = allMsg[index - 1];
-            const hideName =
-              index >= 1 &&
-              prev.from === message.from;
+            const hideName = index >= 1 && prev.from === message.from;
 
             return (
               <ChatMessage

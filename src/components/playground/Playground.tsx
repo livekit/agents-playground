@@ -6,7 +6,10 @@ import { ColorPicker } from "@/components/colorPicker/ColorPicker";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
-import { EditableNameValueRow, NameValueRow } from "@/components/config/NameValueRow";
+import {
+  EditableNameValueRow,
+  NameValueRow,
+} from "@/components/config/NameValueRow";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
   PlaygroundTab,
@@ -26,7 +29,6 @@ import {
   useParticipantAttributes,
   useSession,
   useSessionMessages,
-  useTracks,
 } from "@livekit/components-react";
 import {
   ConnectionState,
@@ -36,7 +38,14 @@ import {
 } from "livekit-client";
 import { RoomAgentDispatch } from "livekit-server-sdk";
 import { QRCodeSVG } from "qrcode.react";
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { RpcPanel } from "./RpcPanel";
 
@@ -70,9 +79,9 @@ export default function Playground({
   const [rpcMethod, setRpcMethod] = useState("");
   const [rpcPayload, setRpcPayload] = useState("");
   const [hasConnected, setHasConnected] = useState(false);
-  const [carouselIndex, setCarouselIndex] = useState(0);
 
-  const [tokenFetchOptions, setTokenFetchOptions] = useState<TokenSourceFetchOptions>();
+  const [tokenFetchOptions, setTokenFetchOptions] =
+    useState<TokenSourceFetchOptions>();
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
@@ -84,7 +93,12 @@ export default function Playground({
       agentName: initialAgentOptions?.agentName ?? "",
       agentMetadata: initialAgentOptions?.metadata ?? "",
     });
-  }, [tokenFetchOptions, initialAgentOptions, initialAgentOptions?.agentName, initialAgentOptions?.metadata]);
+  }, [
+    tokenFetchOptions,
+    initialAgentOptions,
+    initialAgentOptions?.agentName,
+    initialAgentOptions?.metadata,
+  ]);
 
   const session = useSession(tokenSource, tokenFetchOptions);
   const { connectionState } = session;
@@ -97,7 +111,6 @@ export default function Playground({
     backchannel: 0,
     interruption: 0,
   });
-  const videoTracks = useTracks([Track.Source.Camera], { onlySubscribed: true, room: session.room });
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
@@ -140,7 +153,10 @@ export default function Playground({
     const room = session.room;
     if (!room) return;
 
-    const handleInterruptEvent = (isInterruption: boolean, createdAt?: number) => {
+    const handleInterruptEvent = (
+      isInterruption: boolean,
+      createdAt?: number,
+    ) => {
       const subtype = isInterruption ? "interruption" : "backchannel";
       const timestamp = createdAt ? createdAt * 1000 : Date.now(); // convert seconds to ms
 
@@ -166,7 +182,6 @@ export default function Playground({
       setLatestInterrupt(next);
     };
 
-    // Handler for livekit-agents text stream events (topic: lk.agent.events)
     const onTextStream = async (
       reader: { readAll: () => Promise<string>; info: { topic: string } },
       participantInfo: { identity: string },
@@ -184,7 +199,10 @@ export default function Playground({
           created_at: interruptEvent.created_at,
         });
 
-        handleInterruptEvent(interruptEvent.is_interruption, interruptEvent.created_at);
+        handleInterruptEvent(
+          interruptEvent.is_interruption,
+          interruptEvent.created_at,
+        );
       } catch (e) {
         console.warn("[interruption] failed to parse event", e);
       }
@@ -205,13 +223,6 @@ export default function Playground({
     };
   }, [session.room]);
 
-  // Ensure carousel index is valid when tracks change
-  useEffect(() => {
-    if (videoTracks.length > 0 && carouselIndex >= videoTracks.length) {
-      setCarouselIndex(0);
-    }
-  }, [videoTracks.length, carouselIndex]);
-
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
 
@@ -224,82 +235,32 @@ export default function Playground({
     const loadingContent = (
       <div className="flex flex-col items-center justify-center gap-2 text-gray-700 text-center h-full w-full">
         <LoadingSVG />
-        Waiting for video tracks…
+        Waiting for agent video track…
       </div>
     );
 
+    const videoContent = agent.cameraTrack ? (
+      <VideoTrack
+        trackRef={agent.cameraTrack}
+        className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
+      />
+    ) : null;
+
+    let content = null;
     if (connectionState === ConnectionState.Disconnected) {
-      return (
-        <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
-          {disconnectedContent}
-        </div>
-      );
+      content = disconnectedContent;
+    } else if (agent.cameraTrack) {
+      content = videoContent;
+    } else {
+      content = loadingContent;
     }
-
-    if (videoTracks.length === 0) {
-      return (
-        <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
-          {loadingContent}
-        </div>
-      );
-    }
-
-    const currentIndex = Math.min(carouselIndex, videoTracks.length - 1);
-    const currentTrack = videoTracks[currentIndex];
 
     return (
       <div className="flex flex-col w-full grow text-gray-950 bg-black rounded-sm border border-gray-800 relative">
-        <VideoTrack
-          trackRef={currentTrack}
-          className={`absolute top-1/2 -translate-y-1/2 ${videoFitClassName} object-position-center w-full h-full`}
-        />
-        {/* Carousel controls */}
-        {videoTracks.length > 1 && (
-          <>
-            {/* Navigation arrows */}
-            <button
-              onClick={() => setCarouselIndex((prev) => (prev - 1 + videoTracks.length) % videoTracks.length)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 z-10"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setCarouselIndex((prev) => (prev + 1) % videoTracks.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 z-10"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-            {/* Participant label */}
-            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
-              {currentTrack.participant?.identity ?? "Unknown"}
-            </div>
-            {/* Dot indicators */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-              {videoTracks.map((track, idx) => (
-                <button
-                  key={track.participant?.identity ?? idx}
-                  onClick={() => setCarouselIndex(idx)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    idx === currentIndex ? "bg-white" : "bg-white/40 hover:bg-white/60"
-                  }`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-        {/* Single track label */}
-        {videoTracks.length === 1 && (
-          <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
-            {currentTrack.participant?.identity ?? "Unknown"}
-          </div>
-        )}
+        {content}
       </div>
     );
-  }, [config, connectionState, videoTracks, carouselIndex]);
+  }, [agent.cameraTrack, config, connectionState]);
 
   useEffect(() => {
     document.body.style.setProperty(
@@ -349,11 +310,7 @@ export default function Playground({
     }
 
     return visualizerContent;
-  }, [
-    agent.microphoneTrack,
-    connectionState,
-    agent.state,
-  ]);
+  }, [agent.microphoneTrack, connectionState, agent.state]);
 
   const chatTileContent = useMemo(() => {
     if (agent.isConnected) {
@@ -473,22 +430,9 @@ export default function Playground({
             <NameValueRow
               name="Worker"
               value={
-                agent.internal.workerParticipant ? (
-                  agent.internal.workerParticipant.identity
-                ) : (
-                  "No worker"
-                )
-              }
-              valueColor="gray-500"
-            />
-            <NameValueRow
-              name="Camera Source"
-              value={
-                agent.cameraTrack ? (
-                  `${agent.cameraTrack.participant?.identity ?? "unknown"}`
-                ) : (
-                  "No camera"
-                )
+                agent.internal.workerParticipant
+                  ? agent.internal.workerParticipant.identity
+                  : "No worker"
               }
               valueColor="gray-500"
             />
