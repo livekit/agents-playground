@@ -28,7 +28,7 @@ export interface TokenResult {
 }
 
 /**
- * Event format from livekit-agents ClientUserInterruptionEvent
+ * Event format from agents ClientUserInterruptionEvent
  * Sent via text stream on topic "lk.agent.events"
  */
 export interface ClientUserInterruptionEvent {

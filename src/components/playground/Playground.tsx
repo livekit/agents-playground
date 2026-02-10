@@ -152,7 +152,6 @@ export default function Playground({
   // Handle interruption events from livekit-agents text streams
   useEffect(() => {
     const room = session.room;
-    if (!room) return;
 
     const handleInterruptEvent = (isInterruption: boolean) => {
       const subtype = isInterruption ? "interruption" : "backchannel";
@@ -165,9 +164,9 @@ export default function Playground({
       setLastInterruptSubtype(subtype);
     };
 
-    const onTextStream = async (
-      reader: { readAll: () => Promise<string>; info: { topic: string } },
-      participantInfo: { identity: string },
+    const onTextStream: Parameters<typeof room.registerTextStreamHandler>[1] = async (
+      reader,
+      participantInfo,
     ) => {
       try {
         const data = await reader.readAll();
@@ -406,15 +405,6 @@ export default function Playground({
                   ? `${config.settings.theme_color}-500`
                   : "gray-500"
               }
-            />
-            <NameValueRow
-              name="Worker"
-              value={
-                agent.internal.workerParticipant
-                  ? agent.internal.workerParticipant.identity
-                  : "No worker"
-              }
-              valueColor="gray-500"
             />
             {connectionState === ConnectionState.Connected &&
               agent.internal.agentParticipant && (

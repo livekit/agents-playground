@@ -17,6 +17,47 @@ type ChatTileProps = {
   };
 };
 
+type InterruptSubtype = "backchannel" | "interruption";
+
+type InterruptCounterProps = {
+  label: InterruptSubtype;
+  count: number;
+  flashType: InterruptSubtype | null;
+  flashKey: number;
+  valueColorClassName: string;
+  labelColorClassName: string;
+};
+
+const InterruptCounter = ({
+  label,
+  count,
+  flashType,
+  flashKey,
+  valueColorClassName,
+  labelColorClassName,
+}: InterruptCounterProps) => (
+  <div className={`flex items-center justify-center gap-2 text-xs ${valueColorClassName}`}>
+    <span className={`uppercase tracking-wide ${labelColorClassName}`}>
+      {label}
+    </span>
+    <span className="relative inline-flex items-center min-w-[3ch] justify-center">
+      <span
+        key={`${label}-${flashKey}`}
+        className={`font-medium ${
+          flashType === label ? "animate-interrupt-pulse" : ""
+        }`}
+      >
+        x{count}
+      </span>
+      {flashType === label && (
+        <span className={`animate-interrupt-plus ${labelColorClassName} absolute -right-6`}>
+          +1
+        </span>
+      )}
+    </span>
+  </div>
+);
+
 export const ChatTile = ({
   messages,
   accentColor,
@@ -26,9 +67,7 @@ export const ChatTile = ({
 }: ChatTileProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [flashKey, setFlashKey] = useState(0);
-  const [flashType, setFlashType] = useState<
-    "backchannel" | "interruption" | null
-  >(null);
+  const [flashType, setFlashType] = useState<InterruptSubtype | null>(null);
   const totalInterrupts =
     interruptCounts.backchannel + interruptCounts.interruption;
 
@@ -50,7 +89,7 @@ export const ChatTile = ({
     if (!lastInterruptSubtype) return;
     setFlashType(lastInterruptSubtype);
     setFlashKey((prev) => prev + 1);
-  }, [totalInterrupts]);
+  }, [totalInterrupts, lastInterruptSubtype]);
 
   return (
     <div className="relative flex flex-col gap-4 w-full h-full">
@@ -85,46 +124,22 @@ export const ChatTile = ({
           className="pointer-events-none absolute left-0 right-0 grid grid-cols-2 items-center border-t border-gray-800 px-3 bg-black"
           style={{ bottom: inputHeight, height: interruptBarHeight }}
         >
-          <div className="flex items-center justify-center gap-2 text-xs text-red-400/80">
-            <span className="uppercase tracking-wide text-red-500/80">
-              interruption
-            </span>
-            <span className="relative inline-flex items-center min-w-[3ch] justify-center">
-              <span
-                key={`interruption-${flashKey}`}
-                className={`font-medium ${
-                  flashType === "interruption" ? "animate-interrupt-pulse" : ""
-                }`}
-              >
-                x{interruptCounts.interruption}
-              </span>
-              {flashType === "interruption" && (
-                <span className="animate-interrupt-plus text-red-500/80 absolute -right-6">
-                  +1
-                </span>
-              )}
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-green-400/80">
-            <span className="uppercase tracking-wide text-green-500/80">
-              backchannel
-            </span>
-            <span className="relative inline-flex items-center min-w-[3ch] justify-center">
-              <span
-                key={`backchannel-${flashKey}`}
-                className={`font-medium ${
-                  flashType === "backchannel" ? "animate-interrupt-pulse" : ""
-                }`}
-              >
-                x{interruptCounts.backchannel}
-              </span>
-              {flashType === "backchannel" && (
-                <span className="animate-interrupt-plus text-green-500/80 absolute -right-6">
-                  +1
-                </span>
-              )}
-            </span>
-          </div>
+          <InterruptCounter
+            label="interruption"
+            count={interruptCounts.interruption}
+            flashType={flashType}
+            flashKey={flashKey}
+            valueColorClassName="text-red-400/80"
+            labelColorClassName="text-red-500/80"
+          />
+          <InterruptCounter
+            label="backchannel"
+            count={interruptCounts.backchannel}
+            flashType={flashType}
+            flashKey={flashKey}
+            valueColorClassName="text-green-400/80"
+            labelColorClassName="text-green-500/80"
+          />
         </div>
       )}
       <ChatMessageInput
