@@ -36,7 +36,9 @@ const InterruptCounter = ({
   valueColorClassName,
   labelColorClassName,
 }: InterruptCounterProps) => (
-  <div className={`flex items-center justify-center gap-2 text-xs ${valueColorClassName}`}>
+  <div
+    className={`flex items-center justify-center gap-2 text-xs ${valueColorClassName}`}
+  >
     <span className={`uppercase tracking-wide ${labelColorClassName}`}>
       {label}
     </span>
@@ -50,7 +52,9 @@ const InterruptCounter = ({
         x{count}
       </span>
       {flashType === label && (
-        <span className={`animate-interrupt-plus ${labelColorClassName} absolute -right-6`}>
+        <span
+          className={`animate-interrupt-plus ${labelColorClassName} absolute -right-6`}
+        >
           +1
         </span>
       )}

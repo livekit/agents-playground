@@ -164,10 +164,9 @@ export default function Playground({
       setLastInterruptSubtype(subtype);
     };
 
-    const onTextStream: Parameters<typeof room.registerTextStreamHandler>[1] = async (
-      reader,
-      participantInfo,
-    ) => {
+    const onTextStream: Parameters<
+      typeof room.registerTextStreamHandler
+    >[1] = async (reader, participantInfo) => {
       try {
         const data = await reader.readAll();
         const event = JSON.parse(data) as { type: string };
