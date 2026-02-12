@@ -103,21 +103,6 @@ export default function Playground({
     clearEvents,
   } = useClientEvents(session.room);
 
-  const interruptCounts = useMemo(() => {
-    const counts = { backchannel: 0, interruption: 0 };
-    for (const evt of interruptionEvents) {
-      if (evt.is_interruption) counts.interruption++;
-      else counts.backchannel++;
-    }
-    return counts;
-  }, [interruptionEvents]);
-
-  const lastInterruptSubtype = useMemo(() => {
-    if (interruptionEvents.length === 0) return null;
-    const last = interruptionEvents[interruptionEvents.length - 1];
-    return last.is_interruption ? "interruption" : "backchannel";
-  }, [interruptionEvents]);
-
   const [sessionStartedAt] = useState(() => Date.now() / 1000);
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
@@ -249,8 +234,6 @@ export default function Playground({
       return (
         <ChatTile
           messages={messages.messages}
-          lastInterruptSubtype={lastInterruptSubtype ?? undefined}
-          interruptCounts={interruptCounts}
           accentColor={config.settings.theme_color}
           onSend={messages.send}
         />
@@ -262,8 +245,6 @@ export default function Playground({
     config.settings.theme_color,
     messages.messages,
     messages.send,
-    lastInterruptSubtype,
-    interruptCounts,
   ]);
 
   const handleRpcCall = useCallback(async () => {
