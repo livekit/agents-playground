@@ -38,6 +38,8 @@ export interface WaveformHighlight {
   startIndex: number;
   endIndex: number;
   type: "interruption" | "backchannel";
+  /** Optional CSS color override. When set, the renderer uses this instead of the default type-based color. */
+  color?: string;
 }
 
 export interface WaveformSnapshot {

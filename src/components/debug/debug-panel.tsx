@@ -1,5 +1,3 @@
-import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
-import type { WaveformSnapshot } from "@/hooks/useStreamingWaveform";
 import type {
   ClientEvent,
   ClientMetricsCollectedEvent,
@@ -13,41 +11,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { EventsTab } from "./EventsTab";
-import { MetricsTab } from "./MetricsTab";
-import { WaveformTab } from "./WaveformTab";
+import { AudioWaveform } from "./audio-waveform";
+import type { AudioWaveformHandle } from "./audio-waveform";
+import { EventLog } from "./event-log";
+import { MetricsDisplay } from "./metrics-display";
 
-const SPEECH_THRESHOLD = 8;
-const MAX_SILENCE_GAP = 20;
-function findRecentSpeechRegion(
-  snapshot: WaveformSnapshot,
-): { start: number; end: number } | null {
-  const { userBuffer, userCount } = snapshot;
-  if (userCount === 0) return null;
-
-  let end = -1;
-  for (let i = userCount - 1; i >= 0; i--) {
-    if (userBuffer[i] > SPEECH_THRESHOLD) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) return null;
-
-  let start = end;
-  let silenceRun = 0;
-  for (let i = end - 1; i >= 0; i--) {
-    if (userBuffer[i] > SPEECH_THRESHOLD) {
-      start = i;
-      silenceRun = 0;
-    } else {
-      silenceRun++;
-      if (silenceRun > MAX_SILENCE_GAP) break;
-    }
-  }
-
-  return { start, end };
-}
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 type TabId = "waveform" | "events" | "metrics";
 
@@ -64,7 +35,11 @@ const DEFAULT_HEIGHT = 250;
 const CONTROL_BUTTON_CLASS =
   "text-xs px-2 py-1 rounded transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-bg3)]";
 
-interface DebugPanelProps {
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface DebugPanelProps {
   userTrack: Track | undefined;
   agentTrack: Track | undefined;
   sessionStartedAt: number;
@@ -73,6 +48,10 @@ interface DebugPanelProps {
   interruptionEvents: ClientUserInterruptionEvent[];
   onClearEvents: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function DebugPanel({
   userTrack,
@@ -88,8 +67,9 @@ export function DebugPanel({
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
-  const { getData, addHighlight } = useStreamingWaveform(userTrack, agentTrack);
+  const waveformRef = useRef<AudioWaveformHandle>(null);
 
+  // Forward interruption events to the waveform as highlights ----------------
   const lastHandledRef = useRef(0);
   useEffect(() => {
     if (interruptionEvents.length < lastHandledRef.current) {
@@ -101,18 +81,13 @@ export function DebugPanel({
     lastHandledRef.current = interruptionEvents.length;
 
     for (const evt of newEvents) {
-      const snapshot = getData();
-      const region = findRecentSpeechRegion(snapshot);
-      if (!region) continue;
-
-      addHighlight({
-        startIndex: region.start,
-        endIndex: region.end,
+      waveformRef.current?.addHighlight({
         type: evt.is_interruption ? "interruption" : "backchannel",
       });
     }
-  }, [interruptionEvents, getData, addHighlight]);
+  }, [interruptionEvents]);
 
+  // Resize -------------------------------------------------------------------
   const onResizeStart = useCallback(
     (e: ReactMouseEvent) => {
       e.preventDefault();
@@ -140,6 +115,7 @@ export function DebugPanel({
     [height],
   );
 
+  // Render -------------------------------------------------------------------
   return (
     <div
       className="flex flex-col border-t fixed bottom-0 left-0 right-0 z-50"
@@ -198,16 +174,22 @@ export function DebugPanel({
 
       {!collapsed && (
         <div className="flex-1 overflow-hidden">
-          {activeTab === "waveform" && <WaveformTab getData={getData} />}
+          {activeTab === "waveform" && (
+            <AudioWaveform
+              ref={waveformRef}
+              userTrack={userTrack}
+              agentTrack={agentTrack}
+            />
+          )}
           {activeTab === "events" && (
-            <EventsTab
+            <EventLog
               events={events}
               sessionStartedAt={sessionStartedAt}
               onClear={onClearEvents}
             />
           )}
           {activeTab === "metrics" && (
-            <MetricsTab metricsEvents={metricsEvents} />
+            <MetricsDisplay metricsEvents={metricsEvents} />
           )}
         </div>
       )}

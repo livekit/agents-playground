@@ -10,7 +10,7 @@ import {
   EditableNameValueRow,
   NameValueRow,
 } from "@/components/config/NameValueRow";
-import { DebugPanel } from "@/components/debug/DebugPanel";
+import { DebugPanel } from "@/components/debug";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
   PlaygroundTab,

@@ -4,6 +4,10 @@ import type {
 } from "@/lib/types";
 import { useMemo } from "react";
 
+// ---------------------------------------------------------------------------
+// Internal types
+// ---------------------------------------------------------------------------
+
 interface Stat {
   label: string;
   value: string;
@@ -21,6 +25,10 @@ type MetricByType<T extends MetricType> = Extract<
   { type: T }
 >;
 type CardColor = "violet" | "cyan" | "green" | "amber";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -173,6 +181,10 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
   return cards;
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const COLOR_MAP: Record<CardColor, { text: string }> = {
   violet: { text: "text-violet-400" },
   cyan: { text: "text-cyan-400" },
@@ -180,17 +192,34 @@ const COLOR_MAP: Record<CardColor, { text: string }> = {
   amber: { text: "text-amber-400" },
 };
 
-interface MetricsTabProps {
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface MetricsDisplayProps {
   metricsEvents: ClientMetricsCollectedEvent[];
+  className?: string;
 }
 
-export function MetricsTab({ metricsEvents }: MetricsTabProps) {
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+/**
+ * Card grid showing aggregated agent metrics (LLM, STT, TTS, VAD, EOU,
+ * Realtime). Each card displays a colored title and label/value stat rows.
+ */
+export function MetricsDisplay({
+  metricsEvents,
+  className,
+}: MetricsDisplayProps) {
   const cards = useMemo(() => buildCards(metricsEvents), [metricsEvents]);
 
   if (cards.length === 0) {
     return (
       <div
-        className="flex items-center justify-center h-full text-xs"
+        data-slot="metrics-display"
+        className={`flex items-center justify-center h-full text-xs${className ? ` ${className}` : ""}`}
         style={{ background: "var(--dbg-bg)", color: "var(--dbg-fg5)" }}
       >
         No metrics received yet
@@ -200,7 +229,8 @@ export function MetricsTab({ metricsEvents }: MetricsTabProps) {
 
   return (
     <div
-      className="grid gap-3 p-3 h-full overflow-y-auto content-start"
+      data-slot="metrics-display"
+      className={`grid gap-3 p-3 h-full overflow-y-auto content-start${className ? ` ${className}` : ""}`}
       style={{
         background: "var(--dbg-bg)",
         gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",

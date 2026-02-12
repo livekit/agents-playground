@@ -1,6 +1,10 @@
 import type { ClientEvent, ClientEventType } from "@/lib/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const TYPE_BADGE_COLORS: Record<ClientEventType, string> = {
   agent_state_changed: "bg-green-800 text-green-200",
   user_state_changed: "bg-green-900 text-green-300",
@@ -31,6 +35,10 @@ const ALL_EVENT_TYPES: ClientEventType[] = [
   "error",
 ];
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function eventSummary(event: ClientEvent): string {
   switch (event.type) {
     case "agent_state_changed":
@@ -60,22 +68,38 @@ function formatTimestamp(createdAt: number, sessionStart: number): string {
   return `+${delta.toFixed(1)}s`;
 }
 
-interface EventsTabProps {
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface EventLogProps {
   events: ClientEvent[];
   sessionStartedAt: number;
-  onClear: () => void;
+  onClear?: () => void;
+  className?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 interface EventRow {
   event: ClientEvent;
   index: number;
 }
 
-export function EventsTab({
+/**
+ * Filterable, scrollable event log for agent client events.
+ *
+ * Displays events in reverse-chronological order with type badges,
+ * timestamps relative to the session start, and expandable JSON details.
+ */
+export function EventLog({
   events,
   sessionStartedAt,
   onClear,
-}: EventsTabProps) {
+  className,
+}: EventLogProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [enabledTypes, setEnabledTypes] = useState<Set<ClientEventType>>(
     new Set(ALL_EVENT_TYPES),
@@ -113,7 +137,8 @@ export function EventsTab({
 
   return (
     <div
-      className="flex flex-col h-full w-full"
+      data-slot="event-log"
+      className={`flex flex-col h-full w-full${className ? ` ${className}` : ""}`}
       style={{ background: "var(--dbg-bg)" }}
     >
       <div
@@ -131,13 +156,15 @@ export function EventsTab({
           {filtered.length} events
         </span>
         <div className="flex-1" />
-        <button
-          onClick={onClear}
-          className={CONTROL_BUTTON_CLASS}
-          style={CONTROL_BUTTON_STYLE}
-        >
-          Clear
-        </button>
+        {onClear && (
+          <button
+            onClick={onClear}
+            className={CONTROL_BUTTON_CLASS}
+            style={CONTROL_BUTTON_STYLE}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {showFilter && (
