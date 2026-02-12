@@ -10,6 +10,7 @@ import {
   EditableNameValueRow,
   NameValueRow,
 } from "@/components/config/NameValueRow";
+import { DebugPanel } from "@/components/debug/DebugPanel";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
   PlaygroundTab,
@@ -17,7 +18,7 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { useConfig } from "@/hooks/useConfig";
-import { ClientUserInterruptionEvent } from "@/lib/types";
+import { useClientEvents } from "@/hooks/useClientEvents";
 import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
@@ -38,19 +39,9 @@ import {
 } from "livekit-client";
 import { RoomAgentDispatch } from "livekit-server-sdk";
 import { QRCodeSVG } from "qrcode.react";
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { RpcPanel } from "./RpcPanel";
-
-/** Topic for client events from livekit-agents */
-const TOPIC_CLIENT_EVENTS = "lk.agent.events";
 
 export interface PlaygroundMeta {
   name: string;
@@ -104,14 +95,30 @@ export default function Playground({
   const { connectionState } = session;
   const agent = useAgent(session);
   const messages = useSessionMessages(session);
-  const [lastInterruptSubtype, setLastInterruptSubtype] = useState<
-    "interruption" | "backchannel" | null
-  >(null);
-  const interruptCountsRef = useRef({ backchannel: 0, interruption: 0 });
-  const [interruptCounts, setInterruptCounts] = useState({
-    backchannel: 0,
-    interruption: 0,
-  });
+
+  const {
+    events: clientEvents,
+    interruptionEvents,
+    metricsEvents,
+    clearEvents,
+  } = useClientEvents(session.room);
+
+  const interruptCounts = useMemo(() => {
+    const counts = { backchannel: 0, interruption: 0 };
+    for (const evt of interruptionEvents) {
+      if (evt.is_interruption) counts.interruption++;
+      else counts.backchannel++;
+    }
+    return counts;
+  }, [interruptionEvents]);
+
+  const lastInterruptSubtype = useMemo(() => {
+    if (interruptionEvents.length === 0) return null;
+    const last = interruptionEvents[interruptionEvents.length - 1];
+    return last.is_interruption ? "interruption" : "backchannel";
+  }, [interruptionEvents]);
+
+  const [sessionStartedAt] = useState(() => Date.now() / 1000);
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
@@ -123,7 +130,7 @@ export default function Playground({
     }
     session.start();
     setHasConnected(true);
-  }, [session, session.isConnected]);
+  }, [session]);
 
   useEffect(() => {
     if (autoConnect && !hasConnected) {
@@ -143,63 +150,10 @@ export default function Playground({
   }, [config, session.room.localParticipant, connectionState]);
 
   useEffect(() => {
-    if (connectionState !== ConnectionState.Disconnected) return;
-    interruptCountsRef.current = { backchannel: 0, interruption: 0 };
-    setInterruptCounts({ backchannel: 0, interruption: 0 });
-    setLastInterruptSubtype(null);
-  }, [connectionState]);
-
-  // Handle interruption events from livekit-agents text streams
-  useEffect(() => {
-    const room = session.room;
-
-    const handleInterruptEvent = (isInterruption: boolean) => {
-      const subtype = isInterruption ? "interruption" : "backchannel";
-
-      interruptCountsRef.current = {
-        ...interruptCountsRef.current,
-        [subtype]: interruptCountsRef.current[subtype] + 1,
-      };
-      setInterruptCounts(interruptCountsRef.current);
-      setLastInterruptSubtype(subtype);
-    };
-
-    const onTextStream: Parameters<
-      typeof room.registerTextStreamHandler
-    >[1] = async (reader, participantInfo) => {
-      try {
-        const data = await reader.readAll();
-        const event = JSON.parse(data) as { type: string };
-
-        if (event.type !== "user_interruption") return;
-
-        const interruptEvent = event as ClientUserInterruptionEvent;
-        console.debug("[interruption] received", {
-          from: participantInfo.identity,
-          is_interruption: interruptEvent.is_interruption,
-          created_at: interruptEvent.created_at,
-        });
-
-        handleInterruptEvent(interruptEvent.is_interruption);
-      } catch (e) {
-        console.warn("[interruption] failed to parse event", e);
-      }
-    };
-
-    try {
-      room.registerTextStreamHandler(TOPIC_CLIENT_EVENTS, onTextStream);
-    } catch (e) {
-      console.warn("[interruption] failed to register text stream handler", e);
+    if (connectionState === ConnectionState.Disconnected) {
+      clearEvents();
     }
-
-    return () => {
-      try {
-        room.unregisterTextStreamHandler(TOPIC_CLIENT_EVENTS);
-      } catch {
-        // ignore if already unregistered
-      }
-    };
-  }, [session.room]);
+  }, [connectionState, clearEvents]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -677,8 +631,8 @@ export default function Playground({
           }}
         />
         <div
-          className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
-          style={{ height: `calc(100% - ${headerHeight}px)` }}
+          className={`flex gap-4 py-4 grow w-full overflow-hidden selection:bg-${config.settings.theme_color}-900`}
+          style={{ minHeight: 0 }}
         >
           <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
             <PlaygroundTabbedTile
@@ -731,6 +685,15 @@ export default function Playground({
             {settingsTileContent}
           </PlaygroundTile>
         </div>
+        <DebugPanel
+          userTrack={session.local.microphoneTrack?.publication?.track}
+          agentTrack={agent.microphoneTrack?.publication?.track}
+          sessionStartedAt={sessionStartedAt}
+          events={clientEvents}
+          metricsEvents={metricsEvents}
+          interruptionEvents={interruptionEvents}
+          onClearEvents={clearEvents}
+        />
         <RoomAudioRenderer />
         <StartAudio label="Click to enable audio playback" />
       </div>

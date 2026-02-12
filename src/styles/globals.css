@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Debug panel theme — mirrors LiveKit components-js default theme */
+  --dbg-bg: #111;
+  --dbg-bg2: #1a1a1a;
+  --dbg-bg3: #242424;
+  --dbg-bg4: #2e2e2e;
+  --dbg-bg5: #383838;
+  --dbg-fg: #fff;
+  --dbg-fg3: #d6d6d6;
+  --dbg-fg5: #d4d4d4;
+  --dbg-border: rgba(255, 255, 255, 0.1);
+  --dbg-radius: 0.5rem;
+  --dbg-control-bg: #1a1a1a;
+  --dbg-control-hover: #242424;
+}
+
 body {
   background: black;
   --lk-va-bar-gap: 4px;
