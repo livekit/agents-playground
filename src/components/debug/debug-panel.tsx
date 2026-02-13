@@ -1,3 +1,4 @@
+import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
 import type {
   ClientEvent,
   ClientMetricsCollectedEvent,
@@ -7,12 +8,11 @@ import type { Track } from "livekit-client";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
-  useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { AudioWaveform } from "./audio-waveform";
-import type { AudioWaveformHandle } from "./audio-waveform";
 import { EventLog } from "./event-log";
 import { MetricsDisplay } from "./metrics-display";
 
@@ -34,6 +34,14 @@ const MAX_HEIGHT = 600;
 const DEFAULT_HEIGHT = 250;
 const CONTROL_BUTTON_CLASS =
   "text-xs px-2 py-1 rounded transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-bg3)]";
+
+const INTERRUPTION_COLOR = "#FA4C39";
+const BACKCHANNEL_COLOR = "#F97A1F";
+
+const HIGHLIGHT_LEGEND = [
+  { color: INTERRUPTION_COLOR, label: "Interruption" },
+  { color: BACKCHANNEL_COLOR, label: "Backchannel" },
+];
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -67,25 +75,16 @@ export function DebugPanel({
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
-  const waveformRef = useRef<AudioWaveformHandle>(null);
-
-  // Forward interruption events to the waveform as highlights ----------------
-  const lastHandledRef = useRef(0);
-  useEffect(() => {
-    if (interruptionEvents.length < lastHandledRef.current) {
-      lastHandledRef.current = 0;
-    }
-    if (interruptionEvents.length <= lastHandledRef.current) return;
-
-    const newEvents = interruptionEvents.slice(lastHandledRef.current);
-    lastHandledRef.current = interruptionEvents.length;
-
-    for (const evt of newEvents) {
-      waveformRef.current?.addHighlight({
-        type: evt.is_interruption ? "interruption" : "backchannel",
-      });
-    }
-  }, [interruptionEvents]);
+  // Highlights ----------------------------------------------------------------
+  const highlights = useMemo<WaveformHighlight[]>(
+    () =>
+      interruptionEvents.map((evt) => ({
+        start: evt.overlap_speech_started_at ?? evt.created_at,
+        end: evt.created_at,
+        color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
+      })),
+    [interruptionEvents],
+  );
 
   // Resize -------------------------------------------------------------------
   const onResizeStart = useCallback(
@@ -143,7 +142,29 @@ export function DebugPanel({
           style={{ color: "var(--dbg-fg5)" }}
           title={collapsed ? "Expand" : "Collapse"}
         >
-          {collapsed ? "▲" : "▼"}
+          {collapsed ? (
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <path
+                d="M1 7L5 3l4 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <path
+                d="M1 3l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </button>
         {TABS.map((tab) => (
           <button
@@ -174,13 +195,19 @@ export function DebugPanel({
 
       {!collapsed && (
         <div className="flex-1 overflow-hidden">
-          {activeTab === "waveform" && (
+          {/* AudioWaveform is always mounted so useStreamingWaveform keeps
+              collecting samples while other tabs are active. The rAF draw
+              loop becomes a near-no-op when the container has display:none. */}
+          <div
+            className={activeTab === "waveform" ? "w-full h-full" : "hidden"}
+          >
             <AudioWaveform
-              ref={waveformRef}
               userTrack={userTrack}
               agentTrack={agentTrack}
+              highlights={highlights}
+              legendItems={HIGHLIGHT_LEGEND}
             />
-          )}
+          </div>
           {activeTab === "events" && (
             <EventLog
               events={events}

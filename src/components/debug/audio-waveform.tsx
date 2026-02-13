@@ -1,42 +1,23 @@
+import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
 import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
-import type {
-  WaveformHighlight,
-  WaveformSnapshot,
-} from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-/** Options accepted by {@link AudioWaveformHandle.addHighlight}. */
-export interface WaveformHighlightOptions {
-  /** Semantic type – used for default coloring when `color` is not provided. */
-  type: "interruption" | "backchannel";
-  /**
-   * Start time in epoch-seconds.
-   * When provided the highlight covers `[start, end)` mapped to buffer indices.
-   * When omitted the component auto-detects the most recent speech region.
-   */
-  start?: number;
-  /**
-   * End time in epoch-seconds. Defaults to the current sample position when
-   * `start` is provided but `end` is omitted.
-   */
-  end?: number;
-  /** CSS color string override. Defaults based on `type`. */
-  color?: string;
-}
-
-/** Imperative handle exposed via `ref`. */
-export interface AudioWaveformHandle {
-  addHighlight: (highlight: WaveformHighlightOptions) => void;
+export interface LegendItemDef {
+  color: string;
+  label: string;
 }
 
 export interface AudioWaveformProps {
   userTrack?: Track;
   agentTrack?: Track;
+  highlights?: WaveformHighlight[];
+  /** Extra legend entries rendered after the built-in User / Agent items. */
+  legendItems?: LegendItemDef[];
   className?: string;
 }
 
@@ -56,8 +37,6 @@ const AGENT_COLOR = "#BA1FF9";
 const CENTER_LINE_COLOR = "rgba(255, 255, 255, 0.1)";
 const BG_COLOR = "#111";
 const LABEL_COLOR = "#B2B2B2";
-const BACKCHANNEL_COLOR = "#F97A1F";
-const INTERRUPTION_COLOR = "#FA4C39";
 
 const NOMINAL_SAMPLE_RATE = 100;
 const TIMELINE_HEIGHT = 18;
@@ -66,48 +45,13 @@ const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
 
 // ---------------------------------------------------------------------------
-// Constants – speech-region detection
+// Internal index-based highlight (used only during a single draw frame)
 // ---------------------------------------------------------------------------
 
-const SPEECH_THRESHOLD = 8;
-const MAX_SILENCE_GAP = 20;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function findRecentSpeechRegion(
-  snapshot: WaveformSnapshot,
-): { start: number; end: number } | null {
-  const { userBuffer, userCount } = snapshot;
-  if (userCount === 0) return null;
-
-  let end = -1;
-  for (let i = userCount - 1; i >= 0; i--) {
-    if (userBuffer[i] > SPEECH_THRESHOLD) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) return null;
-
-  let start = end;
-  let silenceRun = 0;
-  for (let i = end - 1; i >= 0; i--) {
-    if (userBuffer[i] > SPEECH_THRESHOLD) {
-      start = i;
-      silenceRun = 0;
-    } else {
-      silenceRun++;
-      if (silenceRun > MAX_SILENCE_GAP) break;
-    }
-  }
-
-  return { start, end };
-}
-
-function defaultColor(type: WaveformHighlightOptions["type"]): string {
-  return type === "interruption" ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR;
+interface IndexedHighlight {
+  startIndex: number;
+  endIndex: number;
+  color: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,53 +64,25 @@ function defaultColor(type: WaveformHighlightOptions["type"]): string {
  * Accepts user and agent audio tracks, manages its own streaming capture via
  * `useStreamingWaveform`, and renders a scrolling canvas of amplitude bars.
  *
- * Highlights (interruptions, backchannels, or arbitrary time ranges) can be
- * added imperatively through the ref handle.
+ * Highlights are provided as time-based props and converted to buffer indices
+ * each frame.
  */
-export const AudioWaveform = forwardRef<
-  AudioWaveformHandle,
-  AudioWaveformProps
->(function AudioWaveform({ userTrack, agentTrack, className }, ref) {
+export function AudioWaveform({
+  userTrack,
+  agentTrack,
+  highlights,
+  legendItems,
+  className,
+}: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    getData,
-    addHighlight: rawAddHighlight,
-    toIndex,
-  } = useStreamingWaveform(userTrack, agentTrack);
+  const { getData, toIndex } = useStreamingWaveform(userTrack, agentTrack);
 
-  // Expose imperative handle ---------------------------------------------------
-  useImperativeHandle(
-    ref,
-    () => ({
-      addHighlight(opts: WaveformHighlightOptions) {
-        let startIndex: number;
-        let endIndex: number;
-
-        if (opts.start != null) {
-          // Explicit time-range mode
-          startIndex = toIndex(opts.start);
-          endIndex = opts.end != null ? toIndex(opts.end) : getData().userCount; // default: current position
-        } else {
-          // Auto-detect mode
-          const snapshot = getData();
-          const region = findRecentSpeechRegion(snapshot);
-          if (!region) return;
-          startIndex = region.start;
-          endIndex = region.end;
-        }
-
-        rawAddHighlight({
-          startIndex,
-          endIndex,
-          type: opts.type,
-          color: opts.color,
-        });
-      },
-    }),
-    [toIndex, getData, rawAddHighlight],
-  );
+  // Mirror props into refs so the long-lived rAF draw closure always reads the
+  // latest values without restarting the animation loop.
+  const highlightsRef = useRef(highlights);
+  highlightsRef.current = highlights;
 
   // Canvas draw loop -----------------------------------------------------------
   useEffect(() => {
@@ -182,7 +98,7 @@ export const AudioWaveform = forwardRef<
     let prevCanvasH = 0;
 
     const draw = () => {
-      const { userBuffer, userCount, agentBuffer, agentCount, highlights } =
+      const { userBuffer, userCount, agentBuffer, agentCount, totalTrimmed } =
         getData();
       const sampleCount = Math.max(userCount, agentCount);
 
@@ -210,27 +126,31 @@ export const AudioWaveform = forwardRef<
       const visibleStart = Math.max(0, sampleCount - maxVisible);
       const visibleCount = sampleCount - visibleStart;
 
+      // TODO: @chenghao-mou find a better way to compensate for latency
+      // Fixed offset to compensate for WebRTC one-way uplink latency
+      // so highlights land on the corresponding speech in the local waveform.
+      const UPLINK_LATENCY_SEC = 0.27;
+
+      const indexHighlights: IndexedHighlight[] = (
+        highlightsRef.current ?? []
+      ).map((h) => ({
+        startIndex: toIndex(h.start - UPLINK_LATENCY_SEC),
+        endIndex: toIndex(h.end - UPLINK_LATENCY_SEC),
+        color: h.color,
+      }));
+
       // Build per-sample highlight lookup
-      const highlightMap = new Map<
-        number,
-        { type: "interruption" | "backchannel"; color?: string }
-      >();
-      for (const highlight of highlights) {
-        const lo = Math.max(0, highlight.startIndex - visibleStart);
-        const hi = Math.min(
-          visibleCount - 1,
-          highlight.endIndex - visibleStart,
-        );
+      const highlightMap = new Map<number, string>();
+      for (const hl of indexHighlights) {
+        const lo = Math.max(0, hl.startIndex - visibleStart);
+        const hi = Math.min(visibleCount - 1, hl.endIndex - visibleStart);
         if (hi < 0 || lo >= visibleCount) continue;
         for (let i = lo; i <= hi; i++) {
-          highlightMap.set(i, {
-            type: highlight.type,
-            color: highlight.color,
-          });
+          highlightMap.set(i, hl.color);
         }
       }
 
-      drawTimeTicks(ctx, visibleStart, visibleCount, width);
+      drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed);
 
       ctx.strokeStyle = CENTER_LINE_COLOR;
       ctx.lineWidth = 1;
@@ -260,12 +180,8 @@ export const AudioWaveform = forwardRef<
           const centerY = waveTop + TRACK_HEIGHT / 2;
           const halfHeight =
             (userAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
-          const hl = highlightMap.get(visibleIndex);
-          if (hl) {
-            ctx.fillStyle = hl.color ?? defaultColor(hl.type);
-          } else {
-            ctx.fillStyle = USER_COLOR;
-          }
+          const hlColor = highlightMap.get(visibleIndex);
+          ctx.fillStyle = hlColor ?? USER_COLOR;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
         }
 
@@ -282,7 +198,7 @@ export const AudioWaveform = forwardRef<
 
       drawHighlightBoundaries(
         ctx,
-        highlights,
+        indexHighlights,
         visibleStart,
         visibleCount,
         waveTop,
@@ -301,7 +217,7 @@ export const AudioWaveform = forwardRef<
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [getData]);
+  }, [getData, toIndex]);
 
   return (
     <div
@@ -320,12 +236,13 @@ export const AudioWaveform = forwardRef<
       >
         <LegendItem color={USER_COLOR} label="User" />
         <LegendItem color={AGENT_COLOR} label="Agent" />
-        <LegendItem color={INTERRUPTION_COLOR} label="Interruption" />
-        <LegendItem color={BACKCHANNEL_COLOR} label="Backchannel" />
+        {legendItems?.map((item) => (
+          <LegendItem key={item.label} color={item.color} label={item.label} />
+        ))}
       </div>
     </div>
   );
-});
+}
 
 // ---------------------------------------------------------------------------
 // Internal sub-components
@@ -352,10 +269,14 @@ function drawTimeTicks(
   visibleStart: number,
   visibleCount: number,
   canvasWidth: number,
+  totalTrimmed: number,
 ) {
   const samplesPerSec = NOMINAL_SAMPLE_RATE;
-  const leftSec = visibleStart / samplesPerSec;
-  const rightSec = (visibleStart + visibleCount) / samplesPerSec;
+  // Offset by totalTrimmed so labels reflect actual elapsed time, not
+  // buffer-relative indices that jump back after trimming.
+  const absoluteStart = visibleStart + totalTrimmed;
+  const leftSec = absoluteStart / samplesPerSec;
+  const rightSec = (absoluteStart + visibleCount) / samplesPerSec;
   const firstTick =
     Math.ceil(leftSec / MINOR_TICK_INTERVAL) * MINOR_TICK_INTERVAL;
 
@@ -365,7 +286,7 @@ function drawTimeTicks(
   for (let sec = firstTick; sec <= rightSec; sec += MINOR_TICK_INTERVAL) {
     if (sec <= 0) continue;
 
-    const offset = sec * samplesPerSec - visibleStart;
+    const offset = sec * samplesPerSec - absoluteStart;
     const x = LABEL_WIDTH + offset * TICK_WIDTH;
     if (x <= LABEL_WIDTH || x >= canvasWidth) continue;
 
@@ -405,7 +326,7 @@ function formatTickLabel(sec: number): string {
 
 function drawHighlightBoundaries(
   ctx: CanvasRenderingContext2D,
-  highlights: readonly WaveformHighlight[],
+  highlights: readonly IndexedHighlight[],
   visibleStart: number,
   visibleCount: number,
   waveTop: number,
@@ -415,7 +336,7 @@ function drawHighlightBoundaries(
     const hi = Math.min(visibleCount, highlight.endIndex - visibleStart);
     if (hi < 0 || lo >= visibleCount) continue;
 
-    const color = highlight.color ?? defaultColor(highlight.type);
+    const { color } = highlight;
     const leftX = LABEL_WIDTH + lo * TICK_WIDTH;
     const rightX = LABEL_WIDTH + hi * TICK_WIDTH;
 

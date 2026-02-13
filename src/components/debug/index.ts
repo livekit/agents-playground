@@ -1,8 +1,7 @@
 export {
   AudioWaveform,
   type AudioWaveformProps,
-  type AudioWaveformHandle,
-  type WaveformHighlightOptions,
+  type LegendItemDef,
 } from "./audio-waveform";
 export { EventLog, type EventLogProps } from "./event-log";
 export { MetricsDisplay, type MetricsDisplayProps } from "./metrics-display";

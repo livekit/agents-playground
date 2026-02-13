@@ -16,6 +16,27 @@
   --dbg-radius: 0.5rem;
   --dbg-control-bg: #1a1a1a;
   --dbg-control-hover: #242424;
+  --dbg-fg4: #555;
+}
+
+.dbg-thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dbg-fg4) transparent;
+}
+.dbg-thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+.dbg-thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dbg-thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--dbg-fg4);
+  border-radius: 4px;
+}
+.dbg-thin-scroll::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {

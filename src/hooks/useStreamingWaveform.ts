@@ -35,11 +35,12 @@ function trimChannel(channel: ChannelState, excess: number): void {
 }
 
 export interface WaveformHighlight {
-  startIndex: number;
-  endIndex: number;
-  type: "interruption" | "backchannel";
-  /** Optional CSS color override. When set, the renderer uses this instead of the default type-based color. */
-  color?: string;
+  /** Start time in epoch-seconds */
+  start: number;
+  /** End time in epoch-seconds */
+  end: number;
+  /** CSS color string for this highlight */
+  color: string;
 }
 
 export interface WaveformSnapshot {
@@ -47,13 +48,15 @@ export interface WaveformSnapshot {
   userCount: number;
   agentBuffer: Uint8Array;
   agentCount: number;
-  highlights: readonly WaveformHighlight[];
+  /** Epoch-seconds when the client started recording audio. 0 if not yet started. */
+  startedAt: number;
+  /** Total number of samples trimmed from the front of the buffers. */
+  totalTrimmed: number;
 }
 
 export interface UseStreamingWaveformReturn {
   sampleCount: number;
   sampleRate: number;
-  addHighlight: (highlight: WaveformHighlight) => void;
   toIndex: (timestamp: number) => number;
   getData: () => WaveformSnapshot;
 }
@@ -110,13 +113,8 @@ export function useStreamingWaveform(
   const agentChannelRef = useRef<ChannelState>(createChannel());
   const userAnalyserRef = useRef<AnalyserState | null>(null);
   const agentAnalyserRef = useRef<AnalyserState | null>(null);
-  const highlightsRef = useRef<WaveformHighlight[]>([]);
   const startedAtRef = useRef(0);
   const totalTrimmedRef = useRef(0);
-
-  const addHighlight = useCallback((h: WaveformHighlight) => {
-    highlightsRef.current = [...highlightsRef.current, h];
-  }, []);
 
   const toIndex = useCallback((ts: number): number => {
     const origin = startedAtRef.current;
@@ -127,7 +125,8 @@ export function useStreamingWaveform(
       agentChannelRef.current.count,
     );
     const totalProduced = currentCount + totalTrimmedRef.current;
-    const elapsed = Date.now() / 1000 - origin;
+    const now = Date.now() / 1000;
+    const elapsed = now - origin;
     const effectiveRate = elapsed > 0 ? totalProduced / elapsed : SAMPLE_RATE;
 
     const absoluteIndex = (ts - origin) * effectiveRate;
@@ -141,7 +140,8 @@ export function useStreamingWaveform(
       userCount: userChannelRef.current.count,
       agentBuffer: agentChannelRef.current.buffer,
       agentCount: agentChannelRef.current.count,
-      highlights: highlightsRef.current,
+      startedAt: startedAtRef.current,
+      totalTrimmed: totalTrimmedRef.current,
     }),
     [],
   );
@@ -194,14 +194,6 @@ export function useStreamingWaveform(
         trimChannel(userChannelRef.current, excess);
         trimChannel(agentChannelRef.current, excess);
         totalTrimmedRef.current += excess;
-
-        highlightsRef.current = highlightsRef.current
-          .map((h) => ({
-            ...h,
-            startIndex: h.startIndex - excess,
-            endIndex: h.endIndex - excess,
-          }))
-          .filter((h) => h.endIndex > 0);
       }
     }, intervalMs);
 
@@ -212,7 +204,6 @@ export function useStreamingWaveform(
     if (!userTrack && !agentTrack) {
       userChannelRef.current = createChannel();
       agentChannelRef.current = createChannel();
-      highlightsRef.current = [];
       startedAtRef.current = 0;
       totalTrimmedRef.current = 0;
     }
@@ -224,7 +215,6 @@ export function useStreamingWaveform(
       agentChannelRef.current.count,
     ),
     sampleRate: SAMPLE_RATE,
-    addHighlight,
     toIndex,
     getData,
   };
