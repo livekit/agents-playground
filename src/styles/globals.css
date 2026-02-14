@@ -4,38 +4,38 @@
 
 :root {
   /* Debug panel theme — mirrors LiveKit components-js default theme */
-  --dbg-bg: #111;
-  --dbg-bg2: #1a1a1a;
-  --dbg-bg3: #242424;
-  --dbg-bg4: #2e2e2e;
-  --dbg-bg5: #383838;
-  --dbg-fg: #fff;
-  --dbg-fg3: #d6d6d6;
-  --dbg-fg5: #d4d4d4;
-  --dbg-border: rgba(255, 255, 255, 0.1);
-  --dbg-radius: 0.5rem;
-  --dbg-control-bg: #1a1a1a;
-  --dbg-control-hover: #242424;
-  --dbg-fg4: #555;
+  --lk-dbg-bg: #111;
+  --lk-dbg-bg2: #1a1a1a;
+  --lk-dbg-bg3: #242424;
+  --lk-dbg-bg4: #2e2e2e;
+  --lk-dbg-bg5: #383838;
+  --lk-dbg-fg: #fff;
+  --lk-dbg-fg3: #d6d6d6;
+  --lk-dbg-fg5: #d4d4d4;
+  --lk-dbg-border: rgba(255, 255, 255, 0.1);
+  --lk-dbg-radius: 0.5rem;
+  --lk-dbg-control-bg: #1a1a1a;
+  --lk-dbg-control-hover: #242424;
+  --lk-dbg-fg4: #555;
 }
 
-.dbg-thin-scroll {
+.lk-dbg-thin-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--dbg-fg4) transparent;
+  scrollbar-color: var(--lk-dbg-fg4) transparent;
 }
-.dbg-thin-scroll::-webkit-scrollbar {
+.lk-dbg-thin-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
   background: transparent;
 }
-.dbg-thin-scroll::-webkit-scrollbar-track {
+.lk-dbg-thin-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-.dbg-thin-scroll::-webkit-scrollbar-thumb {
-  background: var(--dbg-fg4);
+.lk-dbg-thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--lk-dbg-fg4);
   border-radius: 4px;
 }
-.dbg-thin-scroll::-webkit-scrollbar-corner {
+.lk-dbg-thin-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -87,38 +87,4 @@ body {
   100% {
     opacity: 1;
   }
-}
-
-@keyframes interruptPulse {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes interruptPlus {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-.animate-interrupt-pulse {
-  animation: interruptPulse 0.6s ease-out;
-}
-
-.animate-interrupt-plus {
-  animation: interruptPlus 0.9s ease-out;
 }

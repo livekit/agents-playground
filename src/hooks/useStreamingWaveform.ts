@@ -167,6 +167,8 @@ export function useStreamingWaveform(
   }, [agentTrack, agentTrack?.mediaStream]);
 
   useEffect(() => {
+    if (!userTrack && !agentTrack) return;
+
     const intervalMs = 1000 / SAMPLE_RATE;
     const interval = setInterval(() => {
       const userAnalyser = userAnalyserRef.current;
@@ -198,7 +200,7 @@ export function useStreamingWaveform(
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [userTrack, agentTrack]);
 
   useEffect(() => {
     if (!userTrack && !agentTrack) {

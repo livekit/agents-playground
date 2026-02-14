@@ -45,11 +45,11 @@ const TYPE_FILTER_STYLE: Record<
 };
 
 const CONTROL_BUTTON_CLASS =
-  "text-xs px-2 py-0.5 rounded transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-control-hover)]";
+  "text-xs px-2 py-0.5 rounded transition-colors hover:text-[var(--lk-dbg-fg)] hover:bg-[var(--lk-dbg-control-hover)]";
 const CONTROL_BUTTON_STYLE = {
-  color: "var(--dbg-fg5)",
-  background: "var(--dbg-control-bg)",
-  borderRadius: "var(--dbg-radius)",
+  color: "var(--lk-dbg-fg5)",
+  background: "var(--lk-dbg-control-bg)",
+  borderRadius: "var(--lk-dbg-radius)",
 } as const;
 
 export const ALL_EVENT_TYPES: ClientEventType[] = [
@@ -198,7 +198,7 @@ function CopyButton({ text }: { text: string }) {
   const handleCopy = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).catch(() => {});
       setCopied(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 1500);
@@ -215,8 +215,8 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1 rounded transition-colors hover:bg-[var(--dbg-bg3)]"
-      style={{ color: copied ? "#23DE6B" : "var(--dbg-fg5)" }}
+      className="p-1 rounded transition-colors hover:bg-[var(--lk-dbg-bg3)]"
+      style={{ color: copied ? "#23DE6B" : "var(--lk-dbg-fg5)" }}
       title={copied ? "Copied!" : "Copy JSON"}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}
@@ -423,27 +423,29 @@ export function EventLog({
     <div
       data-slot="event-log"
       className={`flex flex-col h-full w-full text-xs${className ? ` ${className}` : ""}`}
-      style={{ background: "var(--dbg-bg)", color: "var(--dbg-fg3)" }}
+      style={{ background: "var(--lk-dbg-bg)", color: "var(--lk-dbg-fg3)" }}
     >
       {/* Toolbar */}
       <div
         className="flex items-center gap-2 px-4 py-1.5 border-b shrink-0"
-        style={{ borderColor: "var(--dbg-border)" }}
+        style={{ borderColor: "var(--lk-dbg-border)" }}
       >
         <button
           onClick={() => setShowFilter((v) => !v)}
           className="h-7 w-7 inline-flex items-center justify-center rounded-md border transition-colors"
           style={{
-            borderColor: "var(--dbg-border)",
-            color: showFilter ? "var(--dbg-fg)" : "var(--dbg-fg5)",
-            background: showFilter ? "var(--dbg-bg3)" : "var(--dbg-control-bg)",
+            borderColor: "var(--lk-dbg-border)",
+            color: showFilter ? "var(--lk-dbg-fg)" : "var(--lk-dbg-fg5)",
+            background: showFilter
+              ? "var(--lk-dbg-bg3)"
+              : "var(--lk-dbg-control-bg)",
           }}
           title={showFilter ? "Hide filters" : "Show filters"}
           aria-label={showFilter ? "Hide filters" : "Show filters"}
         >
           <FilterIcon />
         </button>
-        <span className="text-xs" style={{ color: "var(--dbg-fg5)" }}>
+        <span className="text-xs" style={{ color: "var(--lk-dbg-fg5)" }}>
           {filtered.length} events
         </span>
         <div className="flex-1" />
@@ -461,17 +463,17 @@ export function EventLog({
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {showFilter && (
           <aside
-            className="w-64 shrink-0 border-r overflow-y-auto dbg-thin-scroll"
+            className="w-64 shrink-0 border-r overflow-y-auto lk-dbg-thin-scroll"
             style={{
-              borderColor: "var(--dbg-border)",
-              background: "var(--dbg-bg2)",
+              borderColor: "var(--lk-dbg-border)",
+              background: "var(--lk-dbg-bg2)",
             }}
           >
             <div className="p-3">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span
                   className="text-sm font-semibold"
-                  style={{ color: "var(--dbg-fg)" }}
+                  style={{ color: "var(--lk-dbg-fg)" }}
                 >
                   Event types
                 </span>
@@ -480,8 +482,8 @@ export function EventLog({
                   className="text-xs px-2 py-0.5 rounded transition-colors disabled:opacity-40 disabled:cursor-default"
                   disabled={!hasActiveFilter}
                   style={{
-                    color: "var(--dbg-fg5)",
-                    background: "var(--dbg-bg3)",
+                    color: "var(--lk-dbg-fg5)",
+                    background: "var(--lk-dbg-bg3)",
                   }}
                 >
                   Reset
@@ -498,8 +500,10 @@ export function EventLog({
                           onClick={() => toggleType(t)}
                           className="h-4 w-4 shrink-0 rounded border inline-flex items-center justify-center transition-colors"
                           style={{
-                            borderColor: "var(--dbg-fg4)",
-                            color: enabled ? "var(--dbg-fg3)" : "transparent",
+                            borderColor: "var(--lk-dbg-fg4)",
+                            color: enabled
+                              ? "var(--lk-dbg-fg3)"
+                              : "transparent",
                             background: "transparent",
                           }}
                           title={
@@ -515,7 +519,9 @@ export function EventLog({
                           onClick={() => isolateOrRestoreType(t)}
                           className="flex-1 text-left text-xs truncate uppercase tracking-wide"
                           style={{
-                            color: enabled ? "var(--dbg-fg)" : "var(--dbg-fg5)",
+                            color: enabled
+                              ? "var(--lk-dbg-fg)"
+                              : "var(--lk-dbg-fg5)",
                           }}
                           title={
                             enabled
@@ -545,10 +551,10 @@ export function EventLog({
                                   className="text-left text-[11px] rounded px-2 py-1 transition-colors"
                                   style={{
                                     color: metricEnabled
-                                      ? "var(--dbg-fg3)"
-                                      : "var(--dbg-fg4)",
+                                      ? "var(--lk-dbg-fg3)"
+                                      : "var(--lk-dbg-fg4)",
                                     background: metricEnabled
-                                      ? "var(--dbg-bg3)"
+                                      ? "var(--lk-dbg-bg3)"
                                       : "transparent",
                                   }}
                                   title={
@@ -578,8 +584,8 @@ export function EventLog({
             style={{
               gridTemplateColumns: GRID_COLUMNS,
               height: TABLE_HEADER_HEIGHT,
-              background: "var(--dbg-bg2)",
-              borderColor: "var(--dbg-border)",
+              background: "var(--lk-dbg-bg2)",
+              borderColor: "var(--lk-dbg-border)",
               color: "#B2B2B2",
               fontSize: "0.75rem",
             }}
@@ -590,11 +596,11 @@ export function EventLog({
           </div>
 
           {/* Scrollable rows */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden dbg-thin-scroll">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden lk-dbg-thin-scroll">
             {filtered.length === 0 && (
               <div
                 className="flex items-center justify-center h-full text-xs"
-                style={{ color: "var(--dbg-fg5)" }}
+                style={{ color: "var(--lk-dbg-fg5)" }}
               >
                 No events yet
               </div>
@@ -606,13 +612,13 @@ export function EventLog({
               return (
                 <div
                   key={index}
-                  className={`${TABLE_ROW_CLASS} border-b border-l-2 border-l-transparent cursor-pointer px-4 transition-colors hover:bg-[var(--dbg-bg2)]`}
+                  className={`${TABLE_ROW_CLASS} border-b border-l-2 border-l-transparent cursor-pointer px-4 transition-colors hover:bg-[var(--lk-dbg-bg2)]`}
                   style={{
-                    borderColor: "var(--dbg-border)",
+                    borderColor: "var(--lk-dbg-border)",
                     gridTemplateColumns: GRID_COLUMNS,
                     ...(isExpanded
                       ? {
-                          background: "var(--dbg-bg3)",
+                          background: "var(--lk-dbg-bg3)",
                           borderLeftColor: colors.color,
                         }
                       : {}),
@@ -621,7 +627,10 @@ export function EventLog({
                 >
                   <span
                     className="flex items-center truncate py-2 font-mono"
-                    style={{ color: "var(--dbg-fg5)", minHeight: ROW_HEIGHT }}
+                    style={{
+                      color: "var(--lk-dbg-fg5)",
+                      minHeight: ROW_HEIGHT,
+                    }}
                   >
                     {formatTimestamp(event.created_at)}
                   </span>
@@ -633,7 +642,10 @@ export function EventLog({
                   </span>
                   <span
                     className="flex items-center truncate py-2"
-                    style={{ color: "var(--dbg-fg3)", minHeight: ROW_HEIGHT }}
+                    style={{
+                      color: "var(--lk-dbg-fg3)",
+                      minHeight: ROW_HEIGHT,
+                    }}
                     title={event.type}
                   >
                     {eventSummary(event)}
@@ -645,7 +657,7 @@ export function EventLog({
                       </div>
                       <pre
                         className="text-[10px] overflow-x-auto whitespace-pre-wrap break-all pr-8"
-                        style={{ color: "var(--dbg-fg5)" }}
+                        style={{ color: "var(--lk-dbg-fg5)" }}
                       >
                         {jsonText}
                       </pre>

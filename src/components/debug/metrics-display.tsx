@@ -51,15 +51,6 @@ const MOVING_AVERAGE_WINDOW = 5;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function fmt(n: number, unit = "s", decimals = 1): string {
-  if (unit === "s") {
-    if (n < 1) return `${(n * 1000).toFixed(0)}ms`;
-    return `${n.toFixed(decimals)}s`;
-  }
-  if (unit === "tok/s") return `${n.toFixed(1)} tok/s`;
-  return `${n.toFixed(decimals)}`;
-}
-
 function collectMetrics<T extends MetricType>(
   events: ClientMetricsCollectedEvent[],
   type: T,
@@ -349,7 +340,7 @@ function MiniTrendChart({
     return (
       <div
         className="h-[160px] flex items-center justify-center text-[10px]"
-        style={{ color: "var(--dbg-fg4)" }}
+        style={{ color: "var(--lk-dbg-fg4)" }}
       >
         No samples
       </div>
@@ -362,8 +353,12 @@ function MiniTrendChart({
   const right = 12;
   const top = 10;
   const bottom = 30;
-  const min = Math.min(...points.map((p) => p.v));
-  const max = Math.max(...points.map((p) => p.v));
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of points) {
+    if (p.v < min) min = p.v;
+    if (p.v > max) max = p.v;
+  }
   const span = Math.max(max - min, 1e-9);
 
   const plotted = points.map((point, i) => {
@@ -460,7 +455,7 @@ function MiniTrendChart({
             cx="1.25"
             cy="1.25"
             r="0.85"
-            fill="var(--lk-theme-color, var(--dbg-fg))"
+            fill="var(--lk-theme-color, var(--lk-dbg-fg))"
             opacity="0.58"
           />
         </pattern>
@@ -514,14 +509,14 @@ function MiniTrendChart({
         x2={lastPoint.x}
         y1={lastPoint.y}
         y2={graphBottom}
-        stroke="var(--lk-theme-color, var(--dbg-fg))"
+        stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
         strokeOpacity="0.45"
         strokeWidth="1"
       />
       <path
         d={linePath}
         fill="none"
-        stroke="var(--lk-theme-color, var(--dbg-fg))"
+        stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
         strokeWidth="2.4"
       />
       {hoveredPoint && hoveredRaw && (
@@ -549,8 +544,8 @@ function MiniTrendChart({
             y={hoveredPoint.y - 4}
             width="8"
             height="8"
-            fill="var(--dbg-bg)"
-            stroke="var(--lk-theme-color, var(--dbg-fg))"
+            fill="var(--lk-dbg-bg)"
+            stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
             strokeWidth="1.8"
             rx="1"
           />
@@ -580,7 +575,7 @@ function MiniTrendChart({
               y="27"
               width="7"
               height="7"
-              fill="var(--lk-theme-color, var(--dbg-fg))"
+              fill="var(--lk-theme-color, var(--lk-dbg-fg))"
             />
             <text
               x="21"
@@ -652,7 +647,7 @@ function InfoTooltip({ content }: { content: string }) {
       <button
         type="button"
         className="peer inline-flex items-center cursor-help"
-        style={{ color: "var(--dbg-fg5)" }}
+        style={{ color: "var(--lk-dbg-fg5)" }}
         aria-label={content}
       >
         <InfoDotIcon />
@@ -661,8 +656,8 @@ function InfoTooltip({ content }: { content: string }) {
         className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-[10px] opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100"
         style={{
           background: "rgba(0, 0, 0, 0.9)",
-          color: "var(--dbg-fg3)",
-          border: "1px solid var(--dbg-border)",
+          color: "var(--lk-dbg-fg3)",
+          border: "1px solid var(--lk-dbg-border)",
         }}
       >
         {content}
@@ -703,7 +698,7 @@ export function MetricsDisplay({
       <div
         data-slot="metrics-display"
         className={`flex items-center justify-center h-full text-xs${className ? ` ${className}` : ""}`}
-        style={{ background: "var(--dbg-bg)", color: "var(--dbg-fg5)" }}
+        style={{ background: "var(--lk-dbg-bg)", color: "var(--lk-dbg-fg5)" }}
       >
         No metrics received yet
       </div>
@@ -715,7 +710,7 @@ export function MetricsDisplay({
       data-slot="metrics-display"
       className={`flex flex-col h-full overflow-y-auto${className ? ` ${className}` : ""}`}
       style={{
-        background: "var(--dbg-bg)",
+        background: "var(--lk-dbg-bg)",
       }}
     >
       <div className="flex flex-col gap-3 p-3">
@@ -728,7 +723,7 @@ export function MetricsDisplay({
                   height="10"
                   viewBox="0 0 10 10"
                   className="transition-transform group-open:rotate-90"
-                  style={{ color: "var(--dbg-fg5)" }}
+                  style={{ color: "var(--lk-dbg-fg5)" }}
                 >
                   <path
                     d="M3 1.5L7 5 3 8.5"
@@ -759,8 +754,8 @@ export function MetricsDisplay({
                     key={card.id}
                     className="border rounded-md pt-3 overflow-hidden"
                     style={{
-                      background: "var(--dbg-bg)",
-                      borderColor: "var(--dbg-border)",
+                      background: "var(--lk-dbg-bg)",
+                      borderColor: "var(--lk-dbg-border)",
                     }}
                   >
                     <div className="px-3 py-2 flex items-center gap-1.5">
@@ -789,7 +784,7 @@ export function MetricsDisplay({
                         key={stat.label}
                         className="border rounded-md px-3 py-2.5 min-h-[84px] flex flex-col justify-between"
                         style={{
-                          borderColor: "var(--dbg-border)",
+                          borderColor: "var(--lk-dbg-border)",
                           background: "rgba(0, 0, 0, 0.16)",
                         }}
                       >
@@ -810,7 +805,7 @@ export function MetricsDisplay({
                           <span
                             className="text-[38px] leading-[1] font-normal tracking-tight text-center w-full"
                             style={{
-                              color: "var(--lk-theme-color, var(--dbg-fg))",
+                              color: "var(--lk-theme-color, var(--lk-dbg-fg))",
                             }}
                           >
                             {stat.value}

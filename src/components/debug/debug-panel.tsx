@@ -6,7 +6,6 @@ import type {
   ClientUserInterruptionEvent,
 } from "@/lib/types";
 import type { Track } from "livekit-client";
-import { Public_Sans } from "next/font/google";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -49,7 +48,8 @@ const HIGHLIGHT_LEGEND = [
   { color: BACKCHANNEL_COLOR, label: "Backchannel" },
 ];
 
-const publicSans = Public_Sans({ subsets: ["latin"] });
+const FONT_STACK =
+  '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -126,29 +126,30 @@ export function DebugPanel({
   // Render -------------------------------------------------------------------
   return (
     <div
-      className={`${publicSans.className} flex flex-col border-t shrink-0 w-full`}
+      className="flex flex-col border-t shrink-0 w-full"
       style={{
         height: collapsed ? COLLAPSED_HEIGHT : height,
-        background: "var(--dbg-bg)",
-        borderColor: "var(--dbg-border)",
+        background: "var(--lk-dbg-bg)",
+        borderColor: "var(--lk-dbg-border)",
+        fontFamily: FONT_STACK,
       }}
     >
       {!collapsed && (
         <div
           onMouseDown={onResizeStart}
-          className="h-1 w-full cursor-ns-resize transition-colors shrink-0 hover:bg-[var(--dbg-bg3)]"
-          style={{ background: "var(--dbg-bg2)" }}
+          className="h-1 w-full cursor-ns-resize transition-colors shrink-0 hover:bg-[var(--lk-dbg-bg3)]"
+          style={{ background: "var(--lk-dbg-bg2)" }}
         />
       )}
 
       <div
         className="flex items-center min-h-[48px] shrink-0 border-b px-4 pt-2 pb-0 gap-1"
-        style={{ borderColor: "var(--dbg-border)" }}
+        style={{ borderColor: "var(--lk-dbg-border)" }}
       >
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="text-xs h-7 w-7 mr-1 rounded-md inline-flex items-center justify-center transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-bg3)]"
-          style={{ color: "var(--dbg-fg5)" }}
+          className="text-xs h-7 w-7 mr-1 rounded-md inline-flex items-center justify-center transition-colors hover:text-[var(--lk-dbg-fg)] hover:bg-[var(--lk-dbg-bg3)]"
+          style={{ color: "var(--lk-dbg-fg5)" }}
           title={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
@@ -187,7 +188,7 @@ export function DebugPanel({
                 }}
                 className={TAB_BUTTON_CLASS}
                 style={{
-                  color: isActive ? "var(--dbg-fg)" : "var(--dbg-fg5)",
+                  color: isActive ? "var(--lk-dbg-fg)" : "var(--lk-dbg-fg5)",
                   borderBottomColor: isActive
                     ? TAB_ACTIVE_COLOR
                     : "transparent",
@@ -199,7 +200,9 @@ export function DebugPanel({
                   <span
                     className="ml-1 text-[10px]"
                     style={{
-                      color: isActive ? "var(--dbg-fg3)" : "var(--dbg-fg5)",
+                      color: isActive
+                        ? "var(--lk-dbg-fg3)"
+                        : "var(--lk-dbg-fg5)",
                     }}
                   >
                     {events.length}

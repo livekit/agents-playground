@@ -179,8 +179,6 @@ export function AudioWaveform({
       ctx.lineTo(width, waveTop);
       ctx.stroke();
 
-      ctx.strokeStyle = CENTER_LINE_COLOR;
-      ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       for (let track = 0; track < 2; track++) {
         const centerY = waveTop + track * TRACK_HEIGHT + TRACK_HEIGHT / 2;

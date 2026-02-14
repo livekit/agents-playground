@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Room } from "livekit-client";
 import type {
   ClientEvent,
@@ -72,12 +72,20 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     };
   }, [room, appendEvent]);
 
-  const metricsEvents = events.filter(
-    (e): e is ClientMetricsCollectedEvent => e.type === "metrics_collected",
+  const metricsEvents = useMemo(
+    () =>
+      events.filter(
+        (e): e is ClientMetricsCollectedEvent => e.type === "metrics_collected",
+      ),
+    [events],
   );
 
-  const interruptionEvents = events.filter(
-    (e): e is ClientUserInterruptionEvent => e.type === "user_interruption",
+  const interruptionEvents = useMemo(
+    () =>
+      events.filter(
+        (e): e is ClientUserInterruptionEvent => e.type === "user_interruption",
+      ),
+    [events],
   );
 
   return { events, metricsEvents, interruptionEvents, clearEvents };
