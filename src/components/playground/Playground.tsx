@@ -76,7 +76,6 @@ export default function Playground({
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
-    // set initial options only if they haven't been set yet
     if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
       return;
     }
@@ -102,8 +101,6 @@ export default function Playground({
     metricsEvents,
     clearEvents,
   } = useClientEvents(session.room);
-
-  const [sessionStartedAt] = useState(() => Date.now() / 1000);
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
@@ -669,7 +666,6 @@ export default function Playground({
         <DebugPanel
           userTrack={session.local.microphoneTrack?.publication?.track}
           agentTrack={agent.microphoneTrack?.publication?.track}
-          sessionStartedAt={sessionStartedAt}
           events={clientEvents}
           metricsEvents={metricsEvents}
           interruptionEvents={interruptionEvents}

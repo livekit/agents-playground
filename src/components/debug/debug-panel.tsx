@@ -1,10 +1,12 @@
 import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
 import type {
   ClientEvent,
+  ClientEventType,
   ClientMetricsCollectedEvent,
   ClientUserInterruptionEvent,
 } from "@/lib/types";
 import type { Track } from "livekit-client";
+import { Public_Sans } from "next/font/google";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -13,8 +15,10 @@ import {
   useState,
 } from "react";
 import { AudioWaveform } from "./audio-waveform";
-import { EventLog } from "./event-log";
+import { ALL_EVENT_TYPES, EventLog } from "./event-log";
 import { MetricsDisplay } from "./metrics-display";
+
+const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(ALL_EVENT_TYPES);
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -28,20 +32,24 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: "metrics", label: "Metrics" },
 ];
 
-const COLLAPSED_HEIGHT = 32;
+const COLLAPSED_HEIGHT = 52;
 const MIN_HEIGHT = 120;
 const MAX_HEIGHT = 600;
 const DEFAULT_HEIGHT = 250;
-const CONTROL_BUTTON_CLASS =
-  "text-xs px-2 py-1 rounded transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-bg3)]";
+const TAB_ROW_CLASS = "flex items-end gap-4 self-stretch";
+const TAB_BUTTON_CLASS =
+  "h-full px-1 pb-2 -mb-px border-b-2 transition-colors text-sm flex items-end";
+const TAB_ACTIVE_COLOR = "#22D3EE";
 
 const INTERRUPTION_COLOR = "#FA4C39";
-const BACKCHANNEL_COLOR = "#F97A1F";
+const BACKCHANNEL_COLOR = "#23DE6B";
 
 const HIGHLIGHT_LEGEND = [
   { color: INTERRUPTION_COLOR, label: "Interruption" },
   { color: BACKCHANNEL_COLOR, label: "Backchannel" },
 ];
+
+const publicSans = Public_Sans({ subsets: ["latin"] });
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -50,7 +58,6 @@ const HIGHLIGHT_LEGEND = [
 export interface DebugPanelProps {
   userTrack: Track | undefined;
   agentTrack: Track | undefined;
-  sessionStartedAt: number;
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
   interruptionEvents: ClientUserInterruptionEvent[];
@@ -64,7 +71,6 @@ export interface DebugPanelProps {
 export function DebugPanel({
   userTrack,
   agentTrack,
-  sessionStartedAt,
   events,
   metricsEvents,
   interruptionEvents,
@@ -73,6 +79,9 @@ export function DebugPanel({
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
   const [collapsed, setCollapsed] = useState(false);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [enabledEventTypes, setEnabledEventTypes] = useState<
+    Set<ClientEventType>
+  >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Highlights ----------------------------------------------------------------
@@ -117,7 +126,7 @@ export function DebugPanel({
   // Render -------------------------------------------------------------------
   return (
     <div
-      className="flex flex-col border-t fixed bottom-0 left-0 right-0 z-50"
+      className={`${publicSans.className} flex flex-col border-t shrink-0 w-full`}
       style={{
         height: collapsed ? COLLAPSED_HEIGHT : height,
         background: "var(--dbg-bg)",
@@ -133,17 +142,17 @@ export function DebugPanel({
       )}
 
       <div
-        className="flex items-center h-[31px] shrink-0 border-b px-3 gap-1"
+        className="flex items-center min-h-[48px] shrink-0 border-b px-4 pt-2 pb-0 gap-1"
         style={{ borderColor: "var(--dbg-border)" }}
       >
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="text-xs px-1 mr-1 transition-colors hover:text-[var(--dbg-fg)]"
+          className="text-xs h-7 w-7 mr-1 rounded-md inline-flex items-center justify-center transition-colors hover:text-[var(--dbg-fg)] hover:bg-[var(--dbg-bg3)]"
           style={{ color: "var(--dbg-fg5)" }}
           title={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <svg width="12" height="12" viewBox="0 0 10 10" fill="currentColor">
               <path
                 d="M1 7L5 3l4 4"
                 stroke="currentColor"
@@ -154,7 +163,7 @@ export function DebugPanel({
               />
             </svg>
           ) : (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <svg width="12" height="12" viewBox="0 0 10 10" fill="currentColor">
               <path
                 d="M1 3l4 4 4-4"
                 stroke="currentColor"
@@ -166,31 +175,40 @@ export function DebugPanel({
             </svg>
           )}
         </button>
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              if (collapsed) setCollapsed(false);
-            }}
-            className={CONTROL_BUTTON_CLASS}
-            style={{
-              color: activeTab === tab.id ? "var(--dbg-fg)" : "var(--dbg-fg5)",
-              background:
-                activeTab === tab.id ? "var(--dbg-bg3)" : "transparent",
-            }}
-          >
-            {tab.label}
-            {tab.id === "events" && events.length > 0 && (
-              <span
-                className="ml-1 text-[10px]"
-                style={{ color: "var(--dbg-fg5)" }}
+        <div className={TAB_ROW_CLASS}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (collapsed) setCollapsed(false);
+                }}
+                className={TAB_BUTTON_CLASS}
+                style={{
+                  color: isActive ? "var(--dbg-fg)" : "var(--dbg-fg5)",
+                  borderBottomColor: isActive
+                    ? TAB_ACTIVE_COLOR
+                    : "transparent",
+                  fontWeight: isActive ? 600 : 400,
+                }}
               >
-                {events.length}
-              </span>
-            )}
-          </button>
-        ))}
+                {tab.label}
+                {tab.id === "events" && events.length > 0 && (
+                  <span
+                    className="ml-1 text-[10px]"
+                    style={{
+                      color: isActive ? "var(--dbg-fg3)" : "var(--dbg-fg5)",
+                    }}
+                  >
+                    {events.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {!collapsed && (
@@ -211,7 +229,8 @@ export function DebugPanel({
           {activeTab === "events" && (
             <EventLog
               events={events}
-              sessionStartedAt={sessionStartedAt}
+              enabledTypes={enabledEventTypes}
+              onEnabledTypesChange={setEnabledEventTypes}
               onClear={onClearEvents}
             />
           )}

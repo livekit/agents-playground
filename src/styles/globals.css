@@ -72,7 +72,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Even lighter grey thumb on hover */
+  background: #555;
 }
 
 ::-webkit-scrollbar {

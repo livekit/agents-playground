@@ -43,6 +43,8 @@ const TIMELINE_HEIGHT = 18;
 const TICK_LABEL_COLOR = "rgba(255, 255, 255, 0.35)";
 const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
+const HIGHLIGHT_FALLOFF_SAMPLES = 20;
+const HIGHLIGHT_MAX_ALPHA = 0.72;
 
 // ---------------------------------------------------------------------------
 // Internal index-based highlight (used only during a single draw frame)
@@ -52,6 +54,11 @@ interface IndexedHighlight {
   startIndex: number;
   endIndex: number;
   color: string;
+}
+
+interface HighlightSampleStyle {
+  color: string;
+  alpha: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,27 +133,40 @@ export function AudioWaveform({
       const visibleStart = Math.max(0, sampleCount - maxVisible);
       const visibleCount = sampleCount - visibleStart;
 
-      // TODO: @chenghao-mou find a better way to compensate for latency
-      // Fixed offset to compensate for WebRTC one-way uplink latency
-      // so highlights land on the corresponding speech in the local waveform.
-      const UPLINK_LATENCY_SEC = 0.27;
-
       const indexHighlights: IndexedHighlight[] = (
         highlightsRef.current ?? []
       ).map((h) => ({
-        startIndex: toIndex(h.start - UPLINK_LATENCY_SEC),
-        endIndex: toIndex(h.end - UPLINK_LATENCY_SEC),
+        startIndex: toIndex(h.start),
+        endIndex: toIndex(h.end),
         color: h.color,
       }));
 
-      // Build per-sample highlight lookup
-      const highlightMap = new Map<number, string>();
+      // Build per-sample highlight lookup using center-weighted falloff.
+      const highlightMap = new Map<number, HighlightSampleStyle>();
       for (const hl of indexHighlights) {
         const lo = Math.max(0, hl.startIndex - visibleStart);
         const hi = Math.min(visibleCount - 1, hl.endIndex - visibleStart);
         if (hi < 0 || lo >= visibleCount) continue;
-        for (let i = lo; i <= hi; i++) {
-          highlightMap.set(i, hl.color);
+
+        const center = (lo + hi) / 2;
+        const halfSpan = Math.max(1, (hi - lo + 1) / 2);
+        const sigma = Math.max(1, halfSpan + HIGHLIGHT_FALLOFF_SAMPLES);
+        const influenceRadius = Math.ceil(sigma * 2.5);
+        const start = Math.max(0, Math.floor(center - influenceRadius));
+        const end = Math.min(
+          visibleCount - 1,
+          Math.ceil(center + influenceRadius),
+        );
+
+        for (let i = start; i <= end; i++) {
+          const normalizedDistance = Math.abs(i - center) / sigma;
+          const gaussian = Math.exp(-(normalizedDistance * normalizedDistance));
+          const alpha = HIGHLIGHT_MAX_ALPHA * gaussian;
+          if (alpha <= 0.01) continue;
+          const prev = highlightMap.get(i);
+          if (!prev || alpha > prev.alpha) {
+            highlightMap.set(i, { color: hl.color, alpha });
+          }
         }
       }
 
@@ -180,9 +200,15 @@ export function AudioWaveform({
           const centerY = waveTop + TRACK_HEIGHT / 2;
           const halfHeight =
             (userAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
-          const hlColor = highlightMap.get(visibleIndex);
-          ctx.fillStyle = hlColor ?? USER_COLOR;
+          const hl = highlightMap.get(visibleIndex);
+          ctx.fillStyle = USER_COLOR;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
+          if (hl && hl.alpha > 0) {
+            ctx.globalAlpha = hl.alpha;
+            ctx.fillStyle = hl.color;
+            ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
+            ctx.globalAlpha = 1;
+          }
         }
 
         const agentAmp =
@@ -195,14 +221,6 @@ export function AudioWaveform({
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
         }
       }
-
-      drawHighlightBoundaries(
-        ctx,
-        indexHighlights,
-        visibleStart,
-        visibleCount,
-        waveTop,
-      );
 
       ctx.fillStyle = BG_COLOR;
       ctx.fillRect(0, 0, LABEL_WIDTH, canvasHeight);
@@ -322,42 +340,4 @@ function formatTickLabel(sec: number): string {
   return seconds === 0
     ? `${minutes}m`
     : `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function drawHighlightBoundaries(
-  ctx: CanvasRenderingContext2D,
-  highlights: readonly IndexedHighlight[],
-  visibleStart: number,
-  visibleCount: number,
-  waveTop: number,
-) {
-  for (const highlight of highlights) {
-    const lo = Math.max(0, highlight.startIndex - visibleStart);
-    const hi = Math.min(visibleCount, highlight.endIndex - visibleStart);
-    if (hi < 0 || lo >= visibleCount) continue;
-
-    const { color } = highlight;
-    const leftX = LABEL_WIDTH + lo * TICK_WIDTH;
-    const rightX = LABEL_WIDTH + hi * TICK_WIDTH;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.5;
-
-    ctx.beginPath();
-    ctx.moveTo(leftX, waveTop);
-    ctx.lineTo(leftX, waveTop + TRACK_HEIGHT);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(rightX, waveTop);
-    ctx.lineTo(rightX, waveTop + TRACK_HEIGHT);
-    ctx.stroke();
-
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = color;
-    ctx.fillRect(leftX, waveTop, rightX - leftX, TRACK_HEIGHT);
-
-    ctx.globalAlpha = 1;
-  }
 }
