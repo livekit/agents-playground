@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Debug panel theme — mirrors LiveKit components-js default theme */
+  --lk-dbg-bg: #111;
+  --lk-dbg-bg2: #1a1a1a;
+  --lk-dbg-bg3: #242424;
+  --lk-dbg-bg4: #2e2e2e;
+  --lk-dbg-bg5: #383838;
+  --lk-dbg-fg: #fff;
+  --lk-dbg-fg3: #d6d6d6;
+  --lk-dbg-fg5: #d4d4d4;
+  --lk-dbg-border: rgba(255, 255, 255, 0.1);
+  --lk-dbg-radius: 0.5rem;
+  --lk-dbg-control-bg: #1a1a1a;
+  --lk-dbg-control-hover: #242424;
+  --lk-dbg-fg4: #555;
+}
+
+.lk-dbg-thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lk-dbg-fg4) transparent;
+}
+.lk-dbg-thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+.lk-dbg-thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.lk-dbg-thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--lk-dbg-fg4);
+  border-radius: 4px;
+}
+.lk-dbg-thin-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body {
   background: black;
   --lk-va-bar-gap: 4px;
@@ -35,7 +72,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Even lighter grey thumb on hover */
+  background: #555;
 }
 
 ::-webkit-scrollbar {
