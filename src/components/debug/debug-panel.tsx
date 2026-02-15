@@ -117,7 +117,11 @@ export function DebugPanel({
     const pipeline = uplinkLatency?.total ?? 0;
     const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
     const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
-    const correction = clockOffset - pipeline;
+    // User state is detected by the agent's VAD on audio that traveled the
+    // full uplink pipeline, so subtract pipeline to align with the client
+    // waveform. Agent state is local to the agent — only clock offset needed.
+    const userCorrection = clockOffset - pipeline;
+    const agentCorrection = clockOffset;
 
     const markers: WaveformMarker[] = [];
     for (const evt of events) {
@@ -133,6 +137,8 @@ export function DebugPanel({
       const track: "user" | "agent" =
         stateEvt.type === "user_state_changed" ? "user" : "agent";
       const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
+      const correction =
+        track === "user" ? userCorrection : agentCorrection;
 
       let variant: WaveformMarker["variant"];
       if (stateEvt.new_state === "speaking") {
