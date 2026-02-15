@@ -29,8 +29,10 @@ function isClientEvent(value: unknown): value is ClientEvent {
 export function useClientEvents(room: Room): UseClientEventsReturn {
   const [events, setEvents] = useState<ClientEvent[]>([]);
   const eventsRef = useRef<ClientEvent[]>([]);
+  const receivedAtMap = useRef<WeakMap<ClientEvent, number>>(new WeakMap());
 
-  const appendEvent = useCallback((event: ClientEvent) => {
+  const appendEvent = useCallback((event: ClientEvent, receivedAt: number) => {
+    receivedAtMap.current.set(event, receivedAt);
     const next = [...eventsRef.current, event];
     if (next.length > MAX_EVENTS) {
       next.splice(0, next.length - MAX_EVENTS);
@@ -41,6 +43,7 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
 
   const clearEvents = useCallback(() => {
     eventsRef.current = [];
+    receivedAtMap.current = new WeakMap();
     setEvents([]);
   }, []);
 
@@ -54,9 +57,7 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
         const receivedAt = Date.now() / 1000;
         const parsed = JSON.parse(data);
         if (!isClientEvent(parsed)) return;
-        (parsed as unknown as Record<string, unknown>)._received_at =
-          receivedAt;
-        appendEvent(parsed);
+        appendEvent(parsed, receivedAt);
       } catch (e) {
         console.warn("[useClientEvents] failed to parse event", e);
       }
@@ -111,8 +112,8 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
   const networkLatency = useMemo(() => {
     const deltas: number[] = [];
     for (const e of interruptionEvents) {
-      const receivedAt = (e as unknown as Record<string, unknown>)._received_at;
-      if (typeof receivedAt === "number" && e.sent_at > 0) {
+      const receivedAt = receivedAtMap.current.get(e);
+      if (receivedAt !== undefined && e.sent_at > 0) {
         const delta = receivedAt - e.sent_at;
         deltas.push(delta);
       }

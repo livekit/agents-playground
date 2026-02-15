@@ -45,6 +45,15 @@ export interface WaveformHighlight {
   label?: string;
 }
 
+/**
+ * A point-in-time view of the waveform buffers.
+ *
+ * **Important:** `userBuffer` and `agentBuffer` are live references to the
+ * internal ring buffers. Their contents are mutated in-place by the sampling
+ * interval (via `appendSample` and `trimChannel`). Callers must consume the
+ * data synchronously within the same frame (e.g. inside a rAF callback).
+ * If you need to persist the data, copy with `buffer.slice(0, count)`.
+ */
 export interface WaveformSnapshot {
   userBuffer: Uint8Array;
   userCount: number;
@@ -57,7 +66,6 @@ export interface WaveformSnapshot {
 }
 
 export interface UseStreamingWaveformReturn {
-  sampleCount: number;
   sampleRate: number;
   toIndex: (timestamp: number) => number;
   getData: () => WaveformSnapshot;
@@ -126,14 +134,21 @@ export function useStreamingWaveform(
     const origin = startedAtRef.current;
     if (origin === 0) return 0;
 
-    const currentCount = Math.max(
-      userChannelRef.current.count,
-      agentChannelRef.current.count,
-    );
-    const totalProduced = currentCount + totalTrimmedRef.current;
-    const now = Date.now() / 1000;
-    const elapsed = now - origin;
-    const effectiveRate = elapsed > 0 ? totalProduced / elapsed : SAMPLE_RATE;
+    // When paused, wall-clock time keeps advancing but sample count is frozen.
+    // Use the nominal rate to avoid effectiveRate collapsing toward zero.
+    let effectiveRate: number;
+    if (pausedRef.current) {
+      effectiveRate = SAMPLE_RATE;
+    } else {
+      const currentCount = Math.max(
+        userChannelRef.current.count,
+        agentChannelRef.current.count,
+      );
+      const totalProduced = currentCount + totalTrimmedRef.current;
+      const now = Date.now() / 1000;
+      const elapsed = now - origin;
+      effectiveRate = elapsed > 0 ? totalProduced / elapsed : SAMPLE_RATE;
+    }
 
     const absoluteIndex = (ts - origin) * effectiveRate;
     const bufferIndex = absoluteIndex - totalTrimmedRef.current;
@@ -227,10 +242,6 @@ export function useStreamingWaveform(
   }, [userTrack, agentTrack]);
 
   return {
-    sampleCount: Math.max(
-      userChannelRef.current.count,
-      agentChannelRef.current.count,
-    ),
     sampleRate: SAMPLE_RATE,
     toIndex,
     getData,

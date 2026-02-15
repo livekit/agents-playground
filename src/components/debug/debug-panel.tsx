@@ -87,7 +87,6 @@ export function DebugPanel({
   >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
-  // Highlights ----------------------------------------------------------------
   // Server timestamps are in server clock and delayed by the uplink pipeline.
   // To place them on the client waveform:
   //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
@@ -97,7 +96,6 @@ export function DebugPanel({
     const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
     // Approximate clock offset: networkLatency includes both downlink and clock skew
     const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
-    // Total correction: convert server timestamp to client waveform time
     const correction = clockOffset - pipeline;
 
     return interruptionEvents.map((evt) => ({

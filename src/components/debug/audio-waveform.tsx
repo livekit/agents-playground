@@ -72,7 +72,6 @@ export function AudioWaveform({
   const highlightsRef = useRef(highlights);
   highlightsRef.current = highlights;
 
-  // Canvas draw loop -----------------------------------------------------------
   useEffect(() => {
     if (paused) return; // keep canvas frozen with its last frame
 
@@ -205,7 +204,6 @@ export function AudioWaveform({
         if (!hl.label) continue;
         const lo = hl.startIndex - visibleStart;
         const hi = hl.endIndex - visibleStart;
-        // Skip if entirely outside the visible range.
         if (hi < 0 || lo >= visibleCount) continue;
 
         // Use unclamped lo/hi so the center tracks the true midpoint of the
@@ -226,7 +224,6 @@ export function AudioWaveform({
         const pillR = 3;
         const labelY = labelRowTop + LABEL_ROW_HEIGHT / 2;
 
-        // Clamp pill so it stays within the waveform area
         const rawPillX = centerX - pillW / 2;
         const pillX = Math.round(
           Math.max(LABEL_WIDTH + 2, Math.min(rawPillX, width - pillW - 2)),

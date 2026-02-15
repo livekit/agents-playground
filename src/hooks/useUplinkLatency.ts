@@ -1,16 +1,9 @@
 import type { Room } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// ---------------------------------------------------------------------------
-// Text-stream RPC topics (must match server-side constants)
-// ---------------------------------------------------------------------------
-
+// Must match server-side constants
 const TOPIC_AGENT_REQUEST = "lk.agent.request";
 const TOPIC_AGENT_RESPONSE = "lk.agent.response";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface StreamRequest {
   request_id: string;
@@ -49,18 +42,19 @@ export interface UplinkLatency {
   jitterBuffer: number;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 let _reqId = 0;
 function nextRequestId(): string {
-  return `req_${Date.now()}_${++_reqId}`;
+  return `req_${Date.now()}_${++_reqId}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-/** Extract client→SFU RTT/2 from the local RTCPeerConnection stats. */
+/**
+ * Extract client→SFU RTT/2 from the local RTCPeerConnection stats.
+ *
+ * NOTE: accesses the private `room.engine.pcManager.publisher` API.
+ * This is not part of the public livekit-client surface and may change
+ * across SDK versions. Guarded so the hook degrades to 0 if unavailable.
+ */
 async function getClientRttHalf(room: Room): Promise<number> {
-  // Access the publisher PCTransport via engine.pcManager
   const pcTransport = (
     room as unknown as {
       engine: {
@@ -68,7 +62,14 @@ async function getClientRttHalf(room: Room): Promise<number> {
       };
     }
   ).engine?.pcManager?.publisher;
-  if (!pcTransport) return 0;
+  if (!pcTransport) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "[useUplinkLatency] pcManager.publisher not available — client→SFU RTT will be 0",
+      );
+    }
+    return 0;
+  }
 
   try {
     const report = await pcTransport.getStats();
@@ -85,7 +86,7 @@ async function getClientRttHalf(room: Room): Promise<number> {
       }
     }
   } catch {
-    // ignore
+    // ignore — stats API may be unavailable during reconnection
   }
   return 0;
 }
@@ -99,7 +100,6 @@ function parseServerStats(resp: RTCStatsResponse): {
   let sfuToAgent = 0;
 
   for (const stat of resp.subscriber_stats) {
-    // jitter buffer from inbound-rtp audio stats
     if (
       stat.kind === "audio" &&
       typeof stat.jitterBufferDelay === "number" &&
@@ -111,7 +111,6 @@ function parseServerStats(resp: RTCStatsResponse): {
   }
 
   // Server-side RTT is in candidate-pair stats (could be nested in publisher_stats or subscriber transport)
-  // Walk through all stats looking for candidate-pair with currentRoundTripTime
   const allStats = [
     ...resp.subscriber_stats,
     ...(resp.publisher_stats as RTCInboundStat[]),
@@ -130,10 +129,6 @@ function parseServerStats(resp: RTCStatsResponse): {
   return { jitterBuffer, sfuToAgent };
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 const POLL_INTERVAL_MS = 5_000;
 
 /**
@@ -144,6 +139,12 @@ const POLL_INTERVAL_MS = 5_000;
  *   - SFU→Agent: half the RTT from the server's RTCPeerConnection stats (via text stream RPC)
  *   - Jitter buffer: average delay from the server's inbound-rtp stats
  */
+interface PendingRpc {
+  resolve: (v: string) => void;
+  reject: (e: Error) => void;
+  timerId: ReturnType<typeof setTimeout>;
+}
+
 export function useUplinkLatency(
   room: Room,
   agentIdentity: string | undefined,
@@ -155,12 +156,9 @@ export function useUplinkLatency(
     jitterBuffer: 0,
   });
 
-  // Pending RPC responses keyed by request_id
-  const pendingRef = useRef<
-    Map<string, { resolve: (v: string) => void; reject: (e: Error) => void }>
-  >(new Map());
+  const pendingRef = useRef<Map<string, PendingRpc>>(new Map());
 
-  // Register response handler
+  // This hook exclusively owns the lk.agent.response topic.
   useEffect(() => {
     const onResponse = async (
       reader: { readAll: () => Promise<string> },
@@ -171,6 +169,7 @@ export function useUplinkLatency(
         const resp: StreamResponse = JSON.parse(data);
         const pending = pendingRef.current.get(resp.request_id);
         if (pending) {
+          clearTimeout(pending.timerId);
           pendingRef.current.delete(resp.request_id);
           if (resp.error) {
             pending.reject(new Error(resp.error));
@@ -185,15 +184,26 @@ export function useUplinkLatency(
 
     try {
       room.registerTextStreamHandler(TOPIC_AGENT_RESPONSE, onResponse);
-    } catch {
-      // handler may already be registered by another hook
+    } catch (e) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[useUplinkLatency] failed to register response handler — RPCs will time out",
+          e,
+        );
+      }
     }
 
     return () => {
+      pendingRef.current.forEach((pending, id) => {
+        clearTimeout(pending.timerId);
+        pending.reject(new Error("Hook unmounted"));
+        pendingRef.current.delete(id);
+      });
+
       try {
         room.unregisterTextStreamHandler(TOPIC_AGENT_RESPONSE);
       } catch {
-        // ignore
+        // ignore if already unregistered
       }
     };
   }, [room]);
@@ -210,27 +220,35 @@ export function useUplinkLatency(
       };
 
       const promise = new Promise<string>((resolve, reject) => {
-        pendingRef.current.set(requestId, { resolve, reject });
-        // Timeout after 5s
-        setTimeout(() => {
+        const timerId = setTimeout(() => {
           if (pendingRef.current.has(requestId)) {
             pendingRef.current.delete(requestId);
             reject(new Error("RPC timeout"));
           }
         }, 5_000);
+
+        pendingRef.current.set(requestId, { resolve, reject, timerId });
       });
 
-      await room.localParticipant.sendText(JSON.stringify(request), {
-        topic: TOPIC_AGENT_REQUEST,
-        destinationIdentities: [agentIdentity],
-      });
+      try {
+        await room.localParticipant.sendText(JSON.stringify(request), {
+          topic: TOPIC_AGENT_REQUEST,
+          destinationIdentities: [agentIdentity],
+        });
+      } catch (e) {
+        const pending = pendingRef.current.get(requestId);
+        if (pending) {
+          clearTimeout(pending.timerId);
+          pendingRef.current.delete(requestId);
+        }
+        throw e;
+      }
 
       return promise;
     },
     [room, agentIdentity],
   );
 
-  // Periodic polling
   useEffect(() => {
     if (!agentIdentity) return;
 
@@ -254,12 +272,13 @@ export function useUplinkLatency(
           jitterBuffer,
           total: clientRttHalf + sfuToAgent + jitterBuffer,
         });
-      } catch {
-        // silently retry on next interval
+      } catch (e) {
+        if (process.env.NODE_ENV === "development" && !cancelled) {
+          console.warn("[useUplinkLatency] poll failed", e);
+        }
       }
     };
 
-    // Initial fetch
     poll();
     const interval = setInterval(poll, POLL_INTERVAL_MS);
 
