@@ -1,8 +1,4 @@
-export {
-  AudioWaveform,
-  type AudioWaveformProps,
-  type LegendItemDef,
-} from "./audio-waveform";
+export { AudioWaveform, type AudioWaveformProps } from "./audio-waveform";
 export { EventLog, type EventLogProps } from "./event-log";
 export { MetricsDisplay, type MetricsDisplayProps } from "./metrics-display";
 export { UsageDisplay, type UsageDisplayProps } from "./usage-display";

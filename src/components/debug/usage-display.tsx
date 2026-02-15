@@ -5,10 +5,6 @@ import type {
   TTSModelUsage,
 } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const UNIT_CLASS = "text-[20px] ml-0.5 text-gray-500";
 
 function DurationValue({ seconds }: { seconds: number }) {
@@ -41,18 +37,10 @@ function modelLabel(provider: string, model: string): string {
   return parts.length > 0 ? parts.join(" - ") : "Unknown";
 }
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 export interface UsageDisplayProps {
   sessionUsage: AgentSessionUsage | null;
   className?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
   if (!sessionUsage || sessionUsage.model_usage.length === 0) {
@@ -139,10 +127,6 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// InfoTooltip
-// ---------------------------------------------------------------------------
-
 function InfoDotIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
@@ -193,10 +177,6 @@ function InfoTooltip({ content }: { content: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// ModelSection — groups stats under a model label
-// ---------------------------------------------------------------------------
-
 const TITLE_FONT_STACK =
   'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
@@ -219,10 +199,6 @@ function ModelSection({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// StatCard
-// ---------------------------------------------------------------------------
 
 function StatCard({
   label,

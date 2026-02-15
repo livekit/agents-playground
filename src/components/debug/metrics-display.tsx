@@ -1,13 +1,10 @@
 import type {
   AgentMetricsData,
+  ClientConversationItemAddedEvent,
   ClientEvent,
   ClientMetricsCollectedEvent,
 } from "@/lib/types";
 import { useId, useMemo, useRef, useState } from "react";
-
-// ---------------------------------------------------------------------------
-// Internal types
-// ---------------------------------------------------------------------------
 
 interface Stat {
   label: string;
@@ -49,10 +46,6 @@ type MetricByType<T extends MetricType> = Extract<
 >;
 type CardData = SummaryCardData | TrendCardData;
 const MOVING_AVERAGE_WINDOW = 5;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function collectMetrics<T extends MetricType>(
   events: ClientMetricsCollectedEvent[],
@@ -128,35 +121,17 @@ function summaryCard(
   };
 }
 
-/** Compute E2E delay: time from end of user speech to start of agent speech.
- *  When the user_state_changed event carries a `delay` (VAD min_endpointing_delay),
- *  the user actually stopped speaking at `created_at - delay`, so we add that
- *  delay back into the E2E measurement. */
-function computeE2eDelays(events: ClientEvent[]): TrendPoint[] {
+/** Extract E2E latency from assistant conversation items (server-computed). */
+function extractE2eDelays(
+  events: ClientConversationItemAddedEvent[],
+): TrendPoint[] {
   const points: TrendPoint[] = [];
-  let lastUserSpeechEnd: number | null = null;
-  let lastEndpointingDelay = 0;
-
   for (const evt of events) {
-    if (
-      evt.type === "user_state_changed" &&
-      evt.old_state === "speaking" &&
-      evt.new_state !== "speaking"
-    ) {
-      lastUserSpeechEnd = evt.created_at;
-      lastEndpointingDelay = evt.delay ?? 0;
-    } else if (
-      evt.type === "agent_state_changed" &&
-      evt.new_state === "speaking" &&
-      lastUserSpeechEnd !== null
-    ) {
-      const delay = evt.created_at - lastUserSpeechEnd + lastEndpointingDelay;
-      points.push({ t: evt.created_at, v: delay });
-      lastUserSpeechEnd = null;
-      lastEndpointingDelay = 0;
+    const metrics = evt.item?.metrics;
+    if (evt.item?.role === "assistant" && metrics?.e2e_latency != null) {
+      points.push({ t: evt.created_at, v: metrics.e2e_latency });
     }
   }
-
   return points;
 }
 
@@ -198,14 +173,20 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
         trendCard(
           "user-turn-txn-delay",
           "Transcription Delay",
-          eou.map((m) => ({ t: m.timestamp, v: m.transcription_delay })),
+          eou.map((m) => ({
+            t: m.timestamp,
+            v: m.transcription_delay,
+          })),
           "s",
           "Time between end of speech and final transcript",
         ),
         trendCard(
           "user-turn-eou-delay",
           "End of Utterance Delay",
-          eou.map((m) => ({ t: m.timestamp, v: m.end_of_utterance_delay })),
+          eou.map((m) => ({
+            t: m.timestamp,
+            v: m.end_of_utterance_delay,
+          })),
           "s",
           "Time between end of speech and end-of-utterance detection",
         ),
@@ -253,7 +234,10 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
       trendCard(
         "realtime-speed",
         "Realtime Speed",
-        rt.map((m) => ({ t: m.timestamp, v: m.tokens_per_second })),
+        rt.map((m) => ({
+          t: m.timestamp,
+          v: m.tokens_per_second,
+        })),
         "tok/s",
         "Realtime model output token generation rate",
       ),
@@ -304,10 +288,6 @@ function buildSections(cards: CardData[]): MetricsSection[] {
   }
   return Array.from(sectionMap.values());
 }
-
-// ---------------------------------------------------------------------------
-// Chart components
-// ---------------------------------------------------------------------------
 
 function MiniTrendChart({
   points,
@@ -381,9 +361,22 @@ function MiniTrendChart({
   );
 
   const formatYAxis = (v: number): string => {
-    if (unit === "tok/s") return `${v.toFixed(1)} tok/s`;
-    if (v < 1) return `${Math.round(v * 1000)} ms`;
-    return `${v.toFixed(1)} s`;
+    if (unit === "tok/s") {
+      const d = span < 1 ? 2 : span < 10 ? 1 : 0;
+      return `${v.toFixed(d)} tok/s`;
+    }
+    // All values under 1s → format as ms
+    if (max < 1) {
+      const spanMs = span * 1000;
+      if (spanMs < 10) return `${(v * 1000).toFixed(1)} ms`;
+      return `${Math.round(v * 1000)} ms`;
+    }
+    // Seconds: pick enough decimal places so adjacent ticks don't collide
+    const decimals = Math.min(
+      3,
+      Math.max(1, Math.ceil(-Math.log10(span * 0.3))),
+    );
+    return `${v.toFixed(decimals)} s`;
   };
 
   const formatXAxis = (t: number): string =>
@@ -440,9 +433,9 @@ function MiniTrendChart({
           patternUnits="userSpaceOnUse"
         >
           <circle
-            cx="1.25"
-            cy="1.25"
-            r="0.85"
+            cx="2.5"
+            cy="2.5"
+            r="1.6"
             fill="var(--lk-theme-color, var(--lk-dbg-fg))"
             opacity="0.58"
           />
@@ -657,30 +650,29 @@ function InfoTooltip({ content }: { content: string }) {
 const TITLE_FONT_STACK =
   'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 export interface MetricsDisplayProps {
   metricsEvents: ClientMetricsCollectedEvent[];
   events: ClientEvent[];
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Card grid showing aggregated agent metrics (LLM, User Turn, TTS, VAD,
- * Realtime). Each card displays a colored title and label/value stat rows.
- */
 export function MetricsDisplay({
   metricsEvents,
   events,
   className,
 }: MetricsDisplayProps) {
-  const e2eDelays = useMemo(() => computeE2eDelays(events), [events]);
+  const conversationItemEvents = useMemo(
+    () =>
+      events.filter(
+        (e): e is ClientConversationItemAddedEvent =>
+          e.type === "conversation_item_added",
+      ),
+    [events],
+  );
+  const e2eDelays = useMemo(
+    () => extractE2eDelays(conversationItemEvents),
+    [conversationItemEvents],
+  );
   const cards = useMemo(() => {
     const c = buildCards(metricsEvents);
     if (e2eDelays.length > 0) {
@@ -690,7 +682,7 @@ export function MetricsDisplay({
           "E2E Delay",
           e2eDelays,
           "s",
-          "Time from user stopping speech to agent starting speech, including VAD endpointing delay",
+          "Time from user stopping speech to agent starting speech (server-measured)",
         ),
       );
     }
@@ -720,7 +712,7 @@ export function MetricsDisplay({
     >
       <div className="flex flex-col gap-3 p-3">
         {sections.map((section) => (
-          <details key={section.id} open className="group overflow-hidden">
+          <details key={section.id} open className="group">
             <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between">
               <span className="inline-flex items-center gap-2">
                 <svg
@@ -757,7 +749,7 @@ export function MetricsDisplay({
                 card.kind === "trend" ? (
                   <div
                     key={card.id}
-                    className="border rounded-md pt-3 overflow-hidden"
+                    className="border rounded-md pt-3"
                     style={{
                       background: "var(--lk-dbg-bg)",
                       borderColor: "var(--lk-dbg-border)",

@@ -1,29 +1,14 @@
 import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
 import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
-import { useEffect, useRef } from "react";
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface LegendItemDef {
-  color: string;
-  label: string;
-}
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface AudioWaveformProps {
   userTrack?: Track;
   agentTrack?: Track;
   highlights?: WaveformHighlight[];
-  /** Extra legend entries rendered after the built-in User / Agent items. */
-  legendItems?: LegendItemDef[];
   className?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Constants – rendering
-// ---------------------------------------------------------------------------
 
 const BAR_WIDTH = 1;
 const BAR_GAP = 1;
@@ -45,15 +30,13 @@ const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
 const HIGHLIGHT_FALLOFF_SAMPLES = 20;
 const HIGHLIGHT_MAX_ALPHA = 0.72;
-
-// ---------------------------------------------------------------------------
-// Internal index-based highlight (used only during a single draw frame)
-// ---------------------------------------------------------------------------
+const LABEL_ROW_HEIGHT = 18;
 
 interface IndexedHighlight {
   startIndex: number;
   endIndex: number;
   color: string;
+  label?: string;
 }
 
 interface HighlightSampleStyle {
@@ -61,30 +44,28 @@ interface HighlightSampleStyle {
   alpha: number;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Self-contained audio waveform visualizer.
- *
- * Accepts user and agent audio tracks, manages its own streaming capture via
- * `useStreamingWaveform`, and renders a scrolling canvas of amplitude bars.
- *
- * Highlights are provided as time-based props and converted to buffer indices
- * each frame.
- */
 export function AudioWaveform({
   userTrack,
   agentTrack,
   highlights,
-  legendItems,
   className,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [paused, setPaused] = useState(false);
 
-  const { getData, toIndex } = useStreamingWaveform(userTrack, agentTrack);
+  const { getData, toIndex, reset } = useStreamingWaveform(
+    userTrack,
+    agentTrack,
+    paused,
+  );
+
+  const togglePause = useCallback(() => {
+    setPaused((prev) => {
+      if (prev) reset(); // unpausing — start fresh
+      return !prev;
+    });
+  }, [reset]);
 
   // Mirror props into refs so the long-lived rAF draw closure always reads the
   // latest values without restarting the animation loop.
@@ -93,6 +74,8 @@ export function AudioWaveform({
 
   // Canvas draw loop -----------------------------------------------------------
   useEffect(() => {
+    if (paused) return; // keep canvas frozen with its last frame
+
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -111,7 +94,8 @@ export function AudioWaveform({
 
       const dpr = window.devicePixelRatio || 1;
       const width = container.clientWidth;
-      const canvasHeight = TIMELINE_HEIGHT + TRACK_HEIGHT * 2;
+      const canvasHeight =
+        TIMELINE_HEIGHT + LABEL_ROW_HEIGHT + TRACK_HEIGHT * 2;
 
       const targetW = Math.round(width * dpr);
       const targetH = Math.round(canvasHeight * dpr);
@@ -127,7 +111,8 @@ export function AudioWaveform({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      const waveTop = TIMELINE_HEIGHT;
+      const labelRowTop = TIMELINE_HEIGHT;
+      const waveTop = TIMELINE_HEIGHT + LABEL_ROW_HEIGHT;
       const waveformWidth = width - LABEL_WIDTH;
       const maxVisible = Math.floor(waveformWidth / TICK_WIDTH);
       const visibleStart = Math.max(0, sampleCount - maxVisible);
@@ -139,6 +124,7 @@ export function AudioWaveform({
         startIndex: toIndex(h.start),
         endIndex: toIndex(h.end),
         color: h.color,
+        label: h.label,
       }));
 
       // Build per-sample highlight lookup using center-weighted falloff.
@@ -174,11 +160,6 @@ export function AudioWaveform({
 
       ctx.strokeStyle = CENTER_LINE_COLOR;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(LABEL_WIDTH, waveTop);
-      ctx.lineTo(width, waveTop);
-      ctx.stroke();
-
       ctx.setLineDash([4, 4]);
       for (let track = 0; track < 2; track++) {
         const centerY = waveTop + track * TRACK_HEIGHT + TRACK_HEIGHT / 2;
@@ -220,6 +201,60 @@ export function AudioWaveform({
         }
       }
 
+      for (const hl of indexHighlights) {
+        if (!hl.label) continue;
+        const lo = hl.startIndex - visibleStart;
+        const hi = hl.endIndex - visibleStart;
+        // Skip if entirely outside the visible range.
+        if (hi < 0 || lo >= visibleCount) continue;
+
+        // Use unclamped lo/hi so the center tracks the true midpoint of the
+        // highlight even when part of it has scrolled off-screen.
+        const xStart = LABEL_WIDTH + lo * TICK_WIDTH;
+        const xEnd = LABEL_WIDTH + (hi + 1) * TICK_WIDTH;
+        // Snap to whole pixels to avoid sub-pixel anti-alias jitter between frames.
+        const centerX = Math.round((xStart + xEnd) / 2);
+
+        ctx.save();
+        const labelText = hl.label.toUpperCase();
+        ctx.font = "bold 8px -apple-system, BlinkMacSystemFont, sans-serif";
+        const textWidth = ctx.measureText(labelText).width;
+        const padX = 5;
+        const padY = 3;
+        const pillW = textWidth + padX * 2;
+        const pillH = 8 + padY * 2;
+        const pillR = 3;
+        const labelY = labelRowTop + LABEL_ROW_HEIGHT / 2;
+
+        // Clamp pill so it stays within the waveform area
+        const rawPillX = centerX - pillW / 2;
+        const pillX = Math.round(
+          Math.max(LABEL_WIDTH + 2, Math.min(rawPillX, width - pillW - 2)),
+        );
+        const pillY = Math.round(labelY - pillH / 2);
+        const pillCenterX = pillX + pillW / 2;
+
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = hl.color;
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = hl.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = hl.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelText, pillCenterX, labelY);
+        ctx.restore();
+      }
+
       ctx.fillStyle = BG_COLOR;
       ctx.fillRect(0, 0, LABEL_WIDTH, canvasHeight);
       ctx.fillStyle = LABEL_COLOR;
@@ -233,52 +268,39 @@ export function AudioWaveform({
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [getData, toIndex]);
+  }, [getData, toIndex, paused]);
 
   return (
     <div
       ref={containerRef}
       data-slot="audio-waveform"
-      className={`w-full h-full overflow-hidden flex flex-col${className ? ` ${className}` : ""}`}
+      className={`w-full h-full overflow-hidden flex flex-col relative${className ? ` ${className}` : ""}`}
       style={{ background: BG_COLOR }}
     >
       <canvas ref={canvasRef} style={{ display: "block" }} />
-      <div
-        className="flex items-center gap-4 px-3 py-1.5 text-[11px] shrink-0"
+      <button
+        onClick={togglePause}
+        className="absolute bottom-2 right-2 h-6 w-6 rounded flex items-center justify-center transition-colors"
         style={{
+          background: "rgba(255, 255, 255, 0.08)",
           color: LABEL_COLOR,
-          borderTop: "1px solid rgba(255, 255, 255, 0.1)",
         }}
+        title={paused ? "Resume (clears waveform)" : "Pause"}
       >
-        <LegendItem color={USER_COLOR} label="User" />
-        <LegendItem color={AGENT_COLOR} label="Agent" />
-        {legendItems?.map((item) => (
-          <LegendItem key={item.label} color={item.color} label={item.label} />
-        ))}
-      </div>
+        {paused ? (
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+            <path d="M0 0l10 6-10 6z" />
+          </svg>
+        ) : (
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+            <rect x="0" y="0" width="3" height="12" />
+            <rect x="7" y="0" width="3" height="12" />
+          </svg>
+        )}
+      </button>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Internal sub-components
-// ---------------------------------------------------------------------------
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span
-        className="inline-block w-2.5 h-2.5 rounded-sm"
-        style={{ backgroundColor: color }}
-      />
-      {label}
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Canvas drawing helpers
-// ---------------------------------------------------------------------------
 
 function drawTimeTicks(
   ctx: CanvasRenderingContext2D,

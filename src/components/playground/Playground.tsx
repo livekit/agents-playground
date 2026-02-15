@@ -17,8 +17,9 @@ import {
   PlaygroundTabbedTile,
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
-import { useConfig } from "@/hooks/useConfig";
 import { useClientEvents } from "@/hooks/useClientEvents";
+import { useUplinkLatency } from "@/hooks/useUplinkLatency";
+import { useConfig } from "@/hooks/useConfig";
 import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
@@ -74,7 +75,6 @@ export default function Playground({
   const [tokenFetchOptions, setTokenFetchOptions] =
     useState<TokenSourceFetchOptions>();
 
-  // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
     if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
       return;
@@ -100,8 +100,14 @@ export default function Playground({
     interruptionEvents,
     metricsEvents,
     sessionUsage,
+    networkLatency,
     clearEvents,
   } = useClientEvents(session.room);
+
+  const uplinkLatency = useUplinkLatency(
+    session.room,
+    agent.internal.agentParticipant?.identity,
+  );
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
@@ -672,6 +678,8 @@ export default function Playground({
           interruptionEvents={interruptionEvents}
           sessionUsage={sessionUsage}
           onClearEvents={clearEvents}
+          networkLatency={networkLatency}
+          uplinkLatency={uplinkLatency}
         />
         <RoomAudioRenderer />
         <StartAudio label="Click to enable audio playback" />

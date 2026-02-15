@@ -46,9 +46,31 @@ export interface ClientUserStateChangedEvent {
   delay?: number;
 }
 
+/** Per-turn timing metrics attached to ChatMessage by the server. */
+export interface ConversationItemMetrics {
+  started_speaking_at?: number;
+  stopped_speaking_at?: number;
+  /** Time to obtain the transcript after end of user speech (user messages). */
+  transcription_delay?: number;
+  /** Time between end of speech and end-of-turn decision (user messages). */
+  end_of_turn_delay?: number;
+  /** Time to invoke Agent.on_user_turn_completed callback (user messages). */
+  on_user_turn_completed_delay?: number;
+  /** LLM time-to-first-token (assistant messages). */
+  llm_node_ttft?: number;
+  /** TTS time-to-first-byte after first text token (assistant messages). */
+  tts_node_ttfb?: number;
+  /** End-to-end latency: user stopped speaking → agent started responding (assistant messages). */
+  e2e_latency?: number;
+}
+
 export interface ClientConversationItemAddedEvent {
   type: "conversation_item_added";
-  item: Record<string, unknown>;
+  item: {
+    role?: string;
+    metrics?: ConversationItemMetrics;
+    [key: string]: unknown;
+  };
   created_at: number;
 }
 
@@ -163,11 +185,9 @@ export interface ClientUserInterruptionEvent {
   created_at: number;
   sent_at: number;
   overlap_speech_started_at: number | null;
+  /** Time from overlap speech onset to interruption prediction (seconds). */
+  detection_delay: number;
 }
-
-// ---------------------------------------------------------------------------
-// Session usage (cumulative per-model breakdowns from the server)
-// ---------------------------------------------------------------------------
 
 export interface LLMModelUsage {
   type: "llm_usage";

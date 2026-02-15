@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Room } from "livekit-client";
 import type {
   AgentSessionUsage,
   ClientEvent,
@@ -7,6 +5,8 @@ import type {
   ClientSessionUsageEvent,
   ClientUserInterruptionEvent,
 } from "@/lib/types";
+import type { Room } from "livekit-client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const TOPIC_CLIENT_EVENTS = "lk.agent.events";
 const MAX_EVENTS = 1000;
@@ -16,6 +16,8 @@ export interface UseClientEventsReturn {
   metricsEvents: ClientMetricsCollectedEvent[];
   interruptionEvents: ClientUserInterruptionEvent[];
   sessionUsage: AgentSessionUsage | null;
+  /** Average one-way server→client transit in seconds, measured from interruption `sent_at`. */
+  networkLatency: number;
   clearEvents: () => void;
 }
 
@@ -49,8 +51,11 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     ) => {
       try {
         const data = await reader.readAll();
+        const receivedAt = Date.now() / 1000;
         const parsed = JSON.parse(data);
         if (!isClientEvent(parsed)) return;
+        (parsed as unknown as Record<string, unknown>)._received_at =
+          receivedAt;
         appendEvent(parsed);
       } catch (e) {
         console.warn("[useClientEvents] failed to parse event", e);
@@ -102,11 +107,28 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     return null;
   }, [events]);
 
+  // Compute average one-way network latency from interruption events' sent_at
+  const networkLatency = useMemo(() => {
+    const deltas: number[] = [];
+    for (const e of interruptionEvents) {
+      const receivedAt = (e as unknown as Record<string, unknown>)._received_at;
+      if (typeof receivedAt === "number" && e.sent_at > 0) {
+        const delta = receivedAt - e.sent_at;
+        deltas.push(delta);
+      }
+    }
+    if (deltas.length === 0) return 0;
+    const recent = deltas.slice(-10);
+    const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    return avg;
+  }, [interruptionEvents]);
+
   return {
     events,
     metricsEvents,
     interruptionEvents,
     sessionUsage,
+    networkLatency,
     clearEvents,
   };
 }

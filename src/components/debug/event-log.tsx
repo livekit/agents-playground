@@ -5,10 +5,6 @@ import type {
 } from "@/lib/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const TYPE_FILTER_STYLE: Record<
   ClientEventType,
   { background: string; color: string }
@@ -42,6 +38,10 @@ const TYPE_FILTER_STYLE: Record<
     color: "#FBBF24",
   },
   error: { background: "rgba(239, 68, 68, 0.2)", color: "#F87171" },
+  session_usage: {
+    background: "rgba(148, 163, 184, 0.16)",
+    color: "#94A3B8",
+  },
 };
 
 const CONTROL_BUTTON_CLASS =
@@ -61,16 +61,18 @@ export const ALL_EVENT_TYPES: ClientEventType[] = [
   "metrics_collected",
   "user_interruption",
   "error",
+  "session_usage",
 ];
+
+/** Event types that are hidden by default in the filter panel. */
+export const DEFAULT_DISABLED_EVENT_TYPES = new Set<ClientEventType>([
+  "session_usage",
+]);
 
 const GRID_COLUMNS = "minmax(0px,24ch) minmax(0px,28ch) minmax(0px,1fr)";
 const TABLE_HEADER_HEIGHT = 24;
 const ROW_HEIGHT = 37;
 const TABLE_ROW_CLASS = "grid grid-rows-1 gap-2";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function eventSummary(event: ClientEvent): string {
   switch (event.type) {
@@ -90,6 +92,8 @@ function eventSummary(event: ClientEvent): string {
       return event.is_interruption ? "interruption" : "backchannel";
     case "error":
       return event.message;
+    case "session_usage":
+      return `${event.usage.model_usage.length} model(s)`;
     default:
       return "";
   }
@@ -111,10 +115,6 @@ function formatTimestamp(createdAt: number): string {
   const ms = String(date.getMilliseconds()).padStart(3, "0");
   return `${datePart}, ${hms}.${ms}${meridiem ? ` ${meridiem}` : ""}`;
 }
-
-// ---------------------------------------------------------------------------
-// SVG icons
-// ---------------------------------------------------------------------------
 
 function ClipboardIcon() {
   return (
@@ -187,10 +187,6 @@ function CheckSmallIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// CopyButton sub-component
-// ---------------------------------------------------------------------------
-
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -224,10 +220,6 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Event badge
-// ---------------------------------------------------------------------------
-
 function EventTypeBadge({ type }: { type: ClientEventType }) {
   const colors = TYPE_FILTER_STYLE[type];
   return (
@@ -245,10 +237,6 @@ function EventTypeBadge({ type }: { type: ClientEventType }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 export interface EventLogProps {
   events: ClientEvent[];
   enabledTypes: Set<ClientEventType>;
@@ -256,10 +244,6 @@ export interface EventLogProps {
   onClear?: () => void;
   className?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 interface EventRow {
   event: ClientEvent;
@@ -284,12 +268,6 @@ function getDefaultEnabledMetricTypes(
   return defaults;
 }
 
-/**
- * Filterable, scrollable event log for agent client events.
- *
- * Displays events in reverse-chronological order in a log table with
- * timestamp / event / message columns and expandable JSON details.
- */
 export function EventLog({
   events,
   enabledTypes,
@@ -349,10 +327,17 @@ export function EventLog({
     });
   }, [availableMetricTypes]);
 
-  const changedTypeCount = allTypes.length - enabledTypes.size;
+  const isDefaultTypeFilter = useMemo(() => {
+    const defaultEnabled = allTypes.filter(
+      (t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t),
+    );
+    if (enabledTypes.size !== defaultEnabled.length) return false;
+    return defaultEnabled.every((t) => enabledTypes.has(t));
+  }, [allTypes, enabledTypes]);
+
   const changedMetricCount =
     availableMetricTypes.length - enabledMetricTypes.size;
-  const hasActiveFilter = changedTypeCount > 0 || changedMetricCount > 0;
+  const hasActiveFilter = !isDefaultTypeFilter || changedMetricCount > 0;
 
   const toggleType = useCallback(
     (t: ClientEventType) => {
@@ -368,7 +353,9 @@ export function EventLog({
   );
 
   const resetTypes = useCallback(() => {
-    onEnabledTypesChange(new Set(allTypes));
+    onEnabledTypesChange(
+      new Set(allTypes.filter((t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t))),
+    );
     setEnabledMetricTypes(getDefaultEnabledMetricTypes(availableMetricTypes));
   }, [allTypes, onEnabledTypesChange, availableMetricTypes]);
 
@@ -428,7 +415,6 @@ export function EventLog({
       className={`flex flex-col h-full w-full text-xs${className ? ` ${className}` : ""}`}
       style={{ background: "var(--lk-dbg-bg)", color: "var(--lk-dbg-fg3)" }}
     >
-      {/* Toolbar */}
       <div
         className="flex items-center gap-2 px-4 py-1.5 border-b shrink-0"
         style={{ borderColor: "var(--lk-dbg-border)" }}
@@ -581,7 +567,6 @@ export function EventLog({
         )}
 
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {/* Table header */}
           <div
             className={`shrink-0 ${TABLE_ROW_CLASS} items-center border-b px-4`}
             style={{
@@ -598,7 +583,6 @@ export function EventLog({
             <span className="py-0.5">Message</span>
           </div>
 
-          {/* Scrollable rows */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden lk-dbg-thin-scroll">
             {filtered.length === 0 && (
               <div

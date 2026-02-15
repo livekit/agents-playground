@@ -1,4 +1,5 @@
 import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
+import type { UplinkLatency } from "@/hooks/useUplinkLatency";
 import type {
   AgentSessionUsage,
   ClientEvent,
@@ -15,15 +16,17 @@ import {
   useState,
 } from "react";
 import { AudioWaveform } from "./audio-waveform";
-import { ALL_EVENT_TYPES, EventLog } from "./event-log";
+import {
+  ALL_EVENT_TYPES,
+  DEFAULT_DISABLED_EVENT_TYPES,
+  EventLog,
+} from "./event-log";
 import { MetricsDisplay } from "./metrics-display";
 import { UsageDisplay } from "./usage-display";
 
-const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(ALL_EVENT_TYPES);
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(
+  ALL_EVENT_TYPES.filter((t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t)),
+);
 
 type TabId = "waveform" | "events" | "metrics" | "usage";
 
@@ -42,21 +45,14 @@ const TAB_ROW_CLASS = "flex items-end gap-4 self-stretch";
 const TAB_BUTTON_CLASS =
   "h-full px-1 pb-2 -mb-px border-b-2 transition-colors text-sm flex items-end";
 const TAB_ACTIVE_COLOR = "#22D3EE";
+/** Matches Tailwind gray-500 used by PlaygroundTile titles. */
+const COLLAPSED_FG = "#6b7280";
 
 const INTERRUPTION_COLOR = "#FA4C39";
 const BACKCHANNEL_COLOR = "#23DE6B";
 
-const HIGHLIGHT_LEGEND = [
-  { color: INTERRUPTION_COLOR, label: "Interruption" },
-  { color: BACKCHANNEL_COLOR, label: "Backchannel" },
-];
-
 const FONT_STACK =
   '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 
 export interface DebugPanelProps {
   userTrack: Track | undefined;
@@ -66,11 +62,11 @@ export interface DebugPanelProps {
   interruptionEvents: ClientUserInterruptionEvent[];
   sessionUsage: AgentSessionUsage | null;
   onClearEvents: () => void;
+  /** One-way server→client network transit in seconds, measured from interruption sent_at. */
+  networkLatency: number;
+  /** Measured uplink pipeline latency (client→SFU + SFU→agent + jitter buffer). */
+  uplinkLatency?: UplinkLatency;
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function DebugPanel({
   userTrack,
@@ -80,9 +76,11 @@ export function DebugPanel({
   interruptionEvents,
   sessionUsage,
   onClearEvents,
+  networkLatency,
+  uplinkLatency,
 }: DebugPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [enabledEventTypes, setEnabledEventTypes] = useState<
     Set<ClientEventType>
@@ -90,17 +88,26 @@ export function DebugPanel({
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Highlights ----------------------------------------------------------------
-  const highlights = useMemo<WaveformHighlight[]>(
-    () =>
-      interruptionEvents.map((evt) => ({
-        start: evt.overlap_speech_started_at ?? evt.created_at,
-        end: evt.created_at,
-        color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
-      })),
-    [interruptionEvents],
-  );
+  // Server timestamps are in server clock and delayed by the uplink pipeline.
+  // To place them on the client waveform:
+  //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
+  //   where clock_offset(client−server) ≈ networkLatency − clientToSfu
+  const highlights = useMemo<WaveformHighlight[]>(() => {
+    const pipeline = uplinkLatency?.total ?? 0;
+    const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
+    // Approximate clock offset: networkLatency includes both downlink and clock skew
+    const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
+    // Total correction: convert server timestamp to client waveform time
+    const correction = clockOffset - pipeline;
 
-  // Resize -------------------------------------------------------------------
+    return interruptionEvents.map((evt) => ({
+      start: (evt.overlap_speech_started_at ?? evt.created_at) + correction,
+      end: evt.created_at + correction,
+      color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
+      label: evt.is_interruption ? "Interruption" : "Backchannel",
+    }));
+  }, [interruptionEvents, networkLatency, uplinkLatency]);
+
   const onResizeStart = useCallback(
     (e: ReactMouseEvent) => {
       e.preventDefault();
@@ -128,7 +135,6 @@ export function DebugPanel({
     [height],
   );
 
-  // Render -------------------------------------------------------------------
   return (
     <div
       className="flex flex-col border-t shrink-0 w-full"
@@ -148,13 +154,15 @@ export function DebugPanel({
       )}
 
       <div
-        className="flex items-center min-h-[48px] shrink-0 border-b px-4 pt-2 pb-0 gap-1"
-        style={{ borderColor: "var(--lk-dbg-border)" }}
+        className={`flex items-center min-h-[48px] shrink-0 px-4 pt-2 pb-0 gap-1${collapsed ? "" : " border-b"}`}
+        style={{
+          borderColor: collapsed ? "transparent" : "var(--lk-dbg-border)",
+        }}
       >
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="text-xs h-7 w-7 mr-1 rounded-md inline-flex items-center justify-center transition-colors hover:text-[var(--lk-dbg-fg)] hover:bg-[var(--lk-dbg-bg3)]"
-          style={{ color: "var(--lk-dbg-fg5)" }}
+          style={{ color: collapsed ? COLLAPSED_FG : "var(--lk-dbg-fg5)" }}
           title={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
@@ -193,30 +201,130 @@ export function DebugPanel({
                 }}
                 className={TAB_BUTTON_CLASS}
                 style={{
-                  color: isActive ? "var(--lk-dbg-fg)" : "var(--lk-dbg-fg5)",
-                  borderBottomColor: isActive
-                    ? TAB_ACTIVE_COLOR
-                    : "transparent",
-                  fontWeight: isActive ? 600 : 400,
+                  color: collapsed
+                    ? COLLAPSED_FG
+                    : isActive
+                      ? "var(--lk-dbg-fg)"
+                      : "var(--lk-dbg-fg5)",
+                  borderBottomColor:
+                    collapsed || !isActive ? "transparent" : TAB_ACTIVE_COLOR,
+                  fontWeight: collapsed ? 400 : isActive ? 600 : 400,
                 }}
               >
                 {tab.label}
                 {tab.id === "events" && events.length > 0 && (
                   <span
-                    className="ml-1 text-[10px]"
+                    className="ml-1 text-[10px] inline-block text-right"
                     style={{
-                      color: isActive
-                        ? "var(--lk-dbg-fg3)"
-                        : "var(--lk-dbg-fg5)",
+                      minWidth: "2.4em",
+                      fontVariantNumeric: "tabular-nums",
+                      color: collapsed
+                        ? COLLAPSED_FG
+                        : isActive
+                          ? "var(--lk-dbg-fg3)"
+                          : "var(--lk-dbg-fg5)",
                     }}
                   >
-                    {events.length}
+                    {events.length > 999 ? "999+" : events.length}
                   </span>
                 )}
               </button>
             );
           })}
         </div>
+        <div className="flex-1" />
+        {(networkLatency > 0 || (uplinkLatency?.total ?? 0) > 0) && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums"
+              style={{
+                color: "var(--lk-dbg-fg5)",
+                background: "var(--lk-dbg-bg2)",
+              }}
+              title={`Downlink: ${(networkLatency * 1000).toFixed(0)}ms (received_at − sent_at)`}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden
+                style={{ color: "var(--lk-dbg-fg5)" }}
+              >
+                <path
+                  d="M8 2.5v9"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M4.5 8L8 11.5 11.5 8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <line
+                  x1="4"
+                  y1="13.75"
+                  x2="12"
+                  y2="13.75"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity="0.5"
+                />
+              </svg>
+              {(networkLatency * 1000).toFixed(0)}ms
+            </span>
+            <span
+              className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums"
+              style={{
+                color: "var(--lk-dbg-fg5)",
+                background: "var(--lk-dbg-bg2)",
+              }}
+              title={
+                uplinkLatency
+                  ? `Uplink pipeline: ${(uplinkLatency.total * 1000).toFixed(0)}ms (client→SFU ${(uplinkLatency.clientToSfu * 1000).toFixed(0)}ms + SFU→agent ${(uplinkLatency.sfuToAgent * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
+                  : ""
+              }
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden
+                style={{ color: "var(--lk-dbg-fg5)" }}
+              >
+                <path
+                  d="M8 13.5v-9"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M4.5 8L8 4.5 11.5 8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <line
+                  x1="4"
+                  y1="2.25"
+                  x2="12"
+                  y2="2.25"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity="0.5"
+                />
+              </svg>
+              {((uplinkLatency?.total ?? 0) * 1000).toFixed(0)}ms
+            </span>
+          </div>
+        )}
       </div>
 
       {!collapsed && (
@@ -231,7 +339,6 @@ export function DebugPanel({
               userTrack={userTrack}
               agentTrack={agentTrack}
               highlights={highlights}
-              legendItems={HIGHLIGHT_LEGEND}
             />
           </div>
           {activeTab === "events" && (

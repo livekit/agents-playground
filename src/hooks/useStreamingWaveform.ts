@@ -41,6 +41,8 @@ export interface WaveformHighlight {
   end: number;
   /** CSS color string for this highlight */
   color: string;
+  /** Optional label rendered over the highlight region */
+  label?: string;
 }
 
 export interface WaveformSnapshot {
@@ -59,6 +61,7 @@ export interface UseStreamingWaveformReturn {
   sampleRate: number;
   toIndex: (timestamp: number) => number;
   getData: () => WaveformSnapshot;
+  reset: () => void;
 }
 
 function peakAmplitude(
@@ -108,6 +111,7 @@ function destroyAnalyser(state: AnalyserState): void {
 export function useStreamingWaveform(
   userTrack: Track | undefined,
   agentTrack: Track | undefined,
+  paused = false,
 ): UseStreamingWaveformReturn {
   const userChannelRef = useRef<ChannelState>(createChannel());
   const agentChannelRef = useRef<ChannelState>(createChannel());
@@ -115,6 +119,8 @@ export function useStreamingWaveform(
   const agentAnalyserRef = useRef<AnalyserState | null>(null);
   const startedAtRef = useRef(0);
   const totalTrimmedRef = useRef(0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   const toIndex = useCallback((ts: number): number => {
     const origin = startedAtRef.current;
@@ -146,6 +152,13 @@ export function useStreamingWaveform(
     [],
   );
 
+  const reset = useCallback(() => {
+    userChannelRef.current = createChannel();
+    agentChannelRef.current = createChannel();
+    startedAtRef.current = 0;
+    totalTrimmedRef.current = 0;
+  }, []);
+
   useEffect(() => {
     if (!userTrack) return;
     const state = createAnalyser(userTrack);
@@ -171,6 +184,8 @@ export function useStreamingWaveform(
 
     const intervalMs = 1000 / SAMPLE_RATE;
     const interval = setInterval(() => {
+      if (pausedRef.current) return;
+
       const userAnalyser = userAnalyserRef.current;
       const agentAnalyser = agentAnalyserRef.current;
 
@@ -219,5 +234,6 @@ export function useStreamingWaveform(
     sampleRate: SAMPLE_RATE,
     toIndex,
     getData,
+    reset,
   };
 }
