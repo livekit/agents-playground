@@ -1,11 +1,16 @@
-import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
+import type {
+  WaveformHighlight,
+  WaveformMarker,
+} from "@/hooks/useStreamingWaveform";
 import type { UplinkLatency } from "@/hooks/useUplinkLatency";
 import type {
   AgentSessionUsage,
+  ClientAgentStateChangedEvent,
   ClientEvent,
   ClientEventType,
   ClientMetricsCollectedEvent,
   ClientUserInterruptionEvent,
+  ClientUserStateChangedEvent,
 } from "@/lib/types";
 import type { Track } from "livekit-client";
 import {
@@ -50,6 +55,8 @@ const COLLAPSED_FG = "#6b7280";
 
 const INTERRUPTION_COLOR = "#FA4C39";
 const BACKCHANNEL_COLOR = "#23DE6B";
+const AGENT_STATE_COLOR = "#22D3EE";
+const USER_STATE_COLOR = "#60A5FA";
 
 const FONT_STACK =
   '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -105,6 +112,47 @@ export function DebugPanel({
       label: evt.is_interruption ? "Interruption" : "Backchannel",
     }));
   }, [interruptionEvents, networkLatency, uplinkLatency]);
+
+  const stateMarkers = useMemo<WaveformMarker[]>(() => {
+    const pipeline = uplinkLatency?.total ?? 0;
+    const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
+    const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
+    const correction = clockOffset - pipeline;
+
+    const markers: WaveformMarker[] = [];
+    for (const evt of events) {
+      if (
+        evt.type !== "agent_state_changed" &&
+        evt.type !== "user_state_changed"
+      )
+        continue;
+
+      const stateEvt = evt as
+        | ClientAgentStateChangedEvent
+        | ClientUserStateChangedEvent;
+      const track: "user" | "agent" =
+        stateEvt.type === "user_state_changed" ? "user" : "agent";
+      const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
+
+      let variant: WaveformMarker["variant"];
+      if (stateEvt.new_state === "speaking") {
+        variant = "speaking-start";
+      } else if (stateEvt.old_state === "speaking") {
+        variant = "speaking-end";
+      } else {
+        variant = "state-label";
+      }
+
+      markers.push({
+        timestamp: stateEvt.created_at + correction,
+        color,
+        label: stateEvt.new_state,
+        track,
+        variant,
+      });
+    }
+    return markers;
+  }, [events, networkLatency, uplinkLatency]);
 
   const onResizeStart = useCallback(
     (e: ReactMouseEvent) => {
@@ -337,6 +385,7 @@ export function DebugPanel({
               userTrack={userTrack}
               agentTrack={agentTrack}
               highlights={highlights}
+              markers={stateMarkers}
             />
           </div>
           {activeTab === "events" && (

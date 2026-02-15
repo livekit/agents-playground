@@ -11,8 +11,17 @@ interface ChannelState {
   count: number;
 }
 
+interface TimelineState {
+  buffer: Float64Array;
+  count: number;
+}
+
 function createChannel(): ChannelState {
   return { buffer: new Uint8Array(INITIAL_CAPACITY), count: 0 };
+}
+
+function createTimeline(): TimelineState {
+  return { buffer: new Float64Array(INITIAL_CAPACITY), count: 0 };
 }
 
 function appendSample(channel: ChannelState, sample: number): void {
@@ -22,6 +31,20 @@ function appendSample(channel: ChannelState, sample: number): void {
     channel.buffer = next;
   }
   channel.buffer[channel.count++] = sample;
+}
+
+function appendTimestamp(timeline: TimelineState, timestamp: number): void {
+  if (timeline.count >= timeline.buffer.length) {
+    const next = new Float64Array(timeline.buffer.length * 2);
+    next.set(timeline.buffer);
+    timeline.buffer = next;
+  }
+  if (timeline.count > 0) {
+    // Keep timeline sorted even if system clock steps backwards briefly.
+    const prev = timeline.buffer[timeline.count - 1];
+    if (timestamp < prev) timestamp = prev;
+  }
+  timeline.buffer[timeline.count++] = timestamp;
 }
 
 function trimChannel(channel: ChannelState, excess: number): void {
@@ -34,6 +57,27 @@ function trimChannel(channel: ChannelState, excess: number): void {
   channel.count -= excess;
 }
 
+function trimTimeline(timeline: TimelineState, excess: number): void {
+  if (excess <= 0 || timeline.count === 0) return;
+  if (excess >= timeline.count) {
+    timeline.count = 0;
+    return;
+  }
+  timeline.buffer.copyWithin(0, excess, timeline.count);
+  timeline.count -= excess;
+}
+
+function upperBound(arr: Float64Array, count: number, target: number): number {
+  let lo = 0;
+  let hi = count;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] <= target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 export interface WaveformHighlight {
   /** Start time in epoch-seconds */
   start: number;
@@ -43,6 +87,19 @@ export interface WaveformHighlight {
   color: string;
   /** Optional label rendered over the highlight region */
   label?: string;
+}
+
+export interface WaveformMarker {
+  /** Point-in-time in epoch-seconds */
+  timestamp: number;
+  /** CSS color string for this marker */
+  color: string;
+  /** Label text rendered in the state label row */
+  label: string;
+  /** Which track the marker is drawn on */
+  track: "user" | "agent";
+  /** Visual variant: bracket for speaking transitions, line for others */
+  variant: "speaking-start" | "speaking-end" | "state-label";
 }
 
 /**
@@ -123,6 +180,7 @@ export function useStreamingWaveform(
 ): UseStreamingWaveformReturn {
   const userChannelRef = useRef<ChannelState>(createChannel());
   const agentChannelRef = useRef<ChannelState>(createChannel());
+  const timelineRef = useRef<TimelineState>(createTimeline());
   const userAnalyserRef = useRef<AnalyserState | null>(null);
   const agentAnalyserRef = useRef<AnalyserState | null>(null);
   const startedAtRef = useRef(0);
@@ -134,23 +192,18 @@ export function useStreamingWaveform(
     const origin = startedAtRef.current;
     if (origin === 0) return 0;
 
-    // When paused, wall-clock time keeps advancing but sample count is frozen.
-    // Use the nominal rate to avoid effectiveRate collapsing toward zero.
-    let effectiveRate: number;
-    if (pausedRef.current) {
-      effectiveRate = SAMPLE_RATE;
-    } else {
-      const currentCount = Math.max(
-        userChannelRef.current.count,
-        agentChannelRef.current.count,
-      );
-      const totalProduced = currentCount + totalTrimmedRef.current;
-      const now = Date.now() / 1000;
-      const elapsed = now - origin;
-      effectiveRate = elapsed > 0 ? totalProduced / elapsed : SAMPLE_RATE;
+    const timeline = timelineRef.current;
+    if (timeline.count > 0) {
+      // Map by observed sample timestamps for stable, jitter-resistant indexing.
+      const i = upperBound(timeline.buffer, timeline.count, ts);
+      if (i <= 0) return 0;
+      if (i >= timeline.count) return timeline.count - 1;
+      const prev = timeline.buffer[i - 1];
+      const next = timeline.buffer[i];
+      return ts - prev <= next - ts ? i - 1 : i;
     }
 
-    const absoluteIndex = (ts - origin) * effectiveRate;
+    const absoluteIndex = (ts - origin) * SAMPLE_RATE;
     const bufferIndex = absoluteIndex - totalTrimmedRef.current;
     return Math.max(0, Math.round(bufferIndex));
   }, []);
@@ -170,6 +223,7 @@ export function useStreamingWaveform(
   const reset = useCallback(() => {
     userChannelRef.current = createChannel();
     agentChannelRef.current = createChannel();
+    timelineRef.current = createTimeline();
     startedAtRef.current = 0;
     totalTrimmedRef.current = 0;
   }, []);
@@ -206,9 +260,11 @@ export function useStreamingWaveform(
 
       if (!userAnalyser && !agentAnalyser) return;
 
+      const sampleTs = Date.now() / 1000;
       if (startedAtRef.current === 0) {
-        startedAtRef.current = Date.now() / 1000;
+        startedAtRef.current = sampleTs;
       }
+      appendTimestamp(timelineRef.current, sampleTs);
 
       const userAmp = userAnalyser
         ? peakAmplitude(userAnalyser.analyser, userAnalyser.timeDomainBuf)
@@ -225,6 +281,7 @@ export function useStreamingWaveform(
         const excess = count - WINDOW_CAPACITY;
         trimChannel(userChannelRef.current, excess);
         trimChannel(agentChannelRef.current, excess);
+        trimTimeline(timelineRef.current, excess);
         totalTrimmedRef.current += excess;
       }
     }, intervalMs);
@@ -236,6 +293,7 @@ export function useStreamingWaveform(
     if (!userTrack && !agentTrack) {
       userChannelRef.current = createChannel();
       agentChannelRef.current = createChannel();
+      timelineRef.current = createTimeline();
       startedAtRef.current = 0;
       totalTrimmedRef.current = 0;
     }

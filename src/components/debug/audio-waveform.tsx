@@ -1,4 +1,7 @@
-import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
+import type {
+  WaveformHighlight,
+  WaveformMarker,
+} from "@/hooks/useStreamingWaveform";
 import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,6 +10,7 @@ export interface AudioWaveformProps {
   userTrack?: Track;
   agentTrack?: Track;
   highlights?: WaveformHighlight[];
+  markers?: WaveformMarker[];
   className?: string;
 }
 
@@ -31,6 +35,10 @@ const MINOR_TICK_INTERVAL = 1;
 const HIGHLIGHT_FALLOFF_SAMPLES = 20;
 const HIGHLIGHT_MAX_ALPHA = 0.72;
 const LABEL_ROW_HEIGHT = 18;
+const STATE_LABEL_ROW_HEIGHT = 14;
+const MARKER_GRADIENT_SAMPLES = 20;
+const MARKER_GRADIENT_ALPHA = 0.25;
+const MARKER_BRACKET_TICK = 4;
 
 interface IndexedHighlight {
   startIndex: number;
@@ -44,10 +52,19 @@ interface HighlightSampleStyle {
   alpha: number;
 }
 
+interface IndexedMarker {
+  index: number;
+  color: string;
+  label: string;
+  track: "user" | "agent";
+  variant: "speaking-start" | "speaking-end" | "state-label";
+}
+
 export function AudioWaveform({
   userTrack,
   agentTrack,
   highlights,
+  markers,
   className,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,6 +88,8 @@ export function AudioWaveform({
   // latest values without restarting the animation loop.
   const highlightsRef = useRef(highlights);
   highlightsRef.current = highlights;
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
 
   useEffect(() => {
     if (paused) return; // keep canvas frozen with its last frame
@@ -87,14 +106,23 @@ export function AudioWaveform({
     let prevCanvasH = 0;
 
     const draw = () => {
-      const { userBuffer, userCount, agentBuffer, agentCount, totalTrimmed } =
-        getData();
+      const {
+        userBuffer,
+        userCount,
+        agentBuffer,
+        agentCount,
+        totalTrimmed,
+        startedAt,
+      } = getData();
       const sampleCount = Math.max(userCount, agentCount);
 
       const dpr = window.devicePixelRatio || 1;
       const width = container.clientWidth;
       const canvasHeight =
-        TIMELINE_HEIGHT + LABEL_ROW_HEIGHT + TRACK_HEIGHT * 2;
+        TIMELINE_HEIGHT +
+        LABEL_ROW_HEIGHT +
+        TRACK_HEIGHT * 2 +
+        STATE_LABEL_ROW_HEIGHT * 2;
 
       const targetW = Math.round(width * dpr);
       const targetH = Math.round(canvasHeight * dpr);
@@ -112,19 +140,26 @@ export function AudioWaveform({
 
       const labelRowTop = TIMELINE_HEIGHT;
       const waveTop = TIMELINE_HEIGHT + LABEL_ROW_HEIGHT;
+      // Layout: User Track | User State Labels | Agent Track | Agent State Labels
+      const userTrackTop = waveTop;
+      const userStateLabelTop = userTrackTop + TRACK_HEIGHT;
+      const agentTrackTop = userStateLabelTop + STATE_LABEL_ROW_HEIGHT;
+      const agentStateLabelTop = agentTrackTop + TRACK_HEIGHT;
       const waveformWidth = width - LABEL_WIDTH;
       const maxVisible = Math.floor(waveformWidth / TICK_WIDTH);
       const visibleStart = Math.max(0, sampleCount - maxVisible);
       const visibleCount = sampleCount - visibleStart;
 
-      const indexHighlights: IndexedHighlight[] = (
-        highlightsRef.current ?? []
-      ).map((h) => ({
-        startIndex: toIndex(h.start),
-        endIndex: toIndex(h.end),
-        color: h.color,
-        label: h.label,
-      }));
+      // Drop highlights/markers from before the current recording session so
+      // they don't pile up at index 0 after a pause→resume reset.
+      const indexHighlights: IndexedHighlight[] = (highlightsRef.current ?? [])
+        .filter((h) => startedAt === 0 || h.end >= startedAt)
+        .map((h) => ({
+          startIndex: toIndex(h.start),
+          endIndex: toIndex(h.end),
+          color: h.color,
+          label: h.label,
+        }));
 
       // Build per-sample highlight lookup using center-weighted falloff.
       const highlightMap = new Map<number, HighlightSampleStyle>();
@@ -160,8 +195,8 @@ export function AudioWaveform({
       ctx.strokeStyle = CENTER_LINE_COLOR;
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
-      for (let track = 0; track < 2; track++) {
-        const centerY = waveTop + track * TRACK_HEIGHT + TRACK_HEIGHT / 2;
+      for (const tTop of [userTrackTop, agentTrackTop]) {
+        const centerY = tTop + TRACK_HEIGHT / 2;
         ctx.beginPath();
         ctx.moveTo(LABEL_WIDTH, centerY);
         ctx.lineTo(width, centerY);
@@ -175,7 +210,7 @@ export function AudioWaveform({
 
         const userAmp = sampleIndex < userCount ? userBuffer[sampleIndex] : 0;
         if (userAmp > 0) {
-          const centerY = waveTop + TRACK_HEIGHT / 2;
+          const centerY = userTrackTop + TRACK_HEIGHT / 2;
           const halfHeight =
             (userAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
           const hl = highlightMap.get(visibleIndex);
@@ -192,12 +227,118 @@ export function AudioWaveform({
         const agentAmp =
           sampleIndex < agentCount ? agentBuffer[sampleIndex] : 0;
         if (agentAmp > 0) {
-          const centerY = waveTop + TRACK_HEIGHT + TRACK_HEIGHT / 2;
+          const centerY = agentTrackTop + TRACK_HEIGHT / 2;
           const halfHeight =
             (agentAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
           ctx.fillStyle = AGENT_COLOR;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
         }
+      }
+
+      // --- State change markers ---
+      const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
+        .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
+        .map((m) => ({
+          index: toIndex(m.timestamp),
+          color: m.color,
+          label: m.label,
+          track: m.track,
+          variant: m.variant,
+        }));
+
+      for (const mk of indexMarkers) {
+        const vi = mk.index - visibleStart;
+        if (vi < 0 || vi >= visibleCount) continue;
+        const x = Math.round(LABEL_WIDTH + vi * TICK_WIDTH);
+        if (x <= LABEL_WIDTH || x >= width) continue;
+
+        const trackTop = mk.track === "user" ? userTrackTop : agentTrackTop;
+        const trackBot = trackTop + TRACK_HEIGHT;
+        const labelRowY =
+          mk.track === "user" ? userStateLabelTop : agentStateLabelTop;
+
+        ctx.save();
+
+        if (mk.variant === "speaking-start") {
+          // Vertical line
+          ctx.strokeStyle = mk.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.8;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x, trackTop);
+          ctx.lineTo(x, trackBot);
+          ctx.stroke();
+
+          // Bracket ticks pointing right
+          ctx.beginPath();
+          ctx.moveTo(x, trackTop);
+          ctx.lineTo(x + MARKER_BRACKET_TICK, trackTop);
+          ctx.moveTo(x, trackBot);
+          ctx.lineTo(x + MARKER_BRACKET_TICK, trackBot);
+          ctx.stroke();
+
+          // Gradient fill fading to the right
+          const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
+          const grad = ctx.createLinearGradient(x, 0, x + gradW, 0);
+          grad.addColorStop(0, mk.color);
+          grad.addColorStop(1, "transparent");
+          ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
+          ctx.fillStyle = grad;
+          ctx.fillRect(x, trackTop, gradW, TRACK_HEIGHT);
+        } else if (mk.variant === "speaking-end") {
+          // Vertical line
+          ctx.strokeStyle = mk.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.8;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x, trackTop);
+          ctx.lineTo(x, trackBot);
+          ctx.stroke();
+
+          // Bracket ticks pointing left
+          ctx.beginPath();
+          ctx.moveTo(x, trackTop);
+          ctx.lineTo(x - MARKER_BRACKET_TICK, trackTop);
+          ctx.moveTo(x, trackBot);
+          ctx.lineTo(x - MARKER_BRACKET_TICK, trackBot);
+          ctx.stroke();
+
+          // Gradient fill fading from the left
+          const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
+          const grad = ctx.createLinearGradient(x - gradW, 0, x, 0);
+          grad.addColorStop(0, "transparent");
+          grad.addColorStop(1, mk.color);
+          ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
+          ctx.fillStyle = grad;
+          ctx.fillRect(x - gradW, trackTop, gradW, TRACK_HEIGHT);
+        } else {
+          // state-label: dashed vertical line
+          ctx.strokeStyle = mk.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(x, trackTop);
+          ctx.lineTo(x, trackBot);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // State label in the row directly below this marker's track
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = mk.color;
+        ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          mk.label.toUpperCase(),
+          x,
+          labelRowY + STATE_LABEL_ROW_HEIGHT / 2,
+        );
+
+        ctx.restore();
       }
 
       for (const hl of indexHighlights) {
@@ -257,8 +398,8 @@ export function AudioWaveform({
       ctx.fillStyle = LABEL_COLOR;
       ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.textBaseline = "middle";
-      ctx.fillText("User", 8, waveTop + TRACK_HEIGHT / 2);
-      ctx.fillText("Agent", 8, waveTop + TRACK_HEIGHT + TRACK_HEIGHT / 2);
+      ctx.fillText("User", 8, userTrackTop + TRACK_HEIGHT / 2);
+      ctx.fillText("Agent", 8, agentTrackTop + TRACK_HEIGHT / 2);
 
       rafId = requestAnimationFrame(draw);
     };
