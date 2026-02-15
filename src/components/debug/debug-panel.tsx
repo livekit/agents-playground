@@ -1,5 +1,6 @@
 import type { WaveformHighlight } from "@/hooks/useStreamingWaveform";
 import type {
+  AgentSessionUsage,
   ClientEvent,
   ClientEventType,
   ClientMetricsCollectedEvent,
@@ -16,6 +17,7 @@ import {
 import { AudioWaveform } from "./audio-waveform";
 import { ALL_EVENT_TYPES, EventLog } from "./event-log";
 import { MetricsDisplay } from "./metrics-display";
+import { UsageDisplay } from "./usage-display";
 
 const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(ALL_EVENT_TYPES);
 
@@ -23,12 +25,13 @@ const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(ALL_EVENT_TYPES);
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabId = "waveform" | "events" | "metrics";
+type TabId = "waveform" | "events" | "metrics" | "usage";
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: "waveform", label: "Waveform" },
   { id: "events", label: "Events" },
   { id: "metrics", label: "Metrics" },
+  { id: "usage", label: "Usage" },
 ];
 
 const COLLAPSED_HEIGHT = 52;
@@ -61,6 +64,7 @@ export interface DebugPanelProps {
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
   interruptionEvents: ClientUserInterruptionEvent[];
+  sessionUsage: AgentSessionUsage | null;
   onClearEvents: () => void;
 }
 
@@ -74,6 +78,7 @@ export function DebugPanel({
   events,
   metricsEvents,
   interruptionEvents,
+  sessionUsage,
   onClearEvents,
 }: DebugPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
@@ -238,7 +243,10 @@ export function DebugPanel({
             />
           )}
           {activeTab === "metrics" && (
-            <MetricsDisplay metricsEvents={metricsEvents} />
+            <MetricsDisplay metricsEvents={metricsEvents} events={events} />
+          )}
+          {activeTab === "usage" && (
+            <UsageDisplay sessionUsage={sessionUsage} />
           )}
         </div>
       )}

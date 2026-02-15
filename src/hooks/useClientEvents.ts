@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Room } from "livekit-client";
 import type {
+  AgentSessionUsage,
   ClientEvent,
   ClientMetricsCollectedEvent,
+  ClientSessionUsageEvent,
   ClientUserInterruptionEvent,
 } from "@/lib/types";
 
@@ -13,6 +15,7 @@ export interface UseClientEventsReturn {
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
   interruptionEvents: ClientUserInterruptionEvent[];
+  sessionUsage: AgentSessionUsage | null;
   clearEvents: () => void;
 }
 
@@ -88,5 +91,22 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     [events],
   );
 
-  return { events, metricsEvents, interruptionEvents, clearEvents };
+  // session_usage events are cumulative; only the latest one matters
+  const sessionUsage = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e?.type === "session_usage") {
+        return (e as ClientSessionUsageEvent).usage;
+      }
+    }
+    return null;
+  }, [events]);
+
+  return {
+    events,
+    metricsEvents,
+    interruptionEvents,
+    sessionUsage,
+    clearEvents,
+  };
 }

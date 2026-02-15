@@ -1,5 +1,6 @@
 import type {
   AgentMetricsData,
+  ClientEvent,
   ClientMetricsCollectedEvent,
 } from "@/lib/types";
 import { useId, useMemo, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import { useId, useMemo, useRef, useState } from "react";
 interface Stat {
   label: string;
   value: string;
+  tooltip?: string;
 }
 
 interface SummaryCardData {
@@ -24,6 +26,7 @@ interface TrendCardData {
   kind: "trend";
   id: string;
   title: string;
+  tooltip?: string;
   points: TrendPoint[];
   seriesUnit: "s" | "tok/s";
 }
@@ -99,12 +102,14 @@ function trendCard(
   title: string,
   rawPoints: TrendPoint[],
   unit: "s" | "tok/s",
+  tooltip?: string,
 ): TrendCardData {
   const smoothedPoints = movingAveragePoints(rawPoints, MOVING_AVERAGE_WINDOW);
   return {
     kind: "trend",
     id,
     title: `AVG ${title}`,
+    tooltip,
     points: toSeries(smoothedPoints),
     seriesUnit: unit,
   };
@@ -123,6 +128,38 @@ function summaryCard(
   };
 }
 
+/** Compute E2E delay: time from end of user speech to start of agent speech.
+ *  When the user_state_changed event carries a `delay` (VAD min_endpointing_delay),
+ *  the user actually stopped speaking at `created_at - delay`, so we add that
+ *  delay back into the E2E measurement. */
+function computeE2eDelays(events: ClientEvent[]): TrendPoint[] {
+  const points: TrendPoint[] = [];
+  let lastUserSpeechEnd: number | null = null;
+  let lastEndpointingDelay = 0;
+
+  for (const evt of events) {
+    if (
+      evt.type === "user_state_changed" &&
+      evt.old_state === "speaking" &&
+      evt.new_state !== "speaking"
+    ) {
+      lastUserSpeechEnd = evt.created_at;
+      lastEndpointingDelay = evt.delay ?? 0;
+    } else if (
+      evt.type === "agent_state_changed" &&
+      evt.new_state === "speaking" &&
+      lastUserSpeechEnd !== null
+    ) {
+      const delay = evt.created_at - lastUserSpeechEnd + lastEndpointingDelay;
+      points.push({ t: evt.created_at, v: delay });
+      lastUserSpeechEnd = null;
+      lastEndpointingDelay = 0;
+    }
+  }
+
+  return points;
+}
+
 function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
   const cards: CardData[] = [];
 
@@ -134,34 +171,22 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
         "LLM TTFT",
         llm.map((m) => ({ t: m.timestamp, v: m.ttft })),
         "s",
+        "Time to first token from the LLM",
       ),
       trendCard(
         "llm-duration",
         "LLM Duration",
         llm.map((m) => ({ t: m.timestamp, v: m.duration })),
         "s",
+        "Total LLM inference time per request",
       ),
       trendCard(
         "llm-speed",
         "LLM Speed",
         llm.map((m) => ({ t: m.timestamp, v: m.tokens_per_second })),
         "tok/s",
+        "LLM output token generation rate",
       ),
-      summaryCard("llm-summary", "LLM Summary", [
-        { label: "Count", value: `${llm.length}` },
-        {
-          label: "Total tokens",
-          value: `${llm.reduce((s, m) => s + m.total_tokens, 0)}`,
-        },
-        {
-          label: "Prompt tokens",
-          value: `${llm.reduce((s, m) => s + m.prompt_tokens, 0)}`,
-        },
-        {
-          label: "Completion tokens",
-          value: `${llm.reduce((s, m) => s + m.completion_tokens, 0)}`,
-        },
-      ]),
     );
   }
 
@@ -172,34 +197,20 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
       cards.push(
         trendCard(
           "user-turn-txn-delay",
-          "User Turn Txn Delay",
+          "Transcription Delay",
           eou.map((m) => ({ t: m.timestamp, v: m.transcription_delay })),
           "s",
+          "Time between end of speech and final transcript",
         ),
         trendCard(
           "user-turn-eou-delay",
-          "User Turn EOU Delay",
+          "End of Utterance Delay",
           eou.map((m) => ({ t: m.timestamp, v: m.end_of_utterance_delay })),
           "s",
+          "Time between end of speech and end-of-utterance detection",
         ),
       );
     }
-    if (stt.length > 0) {
-      cards.push(
-        trendCard(
-          "user-turn-stt-duration",
-          "STT Duration",
-          stt.map((m) => ({ t: m.timestamp, v: m.audio_duration })),
-          "s",
-        ),
-      );
-    }
-    cards.push(
-      summaryCard("user-turn-summary", "User Turn Summary", [
-        { label: "EOU count", value: `${eou.length}` },
-        { label: "STT count", value: `${stt.length}` },
-      ]),
-    );
   }
 
   const tts = collectMetrics(events, "tts_metrics");
@@ -210,47 +221,15 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
         "TTS TTFB",
         tts.map((m) => ({ t: m.timestamp, v: m.ttfb })),
         "s",
-      ),
-      trendCard(
-        "tts-duration",
-        "TTS Duration",
-        tts.map((m) => ({ t: m.timestamp, v: m.duration })),
-        "s",
+        "Time to first byte of audio from the TTS provider",
       ),
       trendCard(
         "tts-audio-duration",
         "TTS Audio Duration",
         tts.map((m) => ({ t: m.timestamp, v: m.audio_duration })),
         "s",
+        "Duration of generated speech audio",
       ),
-      summaryCard("tts-summary", "TTS Summary", [
-        { label: "Count", value: `${tts.length}` },
-        {
-          label: "Total chars",
-          value: `${tts.reduce((s, m) => s + m.characters_count, 0)}`,
-        },
-      ]),
-    );
-  }
-
-  const vad = collectMetrics(events, "vad_metrics");
-  if (vad.length > 0) {
-    cards.push(
-      trendCard(
-        "vad-idle-time",
-        "VAD Idle Time",
-        vad.map((m) => ({ t: m.timestamp, v: m.idle_time })),
-        "s",
-      ),
-    );
-    cards.push(
-      summaryCard("vad-summary", "VAD", [
-        { label: "Count", value: `${vad.length}` },
-        {
-          label: "Total inferences",
-          value: `${vad.reduce((s, m) => s + m.inference_count, 0)}`,
-        },
-      ]),
     );
   }
 
@@ -262,32 +241,42 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
         "Realtime TTFT",
         rt.map((m) => ({ t: m.timestamp, v: m.ttft })),
         "s",
+        "Time to first token from the realtime model",
       ),
       trendCard(
         "realtime-duration",
         "Realtime Duration",
         rt.map((m) => ({ t: m.timestamp, v: m.duration })),
         "s",
+        "Total realtime model inference time per request",
       ),
       trendCard(
         "realtime-speed",
         "Realtime Speed",
         rt.map((m) => ({ t: m.timestamp, v: m.tokens_per_second })),
         "tok/s",
+        "Realtime model output token generation rate",
       ),
       summaryCard("realtime-summary", "Realtime Summary", [
-        { label: "Count", value: `${rt.length}` },
+        {
+          label: "Count",
+          value: `${rt.length}`,
+          tooltip: "Number of realtime model requests",
+        },
         {
           label: "Total tokens",
           value: `${rt.reduce((s, m) => s + m.total_tokens, 0)}`,
+          tooltip: "Sum of input and output tokens",
         },
         {
           label: "Input tokens",
           value: `${rt.reduce((s, m) => s + m.input_tokens, 0)}`,
+          tooltip: "Total tokens sent to the model",
         },
         {
           label: "Output tokens",
           value: `${rt.reduce((s, m) => s + m.output_tokens, 0)}`,
+          tooltip: "Total tokens generated by the model",
         },
       ]),
     );
@@ -298,9 +287,8 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
 
 function sectionTitleFromCardId(id: string): string {
   if (id.startsWith("llm-")) return "LLM";
-  if (id.startsWith("user-turn-")) return "User Turn";
+  if (id.startsWith("user-turn-")) return "Turn";
   if (id.startsWith("tts-")) return "TTS";
-  if (id.startsWith("vad-")) return "VAD";
   if (id.startsWith("realtime-")) return "Realtime";
   return "Metrics";
 }
@@ -550,7 +538,7 @@ function MiniTrendChart({
             rx="1"
           />
           <g
-            transform={`translate(${Math.min(width - 220, Math.max(left + 8, hoveredPoint.x + 14))}, ${Math.max(top + 6, hoveredPoint.y + 8)})`}
+            transform={`translate(${Math.min(width - 220, Math.max(left + 8, hoveredPoint.x + 14))}, ${Math.min(height - 56, Math.max(top + 6, hoveredPoint.y + 8))})`}
           >
             <rect
               x="0"
@@ -558,15 +546,15 @@ function MiniTrendChart({
               width="200"
               height="50"
               rx="6"
-              fill="rgba(0, 0, 0, 0.85)"
-              stroke="rgba(255,255,255,0.16)"
+              fill="#000"
+              stroke="rgba(255,255,255,0.2)"
             />
             <text
               x="10"
               y="17"
               fontSize="9.5"
               fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-              fill="rgba(255,255,255,0.76)"
+              fill="rgba(255,255,255,0.9)"
             >
               {hoverTimestamp}
             </text>
@@ -582,7 +570,7 @@ function MiniTrendChart({
               y="34"
               fontSize="9.8"
               fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-              fill="rgba(255,255,255,0.82)"
+              fill="#fff"
             >
               {`${label}: ${hoverLabel}`}
             </text>
@@ -675,6 +663,7 @@ const TITLE_FONT_STACK =
 
 export interface MetricsDisplayProps {
   metricsEvents: ClientMetricsCollectedEvent[];
+  events: ClientEvent[];
   className?: string;
 }
 
@@ -688,9 +677,25 @@ export interface MetricsDisplayProps {
  */
 export function MetricsDisplay({
   metricsEvents,
+  events,
   className,
 }: MetricsDisplayProps) {
-  const cards = useMemo(() => buildCards(metricsEvents), [metricsEvents]);
+  const e2eDelays = useMemo(() => computeE2eDelays(events), [events]);
+  const cards = useMemo(() => {
+    const c = buildCards(metricsEvents);
+    if (e2eDelays.length > 0) {
+      c.push(
+        trendCard(
+          "user-turn-e2e-delay",
+          "E2E Delay",
+          e2eDelays,
+          "s",
+          "Time from user stopping speech to agent starting speech, including VAD endpointing delay",
+        ),
+      );
+    }
+    return c;
+  }, [metricsEvents, e2eDelays]);
   const sections = useMemo(() => buildSections(cards), [cards]);
 
   if (cards.length === 0) {
@@ -758,7 +763,7 @@ export function MetricsDisplay({
                       borderColor: "var(--lk-dbg-border)",
                     }}
                   >
-                    <div className="px-3 py-2 flex items-center gap-1.5">
+                    <div className="px-3 pt-1 pb-5 flex items-center gap-1.5">
                       <h3
                         className="text-xs font-normal uppercase tracking-wider text-gray-500"
                         style={{
@@ -767,7 +772,7 @@ export function MetricsDisplay({
                       >
                         {card.title}
                       </h3>
-                      <InfoTooltip content={`${card.title} trend details`} />
+                      {card.tooltip && <InfoTooltip content={card.tooltip} />}
                     </div>
                     <div className="px-3 pb-3">
                       <MiniTrendChart
@@ -797,9 +802,9 @@ export function MetricsDisplay({
                           >
                             {stat.label}
                           </span>
-                          <InfoTooltip
-                            content={`${stat.label}: ${stat.value}`}
-                          />
+                          {stat.tooltip && (
+                            <InfoTooltip content={stat.tooltip} />
+                          )}
                         </div>
                         <div className="flex-1 flex items-center justify-center">
                           <span

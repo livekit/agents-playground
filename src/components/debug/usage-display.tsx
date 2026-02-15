@@ -1,0 +1,265 @@
+import type {
+  AgentSessionUsage,
+  LLMModelUsage,
+  STTModelUsage,
+  TTSModelUsage,
+} from "@/lib/types";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const UNIT_CLASS = "text-[20px] ml-0.5 text-gray-500";
+
+function DurationValue({ seconds }: { seconds: number }) {
+  if (seconds < 60) {
+    return (
+      <>
+        {seconds.toFixed(1)}
+        <span className={UNIT_CLASS}>s</span>
+      </>
+    );
+  }
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return (
+    <>
+      {m}
+      <span className={UNIT_CLASS}>m </span>
+      {s.toFixed(1)}
+      <span className={UNIT_CLASS}>s</span>
+    </>
+  );
+}
+
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
+function modelLabel(provider: string, model: string): string {
+  const parts = [provider, model].filter(Boolean);
+  return parts.length > 0 ? parts.join(" - ") : "Unknown";
+}
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface UsageDisplayProps {
+  sessionUsage: AgentSessionUsage | null;
+  className?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
+  if (!sessionUsage || sessionUsage.model_usage.length === 0) {
+    return (
+      <div
+        data-slot="usage-display"
+        className={`flex items-center justify-center h-full text-xs${className ? ` ${className}` : ""}`}
+        style={{ background: "var(--lk-dbg-bg)", color: "var(--lk-dbg-fg5)" }}
+      >
+        No usage data yet
+      </div>
+    );
+  }
+
+  const llmUsages = sessionUsage.model_usage.filter(
+    (u): u is LLMModelUsage => u.type === "llm_usage",
+  );
+  const sttUsages = sessionUsage.model_usage.filter(
+    (u): u is STTModelUsage => u.type === "stt_usage",
+  );
+  const ttsUsages = sessionUsage.model_usage.filter(
+    (u): u is TTSModelUsage => u.type === "tts_usage",
+  );
+
+  return (
+    <div
+      data-slot="usage-display"
+      className={`flex flex-col h-full overflow-y-auto${className ? ` ${className}` : ""}`}
+      style={{ background: "var(--lk-dbg-bg)" }}
+    >
+      <div className="flex flex-col gap-2 p-3">
+        {llmUsages.map((u) => (
+          <ModelSection
+            key={`llm-${u.provider}-${u.model}`}
+            label={modelLabel(u.provider, u.model)}
+          >
+            <StatCard
+              label="Input Tokens"
+              tooltip="Total input tokens / cached input tokens"
+              value={
+                <>
+                  {formatNumber(u.input_tokens)}
+                  <span className="text-[20px] text-gray-500">
+                    {" / "}
+                    {formatNumber(u.input_cached_tokens)}
+                  </span>
+                </>
+              }
+            />
+            <StatCard
+              label="Output Tokens"
+              value={formatNumber(u.output_tokens)}
+            />
+          </ModelSection>
+        ))}
+        {sttUsages.map((u) => (
+          <ModelSection
+            key={`stt-${u.provider}-${u.model}`}
+            label={modelLabel(u.provider, u.model)}
+          >
+            <StatCard
+              label="Audio Duration"
+              value={<DurationValue seconds={u.audio_duration} />}
+            />
+          </ModelSection>
+        ))}
+        {ttsUsages.map((u) => (
+          <ModelSection
+            key={`tts-${u.provider}-${u.model}`}
+            label={modelLabel(u.provider, u.model)}
+          >
+            <StatCard
+              label="Characters"
+              value={formatNumber(u.characters_count)}
+            />
+            <StatCard
+              label="Audio Duration"
+              value={<DurationValue seconds={u.audio_duration} />}
+            />
+          </ModelSection>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// InfoTooltip
+// ---------------------------------------------------------------------------
+
+function InfoDotIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        stroke="rgba(255, 255, 255, 0.45)"
+        strokeWidth="1"
+        fill="none"
+      />
+      <line
+        x1="8"
+        y1="7"
+        x2="8"
+        y2="10.5"
+        stroke="rgba(255, 255, 255, 0.55)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="4.8" r="0.7" fill="rgba(255, 255, 255, 0.55)" />
+    </svg>
+  );
+}
+
+function InfoTooltip({ content }: { content: string }) {
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        className="peer inline-flex items-center cursor-help"
+        style={{ color: "var(--lk-dbg-fg5)" }}
+        aria-label={content}
+      >
+        <InfoDotIcon />
+      </button>
+      <span
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded px-2 py-1 text-[10px] opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100"
+        style={{
+          background: "rgba(0, 0, 0, 0.9)",
+          color: "var(--lk-dbg-fg3)",
+          border: "1px solid var(--lk-dbg-border)",
+        }}
+      >
+        {content}
+      </span>
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ModelSection — groups stats under a model label
+// ---------------------------------------------------------------------------
+
+const TITLE_FONT_STACK =
+  'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+
+function ModelSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        className="text-[10px] font-normal uppercase tracking-wider text-gray-500 px-1"
+        style={{ fontFamily: TITLE_FONT_STACK }}
+      >
+        {label}
+      </span>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StatCard
+// ---------------------------------------------------------------------------
+
+function StatCard({
+  label,
+  value,
+  tooltip,
+}: {
+  label: string;
+  value: React.ReactNode;
+  tooltip?: string;
+}) {
+  return (
+    <div
+      className="border rounded-md px-3 py-2.5 min-h-[168px] flex flex-col justify-between"
+      style={{
+        borderColor: "var(--lk-dbg-border)",
+        background: "rgba(0, 0, 0, 0.16)",
+      }}
+    >
+      <div className="flex items-center gap-1.5">
+        <span
+          className="text-[10px] font-normal uppercase tracking-wider text-gray-500"
+          style={{ fontFamily: TITLE_FONT_STACK }}
+        >
+          {label}
+        </span>
+        {tooltip && <InfoTooltip content={tooltip} />}
+      </div>
+      <div className="flex-1 flex items-center justify-center">
+        <span
+          className="text-[38px] leading-[1] font-normal tracking-tight text-center w-full"
+          style={{
+            color: "var(--lk-theme-color, var(--lk-dbg-fg))",
+          }}
+        >
+          {value}
+        </span>
+      </div>
+    </div>
+  );
+}

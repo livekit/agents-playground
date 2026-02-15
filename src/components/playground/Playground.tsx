@@ -99,6 +99,7 @@ export default function Playground({
     events: clientEvents,
     interruptionEvents,
     metricsEvents,
+    sessionUsage,
     clearEvents,
   } = useClientEvents(session.room);
 
@@ -669,6 +670,7 @@ export default function Playground({
           events={clientEvents}
           metricsEvents={metricsEvents}
           interruptionEvents={interruptionEvents}
+          sessionUsage={sessionUsage}
           onClearEvents={clearEvents}
         />
         <RoomAudioRenderer />

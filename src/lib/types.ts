@@ -42,6 +42,8 @@ export interface ClientUserStateChangedEvent {
   old_state: UserState;
   new_state: UserState;
   created_at: number;
+  /** VAD min_endpointing_delay in seconds, if present. */
+  delay?: number;
 }
 
 export interface ClientConversationItemAddedEvent {
@@ -163,6 +165,59 @@ export interface ClientUserInterruptionEvent {
   overlap_speech_started_at: number | null;
 }
 
+// ---------------------------------------------------------------------------
+// Session usage (cumulative per-model breakdowns from the server)
+// ---------------------------------------------------------------------------
+
+export interface LLMModelUsage {
+  type: "llm_usage";
+  provider: string;
+  model: string;
+  input_tokens: number;
+  input_cached_tokens: number;
+  input_audio_tokens: number;
+  input_cached_audio_tokens: number;
+  input_text_tokens: number;
+  input_cached_text_tokens: number;
+  input_image_tokens: number;
+  input_cached_image_tokens: number;
+  output_tokens: number;
+  output_audio_tokens: number;
+  output_text_tokens: number;
+  session_duration: number;
+}
+
+export interface TTSModelUsage {
+  type: "tts_usage";
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  characters_count: number;
+  audio_duration: number;
+}
+
+export interface STTModelUsage {
+  type: "stt_usage";
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  audio_duration: number;
+}
+
+export type ModelUsage = LLMModelUsage | TTSModelUsage | STTModelUsage;
+
+export interface AgentSessionUsage {
+  model_usage: ModelUsage[];
+}
+
+export interface ClientSessionUsageEvent {
+  type: "session_usage";
+  usage: AgentSessionUsage;
+  created_at: number;
+}
+
 export type ClientEvent =
   | ClientAgentStateChangedEvent
   | ClientUserStateChangedEvent
@@ -171,7 +226,8 @@ export type ClientEvent =
   | ClientFunctionToolsExecutedEvent
   | ClientMetricsCollectedEvent
   | ClientErrorEvent
-  | ClientUserInterruptionEvent;
+  | ClientUserInterruptionEvent
+  | ClientSessionUsageEvent;
 
 export type ClientEventType = ClientEvent["type"];
 

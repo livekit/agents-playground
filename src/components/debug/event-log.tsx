@@ -267,7 +267,10 @@ interface EventRow {
 }
 
 type MetricType = ClientMetricsCollectedEvent["metrics"]["type"];
-const DEFAULT_DISABLED_METRIC_TYPES = new Set<MetricType>(["vad_metrics"]);
+const DEFAULT_DISABLED_METRIC_TYPES = new Set<MetricType>([
+  "vad_metrics",
+  "stt_metrics",
+]);
 
 function getDefaultEnabledMetricTypes(
   availableMetricTypes: readonly MetricType[],
