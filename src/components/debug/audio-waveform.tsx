@@ -60,6 +60,39 @@ interface IndexedMarker {
   variant: "speaking-start" | "speaking-end" | "state-label";
 }
 
+/**
+ * Draw a bracket marker: vertical line with a short horizontal tick at the top
+ * and bottom. `direction` controls whether ticks point right (+1) or left (−1).
+ */
+function drawBracket(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  top: number,
+  height: number,
+  color: string,
+  direction: 1 | -1,
+) {
+  const bot = top + height;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.8;
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, bot);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x + direction * MARKER_BRACKET_TICK, top);
+  ctx.moveTo(x, bot);
+  ctx.lineTo(x + direction * MARKER_BRACKET_TICK, bot);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function AudioWaveform({
   userTrack,
   agentTrack,
@@ -260,25 +293,10 @@ export function AudioWaveform({
         ctx.save();
 
         if (mk.variant === "speaking-start") {
-          // Vertical line
-          ctx.strokeStyle = mk.color;
-          ctx.lineWidth = 1;
-          ctx.globalAlpha = 0.8;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(x, trackTop);
-          ctx.lineTo(x, trackBot);
-          ctx.stroke();
-
-          // Bracket ticks pointing right
-          ctx.beginPath();
-          ctx.moveTo(x, trackTop);
-          ctx.lineTo(x + MARKER_BRACKET_TICK, trackTop);
-          ctx.moveTo(x, trackBot);
-          ctx.lineTo(x + MARKER_BRACKET_TICK, trackBot);
-          ctx.stroke();
+          drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, 1);
 
           // Gradient fill fading to the right
+          ctx.save();
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
           const grad = ctx.createLinearGradient(x, 0, x + gradW, 0);
           grad.addColorStop(0, mk.color);
@@ -286,26 +304,12 @@ export function AudioWaveform({
           ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
           ctx.fillStyle = grad;
           ctx.fillRect(x, trackTop, gradW, TRACK_HEIGHT);
+          ctx.restore();
         } else if (mk.variant === "speaking-end") {
-          // Vertical line
-          ctx.strokeStyle = mk.color;
-          ctx.lineWidth = 1;
-          ctx.globalAlpha = 0.8;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(x, trackTop);
-          ctx.lineTo(x, trackBot);
-          ctx.stroke();
-
-          // Bracket ticks pointing left
-          ctx.beginPath();
-          ctx.moveTo(x, trackTop);
-          ctx.lineTo(x - MARKER_BRACKET_TICK, trackTop);
-          ctx.moveTo(x, trackBot);
-          ctx.lineTo(x - MARKER_BRACKET_TICK, trackBot);
-          ctx.stroke();
+          drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, -1);
 
           // Gradient fill fading from the left
+          ctx.save();
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
           const grad = ctx.createLinearGradient(x - gradW, 0, x, 0);
           grad.addColorStop(0, "transparent");
@@ -313,6 +317,7 @@ export function AudioWaveform({
           ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
           ctx.fillStyle = grad;
           ctx.fillRect(x - gradW, trackTop, gradW, TRACK_HEIGHT);
+          ctx.restore();
         } else {
           // state-label: dashed vertical line
           ctx.strokeStyle = mk.color;
@@ -339,6 +344,26 @@ export function AudioWaveform({
         );
 
         ctx.restore();
+      }
+
+      // --- Highlight boundary markers (bracket style, matching state-change markers) ---
+      for (const hl of indexHighlights) {
+        const startVi = hl.startIndex - visibleStart;
+        const endVi = hl.endIndex - visibleStart;
+
+        if (startVi >= 0 && startVi < visibleCount) {
+          const x = Math.round(LABEL_WIDTH + startVi * TICK_WIDTH);
+          if (x > LABEL_WIDTH && x < width) {
+            drawBracket(ctx, x, userTrackTop, TRACK_HEIGHT, hl.color, 1);
+          }
+        }
+
+        if (endVi >= 0 && endVi < visibleCount) {
+          const x = Math.round(LABEL_WIDTH + endVi * TICK_WIDTH);
+          if (x > LABEL_WIDTH && x < width) {
+            drawBracket(ctx, x, userTrackTop, TRACK_HEIGHT, hl.color, -1);
+          }
+        }
       }
 
       for (const hl of indexHighlights) {

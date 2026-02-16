@@ -97,13 +97,28 @@ export function DebugPanel({
   // Server timestamps are in server clock and delayed by the uplink pipeline.
   // To place them on the client waveform:
   //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
-  //   where clock_offset(client−server) ≈ networkLatency − clientToSfu
+  //   where clock_offset(client−server) ≈ networkLatency − downlink_transit
+  //   and downlink_transit ≈ sfuToAgent + clientToSfu  (agent→SFU + SFU→client)
   const highlights = useMemo<WaveformHighlight[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
     const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
-    // Approximate clock offset: networkLatency includes both downlink and clock skew
-    const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
+    const sfuToAgent = uplinkLatency?.sfuToAgent ?? 0;
+    // networkLatency = downlink_transit + clock_skew, so subtract full downlink path
+    const downlinkTransit = clientToSfu + sfuToAgent;
+    const clockOffset =
+      networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     const correction = clockOffset - pipeline;
+
+    if (process.env.NODE_ENV === "development" && interruptionEvents.length > 0) {
+      console.log(
+        "[waveform correction] networkLatency=%sms − downlink(%sms) = clockOffset(%sms); clockOffset − pipeline(%sms) = correction(%sms)",
+        (networkLatency * 1000).toFixed(1),
+        (downlinkTransit * 1000).toFixed(1),
+        (clockOffset * 1000).toFixed(1),
+        (pipeline * 1000).toFixed(1),
+        (correction * 1000).toFixed(1),
+      );
+    }
 
     return interruptionEvents.map((evt) => ({
       start: (evt.overlap_speech_started_at ?? evt.created_at) + correction,
@@ -116,12 +131,16 @@ export function DebugPanel({
   const stateMarkers = useMemo<WaveformMarker[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
     const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
-    const clockOffset = networkLatency > 0 ? networkLatency - clientToSfu : 0;
-    // User state is detected by the agent's VAD on audio that traveled the
-    // full uplink pipeline, so subtract pipeline to align with the client
-    // waveform. Agent state is local to the agent — only clock offset needed.
+    const sfuToAgent = uplinkLatency?.sfuToAgent ?? 0;
+    const downlinkTransit = clientToSfu + sfuToAgent;
+    const clockOffset =
+      networkLatency > 0 ? networkLatency - downlinkTransit : 0;
+    // User state: agent's VAD detects speech after the uplink pipeline, so
+    // subtract pipeline to align with when the user actually spoke.
+    // Agent state: audio travels the downlink before appearing on the client
+    // waveform, so correction = clockOffset + downlink = networkLatency.
     const userCorrection = clockOffset - pipeline;
-    const agentCorrection = clockOffset;
+    const agentCorrection = networkLatency > 0 ? networkLatency : 0;
 
     const markers: WaveformMarker[] = [];
     for (const evt of events) {
@@ -337,7 +356,7 @@ export function DebugPanel({
               }}
               title={
                 uplinkLatency
-                  ? `Uplink pipeline: ${(uplinkLatency.total * 1000).toFixed(0)}ms (client→SFU ${(uplinkLatency.clientToSfu * 1000).toFixed(0)}ms + SFU→agent ${(uplinkLatency.sfuToAgent * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
+                  ? `Uplink pipeline: ${(uplinkLatency.total * 1000).toFixed(0)}ms (send ${(uplinkLatency.sendDelay * 1000).toFixed(0)}ms + client→SFU ${(uplinkLatency.clientToSfu * 1000).toFixed(0)}ms + SFU→agent ${(uplinkLatency.sfuToAgent * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
                   : ""
               }
             >

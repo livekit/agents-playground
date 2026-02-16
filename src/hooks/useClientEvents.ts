@@ -53,8 +53,8 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
       _participantInfo: { identity: string },
     ) => {
       try {
-        const data = await reader.readAll();
         const receivedAt = Date.now() / 1000;
+        const data = await reader.readAll();
         const parsed = JSON.parse(data);
         if (!isClientEvent(parsed)) return;
         appendEvent(parsed, receivedAt);
