@@ -47,6 +47,7 @@ type MetricByType<T extends MetricType> = Extract<
 >;
 type CardData = SummaryCardData | TrendCardData;
 const MOVING_AVERAGE_WINDOW = 5;
+const STALE_TREND_RATIO = 0.6;
 
 function collectMetrics<T extends MetricType>(
   events: ClientMetricsCollectedEvent[],
@@ -64,14 +65,9 @@ function collectMetrics<T extends MetricType>(
 
 function toSeries(points: TrendPoint[], maxPoints = 40): TrendPoint[] {
   if (points.length <= maxPoints) return points;
-  const step = points.length / maxPoints;
-  const reduced: TrendPoint[] = [];
-  for (let i = 0; i < maxPoints; i++) {
-    const idx = Math.min(points.length - 1, Math.floor(i * step));
-    const point = points[idx];
-    if (point) reduced.push(point);
-  }
-  return reduced;
+  // Keep a stable trailing window for live charts; rebucketing the full
+  // history each render causes visible hover/marker jitter while streaming.
+  return points.slice(points.length - maxPoints);
 }
 
 function movingAveragePoints(
@@ -281,9 +277,11 @@ function MiniTrendChart({
   const maskGradientId = useId();
   const maskId = useId();
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null);
+  const [frozenPoints, setFrozenPoints] = useState<TrendPoint[] | null>(null);
+  const displayedPoints = frozenPoints ?? points;
 
-  if (points.length === 0) {
+  if (displayedPoints.length === 0) {
     return (
       <div
         className="h-[160px] flex items-center justify-center text-[10px]"
@@ -302,25 +300,104 @@ function MiniTrendChart({
   const bottom = 30;
   let min = Infinity;
   let max = -Infinity;
-  for (const p of points) {
+  for (const p of displayedPoints) {
     if (p.v < min) min = p.v;
     if (p.v > max) max = p.v;
   }
   const span = Math.max(max - min, 1e-9);
+  const minTime = displayedPoints[0]?.t ?? 0;
+  const maxTime = displayedPoints[displayedPoints.length - 1]?.t ?? minTime;
+  const timeSpan = Math.max(maxTime - minTime, 1e-9);
 
-  const plotted = points.map((point, i) => {
+  const plotted = displayedPoints.map((point, i) => {
     const x =
-      points.length === 1
+      displayedPoints.length === 1
         ? width / 2
-        : left + (i / (points.length - 1)) * (width - left - right);
+        : left + ((point.t - minTime) / timeSpan) * (width - left - right);
     const norm = (point.v - min) / span;
     const y = top + (1 - norm) * (height - top - bottom);
     return { x, y };
   });
 
+  const firstTimestamp = displayedPoints[0]?.t ?? 0;
+  const lastTimestamp =
+    displayedPoints[displayedPoints.length - 1]?.t ?? firstTimestamp;
+  const staleCutoffSec =
+    firstTimestamp + (lastTimestamp - firstTimestamp) * STALE_TREND_RATIO;
+
   const linePath = plotted
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
     .join(" ");
+  const [staleLinePath, freshLinePath] = (() => {
+    type XY = { x: number; y: number };
+    const stalePolylines: XY[][] = [];
+    const freshPolylines: XY[][] = [];
+    const epsilon = 0.01;
+
+    const appendSegment = (target: XY[][], start: XY, end: XY) => {
+      const polyline = target[target.length - 1];
+      if (!polyline) {
+        target.push([start, end]);
+        return;
+      }
+      const tail = polyline[polyline.length - 1];
+      const isConnected =
+        tail !== undefined &&
+        Math.abs(tail.x - start.x) < epsilon &&
+        Math.abs(tail.y - start.y) < epsilon;
+      if (isConnected) {
+        polyline.push(end);
+        return;
+      }
+      target.push([start, end]);
+    };
+
+    for (let i = 1; i < plotted.length; i++) {
+      const prev = plotted[i - 1];
+      const curr = plotted[i];
+      const prevPoint = displayedPoints[i - 1];
+      const currPoint = displayedPoints[i];
+      if (!prev || !curr || !prevPoint || !currPoint) continue;
+
+      const prevStale = prevPoint.t <= staleCutoffSec;
+      const currStale = currPoint.t <= staleCutoffSec;
+      if (prevStale === currStale) {
+        appendSegment(prevStale ? stalePolylines : freshPolylines, prev, curr);
+        continue;
+      }
+
+      const dt = currPoint.t - prevPoint.t;
+      if (dt === 0) {
+        appendSegment(prevStale ? stalePolylines : freshPolylines, prev, curr);
+        continue;
+      }
+
+      const ratio = Math.max(
+        0,
+        Math.min(1, (staleCutoffSec - prevPoint.t) / dt),
+      );
+      const split = {
+        x: prev.x + (curr.x - prev.x) * ratio,
+        y: prev.y + (curr.y - prev.y) * ratio,
+      };
+      appendSegment(prevStale ? stalePolylines : freshPolylines, prev, split);
+      appendSegment(currStale ? stalePolylines : freshPolylines, split, curr);
+    }
+
+    const toPath = (polylines: XY[][]) =>
+      polylines
+        .map((polyline) =>
+          polyline
+            .map(
+              (point, i) =>
+                `${i === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+            )
+            .join(" "),
+        )
+        .join(" ");
+
+    return [toPath(stalePolylines), toPath(freshPolylines)];
+  })();
   const lastPoint = plotted[plotted.length - 1] ?? {
     x: width - right,
     y: height / 2,
@@ -336,7 +413,11 @@ function MiniTrendChart({
   });
 
   const xTickIdx = Array.from(
-    new Set([0, Math.floor((points.length - 1) / 2), points.length - 1]),
+    new Set([
+      0,
+      Math.floor((displayedPoints.length - 1) / 2),
+      displayedPoints.length - 1,
+    ]),
   );
 
   const formatYAxis = (v: number): string => {
@@ -366,23 +447,84 @@ function MiniTrendChart({
       })
       .toLowerCase();
 
-  const hoveredPoint = hoverIndex !== null ? plotted[hoverIndex] : undefined;
-  const hoveredRaw = hoverIndex !== null ? points[hoverIndex] : undefined;
-  const hoverLabel = hoveredRaw !== undefined ? formatYAxis(hoveredRaw.v) : "";
+  const hoverSample = (() => {
+    if (hoverRatio === null || displayedPoints.length === 0) return undefined;
+    const hoverX = left + hoverRatio * (width - left - right);
+    if (displayedPoints.length === 1) {
+      const onlyPoint = displayedPoints[0];
+      const onlyPlotted = plotted[0];
+      if (!onlyPoint || !onlyPlotted) return undefined;
+      return { x: width / 2, y: onlyPlotted.y, t: onlyPoint.t, v: onlyPoint.v };
+    }
+
+    let leftIndex = 0;
+    for (let i = 0; i < plotted.length - 1; i++) {
+      const curr = plotted[i];
+      const next = plotted[i + 1];
+      if (!curr || !next) continue;
+      if (hoverX <= next.x) {
+        leftIndex = i;
+        break;
+      }
+      leftIndex = i + 1;
+    }
+    const rightIndex = Math.min(displayedPoints.length - 1, leftIndex + 1);
+    const leftRaw = displayedPoints[leftIndex];
+    const rightRaw = displayedPoints[rightIndex];
+    const leftPlotted = plotted[leftIndex];
+    const rightPlotted = plotted[rightIndex];
+    if (!leftRaw || !rightRaw || !leftPlotted || !rightPlotted)
+      return undefined;
+    const dx = rightPlotted.x - leftPlotted.x;
+    const blend =
+      dx === 0 ? 0 : Math.max(0, Math.min(1, (hoverX - leftPlotted.x) / dx));
+
+    return {
+      x: hoverX,
+      y: leftPlotted.y + (rightPlotted.y - leftPlotted.y) * blend,
+      t: leftRaw.t + (rightRaw.t - leftRaw.t) * blend,
+      v: leftRaw.v + (rightRaw.v - leftRaw.v) * blend,
+    };
+  })();
+  const hoverLabel =
+    hoverSample !== undefined ? formatYAxis(hoverSample.v) : "";
   const hoverTimestamp =
-    hoveredRaw !== undefined
-      ? new Date(hoveredRaw.t * 1000)
-          .toLocaleString(undefined, {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-          })
-          .toLowerCase()
+    hoverSample !== undefined
+      ? new Date(hoverSample.t * 1000).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        })
       : "";
+  const tooltipHeight = 68;
+  const tooltipPaddingX = 14;
+  const tooltipTimestampY = 22;
+  const tooltipValueRowY = 45;
+  const tooltipValueTextX = tooltipPaddingX + 11;
+  const tooltipMetricLabel = `${label}:`;
+  const tooltipMetricValue = hoverLabel;
+  const tooltipValueGap = 8;
+  const tooltipMinWidth = 158;
+  const tooltipMaxWidth = 300;
+  const monoCharWidth = 5.8;
+  const sansCharWidth = 5.2;
+  const timestampTextWidth = hoverTimestamp.length * monoCharWidth;
+  const labelTextWidth = tooltipMetricLabel.length * sansCharWidth;
+  const valueTextWidth = tooltipMetricValue.length * sansCharWidth;
+  const valueRowTextWidth =
+    labelTextWidth + tooltipValueGap + valueTextWidth + 11;
+  const tooltipContentWidth = Math.max(timestampTextWidth, valueRowTextWidth);
+  const tooltipWidth = Math.min(
+    tooltipMaxWidth,
+    Math.max(
+      tooltipMinWidth,
+      Math.ceil(tooltipContentWidth + tooltipPaddingX * 2),
+    ),
+  );
 
   return (
     <svg
@@ -392,17 +534,20 @@ function MiniTrendChart({
       aria-hidden
       onMouseMove={(e) => {
         const svg = svgRef.current;
-        if (!svg || points.length < 2) return;
+        if (!svg) return;
+        if (frozenPoints === null) setFrozenPoints(displayedPoints);
         const rect = svg.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * width;
-        const ratio = (x - left) / (width - left - right);
-        const idx = Math.max(
+        const ratio = Math.max(
           0,
-          Math.min(points.length - 1, Math.round(ratio * (points.length - 1))),
+          Math.min(1, (x - left) / (width - left - right)),
         );
-        setHoverIndex(idx);
+        setHoverRatio(ratio);
       }}
-      onMouseLeave={() => setHoverIndex(null)}
+      onMouseLeave={() => {
+        setHoverRatio(null);
+        setFrozenPoints(null);
+      }}
     >
       <defs>
         <pattern
@@ -473,26 +618,38 @@ function MiniTrendChart({
         strokeOpacity="0.45"
         strokeWidth="1"
       />
-      <path
-        d={linePath}
-        fill="none"
-        stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
-        strokeWidth="2.4"
-      />
-      {hoveredPoint && hoveredRaw && (
+      {staleLinePath && (
+        <path
+          d={staleLinePath}
+          fill="none"
+          stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
+          strokeOpacity="0.9"
+          strokeWidth="2.4"
+          strokeDasharray="7 6"
+        />
+      )}
+      {freshLinePath && (
+        <path
+          d={freshLinePath}
+          fill="none"
+          stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
+          strokeWidth="2.4"
+        />
+      )}
+      {hoverSample && (
         <>
           <line
             x1={left}
             x2={width - right}
-            y1={hoveredPoint.y}
-            y2={hoveredPoint.y}
+            y1={hoverSample.y}
+            y2={hoverSample.y}
             stroke="rgba(255, 255, 255, 0.38)"
             strokeDasharray="3 5"
             strokeWidth="1"
           />
           <line
-            x1={hoveredPoint.x}
-            x2={hoveredPoint.x}
+            x1={hoverSample.x}
+            x2={hoverSample.x}
             y1={top}
             y2={graphBottom}
             stroke="rgba(255, 255, 255, 0.38)"
@@ -500,8 +657,8 @@ function MiniTrendChart({
             strokeWidth="1"
           />
           <rect
-            x={hoveredPoint.x - 4}
-            y={hoveredPoint.y - 4}
+            x={hoverSample.x - 4}
+            y={hoverSample.y - 4}
             width="8"
             height="8"
             fill="var(--lk-dbg-bg)"
@@ -509,53 +666,13 @@ function MiniTrendChart({
             strokeWidth="1.8"
             rx="1"
           />
-          <g
-            transform={`translate(${Math.min(width - 220, Math.max(left + 8, hoveredPoint.x + 14))}, ${Math.min(height - 56, Math.max(top + 6, hoveredPoint.y + 8))})`}
-          >
-            <rect
-              x="0"
-              y="0"
-              width="200"
-              height="50"
-              rx="6"
-              fill="#000"
-              stroke="rgba(255,255,255,0.2)"
-            />
-            <text
-              x="10"
-              y="17"
-              fontSize="9.5"
-              fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-              fill="rgba(255,255,255,0.9)"
-            >
-              {hoverTimestamp}
-            </text>
-            <rect
-              x="10"
-              y="27"
-              width="7"
-              height="7"
-              fill="var(--lk-theme-color, var(--lk-dbg-fg))"
-            />
-            <text
-              x="21"
-              y="34"
-              fontSize="9.8"
-              fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-              fill="#fff"
-            >
-              {`${label}: ${hoverLabel}`}
-            </text>
-          </g>
         </>
       )}
       {xTickIdx.map((idx, i) => {
-        const point = points[idx];
+        const point = displayedPoints[idx];
+        const plottedPoint = plotted[idx];
         if (!point) return null;
-        const x =
-          points.length === 1
-            ? width / 2
-            : left + (idx / (points.length - 1)) * (width - left - right);
+        const x = plottedPoint?.x ?? width / 2;
         return (
           <text
             key={i}
@@ -572,6 +689,48 @@ function MiniTrendChart({
           </text>
         );
       })}
+      {hoverSample && (
+        <g
+          transform={`translate(${Math.min(width - tooltipWidth, Math.max(left + 8, hoverSample.x + 14))}, ${Math.min(height - tooltipHeight, Math.max(top + 6, hoverSample.y + 8))})`}
+        >
+          <rect
+            x="0"
+            y="0"
+            width={tooltipWidth}
+            height={tooltipHeight}
+            rx="6"
+            fill="rgb(12, 12, 12)"
+            stroke="rgba(255,255,255,0.28)"
+          />
+          <text
+            x={tooltipPaddingX}
+            y={tooltipTimestampY}
+            fontSize="9.5"
+            fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+            fill="rgba(255,255,255,0.9)"
+          >
+            {hoverTimestamp}
+          </text>
+          <rect
+            x={tooltipPaddingX}
+            y={tooltipValueRowY - 8}
+            width="7"
+            height="7"
+            fill="var(--lk-theme-color, var(--lk-dbg-fg))"
+          />
+          <text
+            x={tooltipValueTextX}
+            y={tooltipValueRowY}
+            fontSize="9.8"
+            fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          >
+            <tspan fill="rgba(255,255,255,0.82)">{tooltipMetricLabel}</tspan>
+            <tspan dx={tooltipValueGap} fill="#fff">
+              {tooltipMetricValue}
+            </tspan>
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

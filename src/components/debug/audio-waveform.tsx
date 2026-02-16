@@ -33,6 +33,7 @@ const TICK_LABEL_COLOR = "rgba(255, 255, 255, 0.35)";
 const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
 const LABEL_ROW_HEIGHT = 18;
+const LABEL_ROW_GAP = 8;
 const STATE_LABEL_ROW_HEIGHT = 14;
 const MARKER_GRADIENT_SAMPLES = 20;
 const MARKER_GRADIENT_ALPHA = 0.25;
@@ -158,6 +159,7 @@ export function AudioWaveform({
       const canvasHeight =
         TIMELINE_HEIGHT +
         LABEL_ROW_HEIGHT +
+        LABEL_ROW_GAP +
         TRACK_HEIGHT * 2 +
         STATE_LABEL_ROW_HEIGHT * 2;
 
@@ -176,7 +178,7 @@ export function AudioWaveform({
       ctx.clearRect(0, 0, width, canvasHeight);
 
       const labelRowTop = TIMELINE_HEIGHT;
-      const waveTop = TIMELINE_HEIGHT + LABEL_ROW_HEIGHT;
+      const waveTop = TIMELINE_HEIGHT + LABEL_ROW_HEIGHT + LABEL_ROW_GAP;
       // Layout: User Track | User State Labels | Agent Track | Agent State Labels
       const userTrackTop = waveTop;
       const userStateLabelTop = userTrackTop + TRACK_HEIGHT;
@@ -291,7 +293,7 @@ export function AudioWaveform({
           ctx.setLineDash([]);
         }
 
-        if (mk.label !== "listening") {
+        if (mk.variant === "state-label" && mk.label !== "listening") {
           ctx.globalAlpha = 0.7;
           ctx.fillStyle = mk.color;
           ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";

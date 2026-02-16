@@ -161,22 +161,33 @@ export function DebugPanel({
       const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
       const correction = track === "user" ? userCorrection : agentCorrection;
 
-      let variant: WaveformMarker["variant"];
-      if (stateEvt.new_state === "speaking") {
-        variant = "speaking-start";
-      } else if (stateEvt.old_state === "speaking") {
-        variant = "speaking-end";
-      } else {
-        variant = "state-label";
-      }
+      const timestamp = stateEvt.created_at + correction;
+      const prevState = stateEvt.old_state;
+      const nextState = stateEvt.new_state;
+      const pushMarker = (variant: WaveformMarker["variant"]) => {
+        markers.push({
+          timestamp,
+          color,
+          label: nextState,
+          track,
+          variant,
+        });
+      };
 
-      markers.push({
-        timestamp: stateEvt.created_at + correction,
-        color,
-        label: stateEvt.new_state,
-        track,
-        variant,
-      });
+      if (prevState === "speaking") {
+        pushMarker("speaking-end");
+      }
+      if (nextState === "speaking") {
+        pushMarker("speaking-start");
+      }
+      if (
+        prevState !== "thinking" &&
+        nextState !== "thinking" &&
+        prevState !== "speaking" &&
+        nextState !== "speaking"
+      ) {
+        pushMarker("state-label");
+      }
     }
     return markers;
   }, [events, networkLatency, uplinkLatency]);
