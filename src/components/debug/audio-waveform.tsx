@@ -32,24 +32,32 @@ const TIMELINE_HEIGHT = 18;
 const TICK_LABEL_COLOR = "rgba(255, 255, 255, 0.35)";
 const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
-const HIGHLIGHT_FALLOFF_SAMPLES = 20;
-const HIGHLIGHT_MAX_ALPHA = 0.72;
 const LABEL_ROW_HEIGHT = 18;
 const STATE_LABEL_ROW_HEIGHT = 14;
 const MARKER_GRADIENT_SAMPLES = 20;
 const MARKER_GRADIENT_ALPHA = 0.25;
 const MARKER_BRACKET_TICK = 4;
 
+const VOICE_ICON_SVG =
+  "M7.75 3.75V20.25M3.75 9.75V14.25M12 7.75V16.25M16.25 5.75V18.25M20.25 9.75V14.25";
+const ROBOT_ICON_SVG =
+  "M9.75 14.75H14.25M12 2.75V4.75M2.25 8.75V11.25M21.75 8.75V11.25M9.25 10C9.25 10.4142 8.91421 10.75 8.5 10.75C8.08579 10.75 7.75 10.4142 7.75 10C7.75 9.58579 8.08579 9.25 8.5 9.25C8.91421 9.25 9.25 9.58579 9.25 10ZM16.25 10C16.25 10.4142 15.9142 10.75 15.5 10.75C15.0858 10.75 14.75 10.4142 14.75 10C14.75 9.58579 15.0858 9.25 15.5 9.25C15.9142 9.25 16.25 9.58579 16.25 10ZM3.25 4.75H20.75V16.25C20.75 17.9069 19.4069 19.25 17.75 19.25H6.25C4.59315 19.25 3.25 17.9069 3.25 16.25V4.75Z";
+let voiceIconPath: Path2D | null = null;
+let robotIconPath: Path2D | null = null;
+function getIconPath(track: "user" | "agent"): Path2D {
+  if (track === "user") {
+    return (voiceIconPath ??= new Path2D(VOICE_ICON_SVG));
+  }
+  return (robotIconPath ??= new Path2D(ROBOT_ICON_SVG));
+}
+const ICON_SCALE = 0.85;
+const ICON_SIZE = 24 * ICON_SCALE;
+
 interface IndexedHighlight {
   startIndex: number;
   endIndex: number;
   color: string;
   label?: string;
-}
-
-interface HighlightSampleStyle {
-  color: string;
-  alpha: number;
 }
 
 interface IndexedMarker {
@@ -60,10 +68,6 @@ interface IndexedMarker {
   variant: "speaking-start" | "speaking-end" | "state-label";
 }
 
-/**
- * Draw a bracket marker: vertical line with a short horizontal tick at the top
- * and bottom. `direction` controls whether ticks point right (+1) or left (−1).
- */
 function drawBracket(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -194,35 +198,6 @@ export function AudioWaveform({
           label: h.label,
         }));
 
-      // Build per-sample highlight lookup using center-weighted falloff.
-      const highlightMap = new Map<number, HighlightSampleStyle>();
-      for (const hl of indexHighlights) {
-        const lo = Math.max(0, hl.startIndex - visibleStart);
-        const hi = Math.min(visibleCount - 1, hl.endIndex - visibleStart);
-        if (hi < 0 || lo >= visibleCount) continue;
-
-        const center = (lo + hi) / 2;
-        const halfSpan = Math.max(1, (hi - lo + 1) / 2);
-        const sigma = Math.max(1, halfSpan + HIGHLIGHT_FALLOFF_SAMPLES);
-        const influenceRadius = Math.ceil(sigma * 2.5);
-        const start = Math.max(0, Math.floor(center - influenceRadius));
-        const end = Math.min(
-          visibleCount - 1,
-          Math.ceil(center + influenceRadius),
-        );
-
-        for (let i = start; i <= end; i++) {
-          const normalizedDistance = Math.abs(i - center) / sigma;
-          const gaussian = Math.exp(-(normalizedDistance * normalizedDistance));
-          const alpha = HIGHLIGHT_MAX_ALPHA * gaussian;
-          if (alpha <= 0.01) continue;
-          const prev = highlightMap.get(i);
-          if (!prev || alpha > prev.alpha) {
-            highlightMap.set(i, { color: hl.color, alpha });
-          }
-        }
-      }
-
       drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed);
 
       ctx.strokeStyle = CENTER_LINE_COLOR;
@@ -246,15 +221,8 @@ export function AudioWaveform({
           const centerY = userTrackTop + TRACK_HEIGHT / 2;
           const halfHeight =
             (userAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
-          const hl = highlightMap.get(visibleIndex);
           ctx.fillStyle = USER_COLOR;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
-          if (hl && hl.alpha > 0) {
-            ctx.globalAlpha = hl.alpha;
-            ctx.fillStyle = hl.color;
-            ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
-            ctx.globalAlpha = 1;
-          }
         }
 
         const agentAmp =
@@ -268,7 +236,6 @@ export function AudioWaveform({
         }
       }
 
-      // --- State change markers ---
       const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
         .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
         .map((m) => ({
@@ -295,8 +262,6 @@ export function AudioWaveform({
         if (mk.variant === "speaking-start") {
           drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, 1);
 
-          // Gradient fill fading to the right
-          ctx.save();
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
           const grad = ctx.createLinearGradient(x, 0, x + gradW, 0);
           grad.addColorStop(0, mk.color);
@@ -304,12 +269,9 @@ export function AudioWaveform({
           ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
           ctx.fillStyle = grad;
           ctx.fillRect(x, trackTop, gradW, TRACK_HEIGHT);
-          ctx.restore();
         } else if (mk.variant === "speaking-end") {
           drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, -1);
 
-          // Gradient fill fading from the left
-          ctx.save();
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
           const grad = ctx.createLinearGradient(x - gradW, 0, x, 0);
           grad.addColorStop(0, "transparent");
@@ -317,9 +279,7 @@ export function AudioWaveform({
           ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
           ctx.fillStyle = grad;
           ctx.fillRect(x - gradW, trackTop, gradW, TRACK_HEIGHT);
-          ctx.restore();
         } else {
-          // state-label: dashed vertical line
           ctx.strokeStyle = mk.color;
           ctx.lineWidth = 1;
           ctx.globalAlpha = 0.5;
@@ -331,39 +291,20 @@ export function AudioWaveform({
           ctx.setLineDash([]);
         }
 
-        // State label in the row directly below this marker's track
-        ctx.globalAlpha = 0.7;
-        ctx.fillStyle = mk.color;
-        ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          mk.label.toUpperCase(),
-          x,
-          labelRowY + STATE_LABEL_ROW_HEIGHT / 2,
-        );
+        if (mk.label !== "listening") {
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = mk.color;
+          ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            mk.label.toUpperCase(),
+            x,
+            labelRowY + STATE_LABEL_ROW_HEIGHT / 2,
+          );
+        }
 
         ctx.restore();
-      }
-
-      // --- Highlight boundary markers (bracket style, matching state-change markers) ---
-      for (const hl of indexHighlights) {
-        const startVi = hl.startIndex - visibleStart;
-        const endVi = hl.endIndex - visibleStart;
-
-        if (startVi >= 0 && startVi < visibleCount) {
-          const x = Math.round(LABEL_WIDTH + startVi * TICK_WIDTH);
-          if (x > LABEL_WIDTH && x < width) {
-            drawBracket(ctx, x, userTrackTop, TRACK_HEIGHT, hl.color, 1);
-          }
-        }
-
-        if (endVi >= 0 && endVi < visibleCount) {
-          const x = Math.round(LABEL_WIDTH + endVi * TICK_WIDTH);
-          if (x > LABEL_WIDTH && x < width) {
-            drawBracket(ctx, x, userTrackTop, TRACK_HEIGHT, hl.color, -1);
-          }
-        }
       }
 
       for (const hl of indexHighlights) {
@@ -425,6 +366,44 @@ export function AudioWaveform({
       ctx.textBaseline = "middle";
       ctx.fillText("User", 8, userTrackTop + TRACK_HEIGHT / 2);
       ctx.fillText("Agent", 8, agentTrackTop + TRACK_HEIGHT / 2);
+
+      const now = performance.now();
+      for (const track of ["user", "agent"] as const) {
+        const trackCenterY =
+          track === "user"
+            ? userTrackTop + TRACK_HEIGHT / 2
+            : agentTrackTop + TRACK_HEIGHT / 2;
+        const labelCenterX = 22;
+        const iconX = labelCenterX - ICON_SIZE / 2;
+        const iconY = trackCenterY - TRACK_HEIGHT / 2 - 4;
+        const iconPath = getIconPath(track);
+        const iconColor = track === "user" ? USER_COLOR : AGENT_COLOR;
+
+        let latest: IndexedMarker | undefined;
+        for (let i = indexMarkers.length - 1; i >= 0; i--) {
+          if (indexMarkers[i].track === track) {
+            latest = indexMarkers[i];
+            break;
+          }
+        }
+        const state = latest?.label;
+        let alpha = 0.15;
+        if (state === "speaking") {
+          alpha = Math.floor(now / 250) % 2 === 0 ? 1.0 : 0.15;
+        } else if (state === "thinking") {
+          alpha = 1.0;
+        }
+
+        ctx.save();
+        ctx.translate(iconX, iconY);
+        ctx.scale(ICON_SCALE, ICON_SCALE);
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = iconColor;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = "square";
+        ctx.stroke(iconPath);
+        ctx.restore();
+      }
 
       rafId = requestAnimationFrame(draw);
     };

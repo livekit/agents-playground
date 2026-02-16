@@ -140,7 +140,10 @@ function extractCandidatePairRtt(stat: Record<string, unknown>): number | null {
     }
   }
   // Flat W3C: { type: "candidate-pair", currentRoundTripTime: ... }
-  if (stat.type === "candidate-pair" && typeof stat.currentRoundTripTime === "number") {
+  if (
+    stat.type === "candidate-pair" &&
+    typeof stat.currentRoundTripTime === "number"
+  ) {
     return stat.currentRoundTripTime as number;
   }
   return null;
@@ -401,14 +404,21 @@ export function useUplinkLatency(
 
         if (cancelled) return;
 
-        if (process.env.NODE_ENV === "development" && !loggedServerPayloadRef.current) {
+        if (
+          process.env.NODE_ENV === "development" &&
+          !loggedServerPayloadRef.current
+        ) {
           loggedServerPayloadRef.current = true;
           console.log("[useUplinkLatency] raw server stats:", serverPayload);
         }
 
         const serverStats: RTCStatsResponse = JSON.parse(serverPayload);
-        const { jitterBuffer, sfuToAgent: serverSfuToAgent, rawJbDelay, rawJbEmitted } =
-          parseServerStats(serverStats, prevJbRef.current);
+        const {
+          jitterBuffer,
+          sfuToAgent: serverSfuToAgent,
+          rawJbDelay,
+          rawJbEmitted,
+        } = parseServerStats(serverStats, prevJbRef.current);
 
         prevJbRef.current = { jbDelay: rawJbDelay, jbEmitted: rawJbEmitted };
 
@@ -417,16 +427,16 @@ export function useUplinkLatency(
         // the encoder must buffer one complete frame before emitting a packet.
         let sendDelay = OPUS_FRAME_DURATION;
         const prevSend = prevSendRef.current;
-        if (
-          prevSend &&
-          clientStats.rawPacketsSent > prevSend.packets
-        ) {
+        if (prevSend && clientStats.rawPacketsSent > prevSend.packets) {
           sendDelay = Math.max(
             OPUS_FRAME_DURATION,
             (clientStats.rawSendDelay - prevSend.delay) /
               (clientStats.rawPacketsSent - prevSend.packets),
           );
-        } else if (clientStats.rawPacketsSent > 0 && clientStats.rawSendDelay > 0) {
+        } else if (
+          clientStats.rawPacketsSent > 0 &&
+          clientStats.rawSendDelay > 0
+        ) {
           sendDelay = Math.max(
             OPUS_FRAME_DURATION,
             clientStats.rawSendDelay / clientStats.rawPacketsSent,
@@ -445,7 +455,11 @@ export function useUplinkLatency(
         // The minimum reading has the least server-processing overhead,
         // giving the best approximation of actual network latency.
         let sfuToAgent = serverSfuToAgent;
-        if (sfuToAgent === 0 && minRpcRttRef.current < Infinity && clientToSfu > 0) {
+        if (
+          sfuToAgent === 0 &&
+          minRpcRttRef.current < Infinity &&
+          clientToSfu > 0
+        ) {
           sfuToAgent = Math.max(0, minRpcRttRef.current / 2 - clientToSfu);
         }
 
@@ -459,7 +473,10 @@ export function useUplinkLatency(
             (jitterBuffer * 1000).toFixed(1),
             (rpcRtt * 1000).toFixed(1),
             (minRpcRttRef.current * 1000).toFixed(1),
-            ((sendDelay + clientToSfu + sfuToAgent + jitterBuffer) * 1000).toFixed(1),
+            (
+              (sendDelay + clientToSfu + sfuToAgent + jitterBuffer) *
+              1000
+            ).toFixed(1),
           );
         }
 

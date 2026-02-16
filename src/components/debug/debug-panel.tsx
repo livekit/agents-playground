@@ -55,8 +55,8 @@ const COLLAPSED_FG = "#6b7280";
 
 const INTERRUPTION_COLOR = "#FA4C39";
 const BACKCHANNEL_COLOR = "#23DE6B";
-const AGENT_STATE_COLOR = "#22D3EE";
-const USER_STATE_COLOR = "#60A5FA";
+const AGENT_STATE_COLOR = "#BA1FF9"; // matches agent waveform
+const USER_STATE_COLOR = "#666666"; // matches user waveform
 
 const FONT_STACK =
   '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -109,7 +109,10 @@ export function DebugPanel({
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     const correction = clockOffset - pipeline;
 
-    if (process.env.NODE_ENV === "development" && interruptionEvents.length > 0) {
+    if (
+      process.env.NODE_ENV === "development" &&
+      interruptionEvents.length > 0
+    ) {
       console.log(
         "[waveform correction] networkLatency=%sms − downlink(%sms) = clockOffset(%sms); clockOffset − pipeline(%sms) = correction(%sms)",
         (networkLatency * 1000).toFixed(1),
@@ -156,8 +159,7 @@ export function DebugPanel({
       const track: "user" | "agent" =
         stateEvt.type === "user_state_changed" ? "user" : "agent";
       const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
-      const correction =
-        track === "user" ? userCorrection : agentCorrection;
+      const correction = track === "user" ? userCorrection : agentCorrection;
 
       let variant: WaveformMarker["variant"];
       if (stateEvt.new_state === "speaking") {
