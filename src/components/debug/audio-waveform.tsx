@@ -336,7 +336,8 @@ export function AudioWaveform({
             endIndex = rawEnd;
             if (userCount > 0) {
               endIndex = snapAndTrim(userBuffer, userCount, endIndex, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              if (userCount - 1 >= rawEnd + SNAP_SAMPLES) {
+              const needMore = endIndex < userCount && userBuffer[endIndex] >= SPEECH_THRESHOLD;
+              if (userCount - 1 >= rawEnd + (needMore ? MAX_SNAP : SNAP_SAMPLES)) {
                 snapCacheRef.current.set(endKey, endIndex + totalTrimmed);
               }
             }
@@ -416,8 +417,12 @@ export function AudioWaveform({
               }
             }
             // Only cache once the buffer extends past the snap window so the
-            // lookahead had enough data. Otherwise re-snap on the next frame.
-            if (cnt > 0 && cnt - 1 >= rawIndex + SNAP_SAMPLES) {
+            // lookahead had enough data. Require more buffer if the snapped
+            // position still has significant amplitude (speech likely continues).
+            const buf = m.track === "user" ? userBuffer : agentBuffer;
+            const needMore = cnt > 0 && index < cnt && buf[index] >= SPEECH_THRESHOLD;
+            const minAhead = needMore ? MAX_SNAP : SNAP_SAMPLES;
+            if (cnt > 0 && cnt - 1 >= rawIndex + minAhead) {
               snapCacheRef.current.set(cacheKey, index + totalTrimmed);
             }
           }
