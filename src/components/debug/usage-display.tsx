@@ -80,15 +80,13 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
           >
             <StatCard
               label="Input Tokens"
-              tooltip="Total input tokens / cached input tokens"
+              tooltip="Input tokens | cached input tokens"
               value={
-                <>
-                  {formatNumber(u.input_tokens)}
-                  <span className="text-[20px] text-gray-500">
-                    {" / "}
-                    {formatNumber(u.input_cached_tokens)}
-                  </span>
-                </>
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span>{formatNumber(u.input_tokens)}</span>
+                  <span className="w-px self-stretch bg-gray-500" style={{ marginBlock: "0.15em" }} />
+                  <span>{formatNumber(u.input_cached_tokens)}</span>
+                </span>
               }
             />
             <StatCard

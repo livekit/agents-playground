@@ -98,13 +98,10 @@ export function DebugPanel({
   // To place them on the client waveform:
   //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
   //   where clock_offset(client−server) ≈ networkLatency − downlink_transit
-  //   and downlink_transit ≈ sfuToAgent + clientToSfu  (agent→SFU + SFU→client)
+  //   and downlink_transit ≈ transport (clientToSfu * 2)
   const highlights = useMemo<WaveformHighlight[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
-    const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
-    const sfuToAgent = uplinkLatency?.sfuToAgent ?? 0;
-    // networkLatency = downlink_transit + clock_skew, so subtract full downlink path
-    const downlinkTransit = clientToSfu + sfuToAgent;
+    const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     const correction = clockOffset - pipeline;
@@ -128,14 +125,13 @@ export function DebugPanel({
       end: evt.created_at + correction,
       color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
       label: evt.is_interruption ? "Interruption" : "Backchannel",
+      sourceId: evt.created_at,
     }));
   }, [interruptionEvents, networkLatency, uplinkLatency]);
 
   const stateMarkers = useMemo<WaveformMarker[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
-    const clientToSfu = uplinkLatency?.clientToSfu ?? 0;
-    const sfuToAgent = uplinkLatency?.sfuToAgent ?? 0;
-    const downlinkTransit = clientToSfu + sfuToAgent;
+    const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     // User state: agent's VAD detects speech after the uplink pipeline, so
@@ -171,6 +167,7 @@ export function DebugPanel({
           label: nextState,
           track,
           variant,
+          sourceId: stateEvt.created_at,
         });
       };
 
@@ -317,97 +314,43 @@ export function DebugPanel({
           })}
         </div>
         <div className="flex-1" />
-        {(networkLatency > 0 || (uplinkLatency?.total ?? 0) > 0) && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span
-              className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums"
-              style={{
-                color: "var(--lk-dbg-fg5)",
-                background: "var(--lk-dbg-bg2)",
-              }}
-              title={`Downlink: ${(networkLatency * 1000).toFixed(0)}ms (received_at − sent_at)`}
+        {(uplinkLatency?.total ?? 0) > 0 && (
+          <span
+            className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums shrink-0"
+            style={{
+              color: "var(--lk-dbg-fg5)",
+              background: "var(--lk-dbg-bg2)",
+            }}
+            title={
+              uplinkLatency
+                ? `Transport latency: ${(uplinkLatency.total * 1000).toFixed(0)}ms (encoding ${(uplinkLatency.encoding * 1000).toFixed(0)}ms + transport ${(uplinkLatency.transport * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
+                : ""
+            }
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden
+              style={{ color: "var(--lk-dbg-fg5)" }}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden
-                style={{ color: "var(--lk-dbg-fg5)" }}
-              >
-                <path
-                  d="M8 2.5v9"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M4.5 8L8 11.5 11.5 8"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <line
-                  x1="4"
-                  y1="13.75"
-                  x2="12"
-                  y2="13.75"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  opacity="0.5"
-                />
-              </svg>
-              {(networkLatency * 1000).toFixed(0)}ms
-            </span>
-            <span
-              className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums"
-              style={{
-                color: "var(--lk-dbg-fg5)",
-                background: "var(--lk-dbg-bg2)",
-              }}
-              title={
-                uplinkLatency
-                  ? `Uplink pipeline: ${(uplinkLatency.total * 1000).toFixed(0)}ms (send ${(uplinkLatency.sendDelay * 1000).toFixed(0)}ms + client→SFU ${(uplinkLatency.clientToSfu * 1000).toFixed(0)}ms + SFU→agent ${(uplinkLatency.sfuToAgent * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
-                  : ""
-              }
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden
-                style={{ color: "var(--lk-dbg-fg5)" }}
-              >
-                <path
-                  d="M8 13.5v-9"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M4.5 8L8 4.5 11.5 8"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <line
-                  x1="4"
-                  y1="2.25"
-                  x2="12"
-                  y2="2.25"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  opacity="0.5"
-                />
-              </svg>
-              {((uplinkLatency?.total ?? 0) * 1000).toFixed(0)}ms
-            </span>
-          </div>
+              <path
+                d="M2 8h12"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M10 4.5L13.5 8 10 11.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {((uplinkLatency?.total ?? 0) * 1000).toFixed(0)}ms
+          </span>
         )}
       </div>
 

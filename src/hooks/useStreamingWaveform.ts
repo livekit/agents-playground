@@ -87,6 +87,8 @@ export type WaveformHighlight = {
   color: string;
   /** Optional label rendered over the highlight region */
   label?: string;
+  /** Stable identity for caching (e.g. original event created_at before correction). */
+  sourceId?: number;
 };
 
 export type WaveformMarker = {
@@ -100,6 +102,8 @@ export type WaveformMarker = {
   track: "user" | "agent";
   /** Visual variant: bracket for speaking transitions, line for others */
   variant: "speaking-start" | "speaking-end" | "state-label";
+  /** Stable identity for caching (e.g. original event created_at before correction). */
+  sourceId?: number;
 };
 
 /**

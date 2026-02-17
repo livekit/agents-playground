@@ -32,14 +32,12 @@ type RTCInboundStat = {
 };
 
 export type UplinkLatency = {
-  /** Total uplink pipeline delay in seconds (send + client→SFU + SFU→agent + jitter buffer). */
+  /** Total transport pipeline delay in seconds (encoding + transport + jitter buffer). */
   total: number;
-  /** Client capture→network-send delay in seconds (encoding, packetization). */
-  sendDelay: number;
-  /** Client→SFU one-way latency in seconds (RTT/2 from client WebRTC stats). */
-  clientToSfu: number;
-  /** SFU→Agent one-way latency in seconds (RTT/2 from server WebRTC stats). */
-  sfuToAgent: number;
+  /** Fixed encoding delay in seconds (Opus frame duration). */
+  encoding: number;
+  /** Approximate network transport delay in seconds (client→SFU RTT, i.e. clientToSfu * 2). */
+  transport: number;
   /** Agent jitter buffer delay in seconds. */
   jitterBuffer: number;
 };
@@ -276,9 +274,8 @@ export function useUplinkLatency(
 ): UplinkLatency {
   const [latency, setLatency] = useState<UplinkLatency>({
     total: 0,
-    sendDelay: 0,
-    clientToSfu: 0,
-    sfuToAgent: 0,
+    encoding: OPUS_FRAME_DURATION,
+    transport: 0,
     jitterBuffer: 0,
   });
 
@@ -480,12 +477,14 @@ export function useUplinkLatency(
           );
         }
 
+        const encoding = OPUS_FRAME_DURATION;
+        const transport = clientToSfu + sfuToAgent;
+
         setLatency({
-          sendDelay,
-          clientToSfu,
-          sfuToAgent,
+          encoding,
+          transport,
           jitterBuffer,
-          total: sendDelay + clientToSfu + sfuToAgent + jitterBuffer,
+          total: encoding + transport + jitterBuffer,
         });
       } catch (e) {
         if (process.env.NODE_ENV === "development" && !cancelled) {

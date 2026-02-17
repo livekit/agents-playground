@@ -39,6 +39,116 @@ const MARKER_GRADIENT_SAMPLES = 20;
 const MARKER_GRADIENT_ALPHA = 0.25;
 const MARKER_BRACKET_TICK = 4;
 
+/** Samples corresponding to the snap window (100ms at NOMINAL_SAMPLE_RATE). */
+const SNAP_SAMPLES = Math.round(NOMINAL_SAMPLE_RATE * 0.1);
+/** Maximum total snap search distance (500ms). */
+const MAX_SNAP = SNAP_SAMPLES * 5;
+/** Minimum amplitude to qualify as speech for snapping. */
+const SPEECH_THRESHOLD = 5;
+
+/** Snap index to the nearest speech boundary within `window`, widening up to MAX_SNAP if needed. */
+function snapToSpeech(
+  buffer: Uint8Array,
+  count: number,
+  index: number,
+  window: [number, number],
+): number {
+  if (window[0] < 0) {
+    // --- Lookback: find speech onset ---
+    const hardLo = Math.max(0, index - MAX_SNAP);
+    let lo = Math.max(hardLo, index + window[0]);
+    const hi = Math.min(count - 1, index + window[1]);
+    if (lo > hi) return index;
+
+    // First pass: find earliest speech bar in [lo, hi]
+    let onset = -1;
+    for (let i = lo; i <= hi; i++) {
+      if (buffer[i] >= SPEECH_THRESHOLD) {
+        onset = i;
+        break;
+      }
+    }
+    if (onset < 0) return index;
+
+    // Widen leftward while onset sits at the boundary and speech continues
+    while (onset === lo && lo > hardLo) {
+      if (lo === 0 || buffer[lo - 1] < SPEECH_THRESHOLD) break;
+      const prevLo = lo;
+      lo = Math.max(hardLo, lo - SNAP_SAMPLES);
+      for (let i = lo; i < prevLo; i++) {
+        if (buffer[i] >= SPEECH_THRESHOLD) {
+          onset = i;
+          break;
+        }
+      }
+    }
+    return onset;
+  } else {
+    // --- Lookahead: find speech offset ---
+    const hardHi = Math.min(count - 1, index + MAX_SNAP);
+    const lo = Math.max(0, index + window[0]);
+    let hi = Math.min(hardHi, index + window[1]);
+    if (lo > hi) return index;
+
+    // First pass: find latest speech bar in [lo, hi]
+    let offset = -1;
+    for (let i = hi; i >= lo; i--) {
+      if (buffer[i] >= SPEECH_THRESHOLD) {
+        offset = i;
+        break;
+      }
+    }
+    if (offset < 0) return index;
+
+    // Widen rightward while offset sits at the boundary and speech continues
+    while (offset === hi && hi < hardHi) {
+      if (hi >= count - 1 || buffer[hi + 1] < SPEECH_THRESHOLD) break;
+      const prevHi = hi;
+      hi = Math.min(hardHi, hi + SNAP_SAMPLES);
+      for (let i = hi; i > prevHi; i--) {
+        if (buffer[i] >= SPEECH_THRESHOLD) {
+          offset = i;
+          break;
+        }
+      }
+    }
+    return offset;
+  }
+}
+
+/** Scan from `index` up to `maxDistance` samples (sign = direction) for the nearest speech bar. */
+function trimToSpeech(
+  buffer: Uint8Array,
+  count: number,
+  index: number,
+  maxDistance: number,
+): number {
+  if (maxDistance > 0) {
+    const end = Math.min(count - 1, index + maxDistance);
+    for (let i = index; i <= end; i++) {
+      if (buffer[i] >= SPEECH_THRESHOLD) return i;
+    }
+  } else {
+    const start = Math.max(0, index + maxDistance);
+    for (let i = index; i >= start; i--) {
+      if (buffer[i] >= SPEECH_THRESHOLD) return i;
+    }
+  }
+  return index;
+}
+
+/** Snap to speech boundary then trim inward to skip remaining silence. */
+function snapAndTrim(
+  buffer: Uint8Array,
+  count: number,
+  index: number,
+  snapWindow: [number, number],
+  trimDirection: number,
+): number {
+  index = snapToSpeech(buffer, count, index, snapWindow);
+  return trimToSpeech(buffer, count, index, trimDirection);
+}
+
 const VOICE_ICON_SVG =
   "M7.75 3.75V20.25M3.75 9.75V14.25M12 7.75V16.25M16.25 5.75V18.25M20.25 9.75V14.25";
 const ROBOT_ICON_SVG =
@@ -117,7 +227,10 @@ export function AudioWaveform({
 
   const togglePause = useCallback(() => {
     setPaused((prev) => {
-      if (prev) reset(); // unpausing — start fresh
+      if (prev) {
+        reset(); // unpausing — start fresh
+        snapCacheRef.current.clear();
+      }
       return !prev;
     });
   }, [reset]);
@@ -128,6 +241,9 @@ export function AudioWaveform({
   highlightsRef.current = highlights;
   const markersRef = useRef(markers);
   markersRef.current = markers;
+
+  // Cached absolute snap positions keyed by sourceId, stable across correction changes.
+  const snapCacheRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (paused) return; // keep canvas frozen with its last frame
@@ -193,12 +309,45 @@ export function AudioWaveform({
       // they don't pile up at index 0 after a pause→resume reset.
       const indexHighlights: IndexedHighlight[] = (highlightsRef.current ?? [])
         .filter((h) => startedAt === 0 || h.end >= startedAt)
-        .map((h) => ({
-          startIndex: toIndex(h.start),
-          endIndex: toIndex(h.end),
-          color: h.color,
-          label: h.label,
-        }));
+        .map((h) => {
+          const sid = h.sourceId ?? h.start;
+          const startKey = `hs_${sid}`;
+          const endKey = `he_${sid}`;
+          let startIndex: number;
+          let endIndex: number;
+          const cachedStartAbs = snapCacheRef.current.get(startKey);
+          if (cachedStartAbs !== undefined) {
+            startIndex = Math.min(
+              Math.max(0, cachedStartAbs - totalTrimmed),
+              userCount - 1,
+            );
+          } else {
+            startIndex = toIndex(h.start);
+            if (userCount > 0) {
+              startIndex = snapAndTrim(userBuffer, userCount, startIndex, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
+              snapCacheRef.current.set(startKey, startIndex + totalTrimmed);
+            }
+          }
+          const cachedEndAbs = snapCacheRef.current.get(endKey);
+          if (cachedEndAbs !== undefined) {
+            endIndex = cachedEndAbs - totalTrimmed;
+          } else {
+            const rawEnd = toIndex(h.end);
+            endIndex = rawEnd;
+            if (userCount > 0) {
+              endIndex = snapAndTrim(userBuffer, userCount, endIndex, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
+              if (userCount - 1 >= rawEnd + SNAP_SAMPLES) {
+                snapCacheRef.current.set(endKey, endIndex + totalTrimmed);
+              }
+            }
+          }
+          return {
+            startIndex,
+            endIndex,
+            color: h.color,
+            label: h.label,
+          };
+        });
 
       drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed);
 
@@ -240,13 +389,46 @@ export function AudioWaveform({
 
       const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
         .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
-        .map((m) => ({
-          index: toIndex(m.timestamp),
-          color: m.color,
-          label: m.label,
-          track: m.track,
-          variant: m.variant,
-        }));
+        .map((m) => {
+          const cacheKey = `m_${m.sourceId ?? m.timestamp}_${m.track}_${m.variant}`;
+          const cnt = m.track === "user" ? userCount : agentCount;
+          const cachedAbs = snapCacheRef.current.get(cacheKey);
+          let index: number;
+          if (cachedAbs !== undefined) {
+            index = cachedAbs - totalTrimmed;
+            if (cnt > 0 && index > cnt - 1) index = cnt - 1;
+          } else {
+            const rawIndex = toIndex(m.timestamp);
+            index = rawIndex;
+            // User: VAD fires after uplink delay → look back for onset.
+            // Agent: state event arrives before audio → always look forward.
+            if (m.track === "user" && userCount > 0) {
+              if (m.variant === "speaking-start") {
+                index = snapAndTrim(userBuffer, userCount, index, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
+              } else if (m.variant === "speaking-end") {
+                index = snapAndTrim(userBuffer, userCount, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
+              }
+            } else if (m.track === "agent" && agentCount > 0) {
+              if (m.variant === "speaking-start") {
+                index = snapAndTrim(agentBuffer, agentCount, index, [0, SNAP_SAMPLES], SNAP_SAMPLES);
+              } else if (m.variant === "speaking-end") {
+                index = snapAndTrim(agentBuffer, agentCount, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
+              }
+            }
+            // Only cache once the buffer extends past the snap window so the
+            // lookahead had enough data. Otherwise re-snap on the next frame.
+            if (cnt > 0 && cnt - 1 >= rawIndex + SNAP_SAMPLES) {
+              snapCacheRef.current.set(cacheKey, index + totalTrimmed);
+            }
+          }
+          return {
+            index,
+            color: m.color,
+            label: m.label,
+            track: m.track,
+            variant: m.variant,
+          };
+        });
 
       for (const mk of indexMarkers) {
         const vi = mk.index - visibleStart;

@@ -529,31 +529,55 @@ export function EventLog({
                       {t === "metrics_collected" &&
                         enabled &&
                         availableMetricTypes.length > 0 && (
-                          <div className="mt-1 mb-1 ml-6 flex flex-col gap-1">
+                          <div className="mt-1 mb-1 ml-6 flex flex-col gap-1.5">
                             {availableMetricTypes.map((metricType) => {
                               const metricEnabled =
                                 enabledMetricTypes.has(metricType);
                               return (
-                                <button
+                                <div
                                   key={metricType}
-                                  onClick={() => toggleMetricType(metricType)}
-                                  className="text-left text-[11px] rounded px-2 py-1 transition-colors"
-                                  style={{
-                                    color: metricEnabled
-                                      ? "var(--lk-dbg-fg3)"
-                                      : "var(--lk-dbg-fg4)",
-                                    background: metricEnabled
-                                      ? "var(--lk-dbg-bg3)"
-                                      : "transparent",
-                                  }}
-                                  title={
-                                    metricEnabled
-                                      ? "Disable metric subtype"
-                                      : "Enable metric subtype"
-                                  }
+                                  className="flex items-center gap-2 px-1 py-1"
                                 >
-                                  {metricType.replace(/_/g, " ")}
-                                </button>
+                                  <button
+                                    onClick={() => toggleMetricType(metricType)}
+                                    className="h-4 w-4 shrink-0 rounded border inline-flex items-center justify-center transition-colors"
+                                    style={{
+                                      borderColor: "var(--lk-dbg-fg4)",
+                                      color: metricEnabled
+                                        ? "var(--lk-dbg-fg3)"
+                                        : "transparent",
+                                      background: "transparent",
+                                    }}
+                                    title={
+                                      metricEnabled
+                                        ? "Disable metric subtype"
+                                        : "Enable metric subtype"
+                                    }
+                                    aria-label={
+                                      metricEnabled
+                                        ? "Disable metric subtype"
+                                        : "Enable metric subtype"
+                                    }
+                                  >
+                                    <CheckSmallIcon />
+                                  </button>
+                                  <button
+                                    onClick={() => toggleMetricType(metricType)}
+                                    className="flex-1 text-left text-[11px] truncate uppercase tracking-wide"
+                                    style={{
+                                      color: metricEnabled
+                                        ? "var(--lk-dbg-fg)"
+                                        : "var(--lk-dbg-fg5)",
+                                    }}
+                                    title={
+                                      metricEnabled
+                                        ? "Disable metric subtype"
+                                        : "Enable metric subtype"
+                                    }
+                                  >
+                                    {metricType.replace(/_/g, " ")}
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>

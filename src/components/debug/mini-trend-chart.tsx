@@ -368,7 +368,6 @@ export function MiniTrendChart({
           stroke="var(--lk-theme-color, var(--lk-dbg-fg))"
           strokeOpacity="0.9"
           strokeWidth="2.4"
-          strokeDasharray="7 6"
         />
       )}
       {freshLinePath && (
