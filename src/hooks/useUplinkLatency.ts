@@ -90,7 +90,7 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
 
   try {
     const report = await pcTransport.getStats();
-    for (const [, stat] of report) {
+    report.forEach((stat) => {
       const s = stat as Record<string, unknown>;
 
       if (
@@ -110,7 +110,7 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
         rawSendDelay = s.totalPacketSendDelay as number;
         rawPacketsSent = s.packetsSent as number;
       }
-    }
+    });
   } catch {
     // ignore — stats API may be unavailable during reconnection
   }
