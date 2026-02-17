@@ -237,18 +237,18 @@ function EventTypeBadge({ type }: { type: ClientEventType }) {
   );
 }
 
-export interface EventLogProps {
+export type EventLogProps = {
   events: ClientEvent[];
   enabledTypes: Set<ClientEventType>;
   onEnabledTypesChange: (types: Set<ClientEventType>) => void;
   onClear?: () => void;
   className?: string;
-}
+};
 
-interface EventRow {
+type EventRow = {
   event: ClientEvent;
   index: number;
-}
+};
 
 type MetricType = ClientMetricsCollectedEvent["metrics"]["type"];
 const DEFAULT_DISABLED_METRIC_TYPES = new Set<MetricType>([

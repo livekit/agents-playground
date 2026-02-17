@@ -61,7 +61,7 @@ const USER_STATE_COLOR = "#666666"; // matches user waveform
 const FONT_STACK =
   '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-export interface DebugPanelProps {
+export type DebugPanelProps = {
   userTrack: Track | undefined;
   agentTrack: Track | undefined;
   events: ClientEvent[];
@@ -73,7 +73,7 @@ export interface DebugPanelProps {
   networkLatency: number;
   /** Measured uplink pipeline latency (client→SFU + SFU→agent + jitter buffer). */
   uplinkLatency?: UplinkLatency;
-}
+};
 
 export function DebugPanel({
   userTrack,

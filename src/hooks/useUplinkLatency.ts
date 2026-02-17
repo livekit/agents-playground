@@ -5,33 +5,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const TOPIC_AGENT_REQUEST = "lk.agent.request";
 const TOPIC_AGENT_RESPONSE = "lk.agent.response";
 
-interface StreamRequest {
+type StreamRequest = {
   request_id: string;
   method: string;
   payload: string;
-}
+};
 
-interface StreamResponse {
+type StreamResponse = {
   request_id: string;
   payload: string;
   error: string | null;
-}
+};
 
-interface RTCStatsResponse {
+type RTCStatsResponse = {
   subscriber_stats: RTCInboundStat[];
   publisher_stats: unknown[];
-}
+};
 
 /** Subset of WebRTC inbound-rtp stats from the server's perspective. */
-interface RTCInboundStat {
+type RTCInboundStat = {
   kind?: string;
   jitterBufferDelay?: number;
   jitterBufferEmittedCount?: number;
   /** Server-side candidate-pair stats nested under transport. */
   [key: string]: unknown;
-}
+};
 
-export interface UplinkLatency {
+export type UplinkLatency = {
   /** Total uplink pipeline delay in seconds (send + client→SFU + SFU→agent + jitter buffer). */
   total: number;
   /** Client capture→network-send delay in seconds (encoding, packetization). */
@@ -42,20 +42,20 @@ export interface UplinkLatency {
   sfuToAgent: number;
   /** Agent jitter buffer delay in seconds. */
   jitterBuffer: number;
-}
+};
 
 let _reqId = 0;
 function nextRequestId(): string {
   return `req_${Date.now()}_${++_reqId}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-interface ClientStatsResult {
+type ClientStatsResult = {
   rttHalf: number;
   /** Raw cumulative totalPacketSendDelay from the audio outbound-rtp stat (seconds). */
   rawSendDelay: number;
   /** Raw cumulative packetsSent from the audio outbound-rtp stat. */
   rawPacketsSent: number;
-}
+};
 
 /**
  * Extract client-side stats from the publisher RTCPeerConnection:
@@ -117,7 +117,7 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
   return { rttHalf, rawSendDelay, rawPacketsSent };
 }
 
-interface ServerStatsResult {
+type ServerStatsResult = {
   /** Current jitter buffer delay in seconds (delta-based, or cumulative avg on first reading). */
   jitterBuffer: number;
   sfuToAgent: number;
@@ -125,7 +125,7 @@ interface ServerStatsResult {
   rawJbDelay: number;
   /** Raw cumulative jitterBufferEmittedCount from the inbound-rtp stat. */
   rawJbEmitted: number;
-}
+};
 
 // ---- Helpers to extract fields from either flat (W3C) or nested (Pion) stat shapes ----
 
@@ -264,11 +264,11 @@ const OPUS_FRAME_DURATION = 0.02; // 20ms
  *     or estimated from the minimum observed data-channel RPC round trip
  *   - Jitter buffer: delta-based current delay from the server's inbound-rtp stats
  */
-interface PendingRpc {
+type PendingRpc = {
   resolve: (v: string) => void;
   reject: (e: Error) => void;
   timerId: ReturnType<typeof setTimeout>;
-}
+};
 
 export function useUplinkLatency(
   room: Room,

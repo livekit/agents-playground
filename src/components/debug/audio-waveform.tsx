@@ -6,13 +6,13 @@ import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface AudioWaveformProps {
+export type AudioWaveformProps = {
   userTrack?: Track;
   agentTrack?: Track;
   highlights?: WaveformHighlight[];
   markers?: WaveformMarker[];
   className?: string;
-}
+};
 
 const BAR_WIDTH = 1;
 const BAR_GAP = 1;
@@ -54,20 +54,20 @@ function getIconPath(track: "user" | "agent"): Path2D {
 const ICON_SCALE = 0.85;
 const ICON_SIZE = 24 * ICON_SCALE;
 
-interface IndexedHighlight {
+type IndexedHighlight = {
   startIndex: number;
   endIndex: number;
   color: string;
   label?: string;
-}
+};
 
-interface IndexedMarker {
+type IndexedMarker = {
   index: number;
   color: string;
   label: string;
   track: "user" | "agent";
   variant: "speaking-start" | "speaking-end" | "state-label";
-}
+};
 
 function drawBracket(
   ctx: CanvasRenderingContext2D,

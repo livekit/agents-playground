@@ -38,10 +38,10 @@ function modelLabel(provider: string, model: string): string {
   return parts.length > 0 ? parts.join(" - ") : "Unknown";
 }
 
-export interface UsageDisplayProps {
+export type UsageDisplayProps = {
   sessionUsage: AgentSessionUsage | null;
   className?: string;
-}
+};
 
 export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
   if (!sessionUsage || sessionUsage.model_usage.length === 0) {

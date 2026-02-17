@@ -6,15 +6,15 @@ const WINDOW_CAPACITY = SAMPLE_RATE * 30;
 const TRIM_BUFFER = SAMPLE_RATE * 5;
 const INITIAL_CAPACITY = WINDOW_CAPACITY + TRIM_BUFFER + 256;
 
-interface ChannelState {
+type ChannelState = {
   buffer: Uint8Array;
   count: number;
-}
+};
 
-interface TimelineState {
+type TimelineState = {
   buffer: Float64Array;
   count: number;
-}
+};
 
 function createChannel(): ChannelState {
   return { buffer: new Uint8Array(INITIAL_CAPACITY), count: 0 };
@@ -78,7 +78,7 @@ function upperBound(arr: Float64Array, count: number, target: number): number {
   return lo;
 }
 
-export interface WaveformHighlight {
+export type WaveformHighlight = {
   /** Start time in epoch-seconds */
   start: number;
   /** End time in epoch-seconds */
@@ -87,9 +87,9 @@ export interface WaveformHighlight {
   color: string;
   /** Optional label rendered over the highlight region */
   label?: string;
-}
+};
 
-export interface WaveformMarker {
+export type WaveformMarker = {
   /** Point-in-time in epoch-seconds */
   timestamp: number;
   /** CSS color string for this marker */
@@ -100,7 +100,7 @@ export interface WaveformMarker {
   track: "user" | "agent";
   /** Visual variant: bracket for speaking transitions, line for others */
   variant: "speaking-start" | "speaking-end" | "state-label";
-}
+};
 
 /**
  * A point-in-time view of the waveform buffers.
@@ -111,7 +111,7 @@ export interface WaveformMarker {
  * data synchronously within the same frame (e.g. inside a rAF callback).
  * If you need to persist the data, copy with `buffer.slice(0, count)`.
  */
-export interface WaveformSnapshot {
+export type WaveformSnapshot = {
   userBuffer: Uint8Array;
   userCount: number;
   agentBuffer: Uint8Array;
@@ -120,14 +120,14 @@ export interface WaveformSnapshot {
   startedAt: number;
   /** Total number of samples trimmed from the front of the buffers. */
   totalTrimmed: number;
-}
+};
 
-export interface UseStreamingWaveformReturn {
+export type UseStreamingWaveformReturn = {
   sampleRate: number;
   toIndex: (timestamp: number) => number;
   getData: () => WaveformSnapshot;
   reset: () => void;
-}
+};
 
 function peakAmplitude(
   analyser: AnalyserNode,
@@ -142,12 +142,12 @@ function peakAmplitude(
   return Math.min(255, peak * 2);
 }
 
-interface AnalyserState {
+type AnalyserState = {
   ctx: AudioContext;
   source: MediaStreamAudioSourceNode;
   analyser: AnalyserNode;
   timeDomainBuf: Uint8Array<ArrayBuffer>;
-}
+};
 
 function createAnalyser(track: Track): AnalyserState | null {
   const mediaStream = track.mediaStream;

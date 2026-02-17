@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const TOPIC_CLIENT_EVENTS = "lk.agent.events";
 const MAX_EVENTS = 1000;
 
-export interface UseClientEventsReturn {
+export type UseClientEventsReturn = {
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
   interruptionEvents: ClientUserInterruptionEvent[];
@@ -19,7 +19,7 @@ export interface UseClientEventsReturn {
   /** Average one-way server→client transit in seconds, measured from interruption `sent_at`. */
   networkLatency: number;
   clearEvents: () => void;
-}
+};
 
 function isClientEvent(value: unknown): value is ClientEvent {
   if (!value || typeof value !== "object") return false;
@@ -115,7 +115,7 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
       const receivedAt = receivedAtMap.current.get(e);
       if (receivedAt !== undefined && e.sent_at > 0) {
         const delta = receivedAt - e.sent_at;
-        deltas.push(delta);
+        if (delta >= 0) deltas.push(delta);
       }
     }
     if (deltas.length === 0) return 0;
