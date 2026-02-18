@@ -119,7 +119,8 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
       }
     }
     if (deltas.length === 0) return 0;
-    const recent = deltas.slice(-10);
+    const LATENCY_SAMPLE_WINDOW = 10;
+    const recent = deltas.slice(-LATENCY_SAMPLE_WINDOW);
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
     return avg;
   }, [interruptionEvents]);

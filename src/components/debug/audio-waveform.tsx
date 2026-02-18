@@ -3,9 +3,13 @@ import type {
   WaveformHighlight,
   WaveformMarker,
 } from "@/hooks/useStreamingWaveform";
-import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
+import {
+  SAMPLE_RATE,
+  useStreamingWaveform,
+} from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
 import { useEffect, useRef } from "react";
+import { CANVAS_FONT_STACK, cssVar } from "./shared";
 
 export type AudioWaveformProps = {
   track?: Track;
@@ -15,6 +19,8 @@ export type AudioWaveformProps = {
   tickPlacement?: "top" | "bottom" | "hidden";
   highlights?: WaveformHighlight[];
   markers?: WaveformMarker[];
+  /** Set of marker labels to hide in the state-label row (e.g. `new Set(["listening"])`). */
+  hiddenStateLabels?: Set<string>;
   className?: string;
 };
 
@@ -25,14 +31,7 @@ const TRACK_HEIGHT = 60;
 const LABEL_WIDTH = 50;
 const AMPLITUDE_SCALE = 0.9;
 
-const DEFAULT_COLOR = "#666666";
-const CENTER_LINE_COLOR = "rgba(255, 255, 255, 0.1)";
-const BG_COLOR = "#111";
-const LABEL_COLOR = "#B2B2B2";
-
-const NOMINAL_SAMPLE_RATE = 100;
 const TIMELINE_HEIGHT = 18;
-const TICK_LABEL_COLOR = "rgba(255, 255, 255, 0.35)";
 const MAJOR_TICK_INTERVAL = 5;
 const MINOR_TICK_INTERVAL = 1;
 const LABEL_ROW_HEIGHT = 18;
@@ -42,10 +41,12 @@ const MARKER_GRADIENT_SAMPLES = 20;
 const MARKER_GRADIENT_ALPHA = 0.25;
 const MARKER_BRACKET_TICK = 4;
 
-/** Samples corresponding to the snap window (100ms at NOMINAL_SAMPLE_RATE). */
-const SNAP_SAMPLES = Math.round(NOMINAL_SAMPLE_RATE * 0.1);
+/** Snap window in samples (100ms at SAMPLE_RATE). */
+const SNAP_WINDOW_SEC = 0.1;
+const SNAP_SAMPLES = Math.round(SAMPLE_RATE * SNAP_WINDOW_SEC);
 /** Maximum total snap search distance (500ms). */
-const MAX_SNAP = SNAP_SAMPLES * 5;
+const MAX_SNAP_MULTIPLIER = 5;
+const MAX_SNAP = SNAP_SAMPLES * MAX_SNAP_MULTIPLIER;
 /** Minimum amplitude to qualify as speech for snapping. */
 const SPEECH_THRESHOLD = 5;
 
@@ -145,11 +146,12 @@ function drawBracket(
 export function AudioWaveform({
   track,
   clock,
-  color = DEFAULT_COLOR,
+  color,
   label,
   tickPlacement = "top",
   highlights,
   markers,
+  hiddenStateLabels,
   className,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -169,6 +171,8 @@ export function AudioWaveform({
   tickPlacementRef.current = tickPlacement;
   const labelRef = useRef(label);
   labelRef.current = label;
+  const hiddenStateLabelsRef = useRef(hiddenStateLabels);
+  hiddenStateLabelsRef.current = hiddenStateLabels;
 
   // Cached absolute snap positions keyed by sourceId, stable across correction changes.
   const snapCacheRef = useRef<Map<string, number>>(new Map());
@@ -206,8 +210,24 @@ export function AudioWaveform({
         snapCacheRef.current.clear();
         lastResetGenRef.current = resetGen;
       }
+
+      // Resolve theme colors from CSS custom properties.
+      const bgColor = cssVar(container, "--lk-dbg-bg", "#111");
+      const borderColor = cssVar(
+        container,
+        "--lk-dbg-border",
+        "rgba(255,255,255,0.1)",
+      );
+      const labelColor = cssVar(container, "--lk-dbg-fg3", "#B2B2B2");
+      const tickLabelColor = cssVar(
+        container,
+        "--lk-dbg-fg5",
+        "rgba(255,255,255,0.35)",
+      );
+      const defaultColor = cssVar(container, "--lk-dbg-fg4", "#666666");
+
       const toIndex = clock.toIndex;
-      const barColor = colorRef.current;
+      const barColor = colorRef.current ?? defaultColor;
       const ticks = tickPlacementRef.current;
       const showTicks = ticks !== "hidden";
       const ticksHeight = showTicks ? TIMELINE_HEIGHT : 0;
@@ -235,7 +255,6 @@ export function AudioWaveform({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      // Layout depends on tick placement
       let ticksTop: number;
       let labelRowTop: number;
       let trackTop: number;
@@ -315,11 +334,11 @@ export function AudioWaveform({
           width,
           totalTrimmed,
           ticksTop,
+          tickLabelColor,
         );
       }
 
-      // Center line
-      ctx.strokeStyle = CENTER_LINE_COLOR;
+      ctx.strokeStyle = borderColor;
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       const centerY = trackTop + TRACK_HEIGHT / 2;
@@ -329,7 +348,6 @@ export function AudioWaveform({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw waveform bars
       for (let visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
         const sampleIndex = visibleStart + visibleIndex;
         const x = LABEL_WIDTH + visibleIndex * TICK_WIDTH;
@@ -342,7 +360,6 @@ export function AudioWaveform({
         }
       }
 
-      // Process markers
       const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
         .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
         .map((m) => {
@@ -377,7 +394,6 @@ export function AudioWaveform({
           };
         });
 
-      // Draw markers
       for (const mk of indexMarkers) {
         const vi = mk.index - visibleStart;
         if (vi < 0 || vi >= visibleCount) continue;
@@ -420,10 +436,13 @@ export function AudioWaveform({
           ctx.setLineDash([]);
         }
 
-        if (mk.kind === "state-changed" && mk.label !== "listening") {
+        if (
+          mk.kind === "state-changed" &&
+          !hiddenStateLabelsRef.current?.has(mk.label)
+        ) {
           ctx.globalAlpha = 0.7;
           ctx.fillStyle = mk.color;
-          ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.font = `bold 7px ${CANVAS_FONT_STACK}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(
@@ -436,7 +455,6 @@ export function AudioWaveform({
         ctx.restore();
       }
 
-      // Draw highlight labels
       for (const hl of indexHighlights) {
         if (!hl.label) continue;
         const lo = hl.startIndex - visibleStart;
@@ -449,7 +467,7 @@ export function AudioWaveform({
 
         ctx.save();
         const labelText = hl.label.toUpperCase();
-        ctx.font = "bold 8px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.font = `bold 8px ${CANVAS_FONT_STACK}`;
         const textWidth = ctx.measureText(labelText).width;
         const padX = 5;
         const padY = 3;
@@ -486,12 +504,11 @@ export function AudioWaveform({
         ctx.restore();
       }
 
-      // Draw left label gutter
-      ctx.fillStyle = BG_COLOR;
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, LABEL_WIDTH, canvasHeight);
       if (labelRef.current) {
-        ctx.fillStyle = LABEL_COLOR;
-        ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = labelColor;
+        ctx.font = `11px ${CANVAS_FONT_STACK}`;
         ctx.textBaseline = "middle";
         ctx.fillText(labelRef.current, 8, trackTop + TRACK_HEIGHT / 2);
       }
@@ -508,7 +525,7 @@ export function AudioWaveform({
       ref={containerRef}
       data-slot="audio-waveform"
       className={`w-full overflow-hidden flex flex-col relative${className ? ` ${className}` : ""}`}
-      style={{ background: BG_COLOR }}
+      style={{ background: "var(--lk-dbg-bg)" }}
     >
       <canvas ref={canvasRef} style={{ display: "block" }} />
     </div>
@@ -522,8 +539,9 @@ function drawTimeTicks(
   canvasWidth: number,
   totalTrimmed: number,
   ticksTop: number,
+  tickLabelColor: string,
 ) {
-  const samplesPerSec = NOMINAL_SAMPLE_RATE;
+  const samplesPerSec = SAMPLE_RATE;
   const absoluteStart = visibleStart + totalTrimmed;
   const leftSec = absoluteStart / samplesPerSec;
   const rightSec = (absoluteStart + visibleCount) / samplesPerSec;
@@ -544,7 +562,7 @@ function drawTimeTicks(
 
     const isMajor = sec % MAJOR_TICK_INTERVAL === 0;
 
-    ctx.strokeStyle = TICK_LABEL_COLOR;
+    ctx.strokeStyle = tickLabelColor;
     ctx.lineWidth = 1;
     ctx.globalAlpha = isMajor ? 0.8 : 0.4;
     ctx.beginPath();
@@ -555,8 +573,8 @@ function drawTimeTicks(
     const showLabel = isMajor || visibleCount / samplesPerSec <= 8;
     if (showLabel) {
       ctx.globalAlpha = 0.8;
-      ctx.fillStyle = TICK_LABEL_COLOR;
-      ctx.font = "9px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = tickLabelColor;
+      ctx.font = `9px ${CANVAS_FONT_STACK}`;
       ctx.textBaseline = "bottom";
       ctx.textAlign = "center";
       ctx.fillText(formatTickLabel(sec), x, tickBottom - 5);

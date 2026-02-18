@@ -353,12 +353,13 @@ export function useUplinkLatency(
       };
 
       const promise = new Promise<string>((resolve, reject) => {
+        const RPC_TIMEOUT_MS = 5_000;
         const timerId = setTimeout(() => {
           if (pendingRef.current.has(requestId)) {
             pendingRef.current.delete(requestId);
             reject(new Error("RPC timeout"));
           }
-        }, 5_000);
+        }, RPC_TIMEOUT_MS);
 
         pendingRef.current.set(requestId, { resolve, reject, timerId });
       });

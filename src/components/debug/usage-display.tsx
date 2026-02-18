@@ -178,7 +178,7 @@ function StatCard({
       className="border rounded-md px-3 py-2.5 min-h-[168px] flex flex-col justify-between"
       style={{
         borderColor: "var(--lk-dbg-border)",
-        background: "rgba(0, 0, 0, 0.16)",
+        background: "var(--lk-dbg-bg2)",
       }}
     >
       <div className="flex items-center gap-1.5">

@@ -50,17 +50,35 @@ const DEFAULT_HEIGHT = 250;
 const TAB_ROW_CLASS = "flex items-end gap-4 self-stretch";
 const TAB_BUTTON_CLASS =
   "h-full px-1 pb-2 -mb-px border-b-2 transition-colors text-sm flex items-end";
-const TAB_ACTIVE_COLOR = "#22D3EE";
-/** Matches Tailwind gray-500 used by PlaygroundTile titles. */
-const COLLAPSED_FG = "#6b7280";
-
-const INTERRUPTION_COLOR = "#FA4C39";
-const BACKCHANNEL_COLOR = "#23DE6B";
-const AGENT_STATE_COLOR = "#BA1FF9"; // matches agent waveform
-const USER_STATE_COLOR = "#666666"; // matches user waveform
+const MAX_BADGE_COUNT = 999;
+/** Collapsed-state foreground. Defaults to Tailwind gray-500 to match PlaygroundTile titles. */
+const COLLAPSED_FG = "var(--lk-dbg-collapsed-fg, #6b7280)";
 
 const FONT_STACK =
   '"Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+export type DebugPanelTrackLabels = {
+  user?: string;
+  agent?: string;
+};
+
+export type DebugPanelHighlightConfig = {
+  /** Label for interruption highlights. @default "Interruption" */
+  interruptionLabel?: string;
+  /** Label for backchannel highlights. @default "Backchannel" */
+  backchannelLabel?: string;
+  /** Color for interruption highlights. @default "#FA4C39" */
+  interruptionColor?: string;
+  /** Color for backchannel highlights. @default "#23DE6B" */
+  backchannelColor?: string;
+};
+
+export type DebugPanelTrackColors = {
+  /** Color for the agent waveform track. @default "#BA1FF9" */
+  agent?: string;
+  /** Color for the user waveform track. @default "#666666" */
+  user?: string;
+};
 
 export type DebugPanelProps = {
   userTrack: Track | undefined;
@@ -74,6 +92,14 @@ export type DebugPanelProps = {
   networkLatency: number;
   /** Measured uplink pipeline latency (client→SFU + SFU→agent + jitter buffer). */
   uplinkLatency?: UplinkLatency;
+  /** Custom labels for waveform tracks. @default { user: "User", agent: "Agent" } */
+  trackLabels?: DebugPanelTrackLabels;
+  /** Custom colors for waveform tracks. */
+  trackColors?: DebugPanelTrackColors;
+  /** Custom labels and colors for interruption/backchannel highlights. */
+  highlightConfig?: DebugPanelHighlightConfig;
+  /** Set of agent state labels to hide on the waveform (e.g. `new Set(["listening"])`). */
+  hiddenStateLabels?: Set<string>;
 };
 
 export function DebugPanel({
@@ -86,6 +112,10 @@ export function DebugPanel({
   onClearEvents,
   networkLatency,
   uplinkLatency,
+  trackLabels,
+  trackColors,
+  highlightConfig,
+  hiddenStateLabels,
 }: DebugPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
   const [collapsed, setCollapsed] = useState(true);
@@ -96,6 +126,15 @@ export function DebugPanel({
     Set<ClientEventType>
   >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const userLabel = trackLabels?.user ?? "User";
+  const agentLabel = trackLabels?.agent ?? "Agent";
+  const interruptionColor = highlightConfig?.interruptionColor ?? "#FA4C39";
+  const backchannelColor = highlightConfig?.backchannelColor ?? "#23DE6B";
+  const interruptionLabel = highlightConfig?.interruptionLabel ?? "Interruption";
+  const backchannelLabel = highlightConfig?.backchannelLabel ?? "Backchannel";
+  const agentStateColor = trackColors?.agent ?? "#BA1FF9";
+  const userStateColor = trackColors?.user ?? "#666666";
 
   // Server timestamps are in server clock and delayed by the uplink pipeline.
   // To place them on the client waveform:
@@ -126,12 +165,20 @@ export function DebugPanel({
     return interruptionEvents.map((evt) => ({
       start: (evt.overlap_speech_started_at ?? evt.created_at) + correction,
       end: evt.created_at + correction,
-      color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
-      label: evt.is_interruption ? "Interruption" : "Backchannel",
+      color: evt.is_interruption ? interruptionColor : backchannelColor,
+      label: evt.is_interruption ? interruptionLabel : backchannelLabel,
       sourceId: evt.created_at,
       snapToWaveform: true,
     }));
-  }, [interruptionEvents, networkLatency, uplinkLatency]);
+  }, [
+    interruptionEvents,
+    networkLatency,
+    uplinkLatency,
+    interruptionColor,
+    backchannelColor,
+    interruptionLabel,
+    backchannelLabel,
+  ]);
 
   const { userMarkers, agentMarkers } = useMemo(() => {
     const pipeline = uplinkLatency?.total ?? 0;
@@ -159,7 +206,7 @@ export function DebugPanel({
         | ClientUserStateChangedEvent;
       const track: "user" | "agent" =
         stateEvt.type === "user_state_changed" ? "user" : "agent";
-      const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
+      const color = track === "user" ? userStateColor : agentStateColor;
       const correction = track === "user" ? userCorrection : agentCorrection;
       const target = track === "user" ? user : agent;
 
@@ -196,7 +243,7 @@ export function DebugPanel({
       }
     }
     return { userMarkers: user, agentMarkers: agent };
-  }, [events, networkLatency, uplinkLatency]);
+  }, [events, networkLatency, uplinkLatency, userStateColor, agentStateColor]);
 
   const onResizeStart = useCallback(
     (e: ReactMouseEvent) => {
@@ -252,7 +299,9 @@ export function DebugPanel({
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="text-xs h-7 w-7 mr-1 rounded-md inline-flex items-center justify-center transition-colors hover:text-[var(--lk-dbg-fg)] hover:bg-[var(--lk-dbg-bg3)]"
-          style={{ color: collapsed ? COLLAPSED_FG : "var(--lk-dbg-fg5)" }}
+          style={{
+            color: collapsed ? COLLAPSED_FG : "var(--lk-dbg-fg5)",
+          }}
           title={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
@@ -297,7 +346,9 @@ export function DebugPanel({
                       ? "var(--lk-dbg-fg)"
                       : "var(--lk-dbg-fg5)",
                   borderBottomColor:
-                    collapsed || !isActive ? "transparent" : TAB_ACTIVE_COLOR,
+                    collapsed || !isActive
+                      ? "transparent"
+                      : "var(--lk-theme-color, var(--lk-dbg-fg))",
                   fontWeight: collapsed ? 400 : isActive ? 600 : 400,
                 }}
               >
@@ -315,7 +366,9 @@ export function DebugPanel({
                           : "var(--lk-dbg-fg5)",
                     }}
                   >
-                    {events.length > 999 ? "999+" : events.length}
+                    {events.length > MAX_BADGE_COUNT
+                      ? `${MAX_BADGE_COUNT}+`
+                      : events.length}
                   </span>
                 )}
               </button>
@@ -378,19 +431,21 @@ export function DebugPanel({
             <AudioWaveform
               track={userTrack}
               clock={waveformClock}
-              color={USER_STATE_COLOR}
-              label="User"
+              color={userStateColor}
+              label={userLabel}
               tickPlacement="top"
               highlights={highlights}
               markers={userMarkers}
+              hiddenStateLabels={hiddenStateLabels}
             />
             <AudioWaveform
               track={agentTrack}
               clock={waveformClock}
-              color={AGENT_STATE_COLOR}
-              label="Agent"
+              color={agentStateColor}
+              label={agentLabel}
               tickPlacement="hidden"
               markers={agentMarkers}
+              hiddenStateLabels={hiddenStateLabels}
             />
             <button
               onClick={() => {
@@ -401,8 +456,8 @@ export function DebugPanel({
               }}
               className="absolute bottom-2 right-2 h-6 w-6 rounded flex items-center justify-center transition-colors"
               style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                color: "#B2B2B2",
+                background: "var(--lk-dbg-bg3)",
+                color: "var(--lk-dbg-fg5)",
               }}
               title={waveformPaused ? "Resume (clears waveform)" : "Pause"}
             >

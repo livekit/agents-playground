@@ -42,7 +42,9 @@ type MetricByType<T extends MetricType> = Extract<
   { type: T }
 >;
 type CardData = SummaryCardData | TrendCardData;
+
 const MOVING_AVERAGE_WINDOW = 5;
+const MAX_VISIBLE_POINTS = 40;
 
 function collectMetrics<T extends MetricType>(
   events: ClientMetricsCollectedEvent[],
@@ -58,7 +60,7 @@ function collectMetrics<T extends MetricType>(
     .map((event) => event.metrics);
 }
 
-function toSeries(points: TrendPoint[], maxPoints = 40): TrendPoint[] {
+function toSeries(points: TrendPoint[], maxPoints = MAX_VISIBLE_POINTS): TrendPoint[] {
   if (points.length <= maxPoints) return points;
   // Keep a stable trailing window for live charts; rebucketing the full
   // history each render causes visible hover/marker jitter while streaming.
@@ -185,7 +187,7 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
     if (eou.length > 0) {
       cards.push(
         trendCard(
-          "user-turn-txn-delay",
+          "turn-txn-delay",
           "Transcription Delay",
           eou.map((m) => ({
             t: m.timestamp,
@@ -195,7 +197,7 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
           "Time between end of speech and final transcript",
         ),
         trendCard(
-          "user-turn-eou-delay",
+          "turn-eou-delay",
           "End of Utterance Delay",
           eou.map((m) => ({
             t: m.timestamp,
@@ -298,13 +300,14 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
   return cards;
 }
 
+/** Derive a human-readable section title from the card ID prefix.
+ *  Splits on the first `-`, uppercases common acronyms, and title-cases the rest. */
 function sectionTitleFromCardId(id: string): string {
-  if (id.startsWith("llm-")) return "LLM";
-  if (id.startsWith("user-turn-")) return "Turn";
-  if (id.startsWith("tts-")) return "TTS";
-  if (id.startsWith("realtime-")) return "Realtime";
-  if (id.startsWith("interruption-")) return "Interruption";
-  return "Metrics";
+  const prefix = id.split("-")[0];
+  if (!prefix) return "Metrics";
+  const ACRONYMS = new Set(["llm", "tts", "stt"]);
+  if (ACRONYMS.has(prefix)) return prefix.toUpperCase();
+  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
 }
 
 function buildSections(cards: CardData[]): MetricsSection[] {
@@ -347,7 +350,7 @@ export function MetricsDisplay({
     if (e2eDelays.length > 0) {
       c.push(
         trendCard(
-          "user-turn-e2e-delay",
+          "turn-e2e-delay",
           "E2E Delay",
           e2eDelays,
           "s",
@@ -451,7 +454,7 @@ export function MetricsDisplay({
                         className="border rounded-md px-3 py-2.5 min-h-[84px] flex flex-col justify-between"
                         style={{
                           borderColor: "var(--lk-dbg-border)",
-                          background: "rgba(0, 0, 0, 0.16)",
+                          background: "var(--lk-dbg-bg2)",
                         }}
                       >
                         <div className="flex items-center gap-1.5">

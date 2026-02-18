@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Track } from "livekit-client";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-const SAMPLE_RATE = 100;
-const WINDOW_CAPACITY = SAMPLE_RATE * 30;
-const TRIM_BUFFER = SAMPLE_RATE * 5;
+export const SAMPLE_RATE = 100;
+const WINDOW_DURATION_SEC = 30;
+const TRIM_DURATION_SEC = 5;
+const WINDOW_CAPACITY = SAMPLE_RATE * WINDOW_DURATION_SEC;
+const TRIM_BUFFER = SAMPLE_RATE * TRIM_DURATION_SEC;
 const INITIAL_CAPACITY = WINDOW_CAPACITY + TRIM_BUFFER + 256;
 
 type ChannelState = {
@@ -121,10 +123,6 @@ export type WaveformSnapshot = {
   count: number;
 };
 
-// ---------------------------------------------------------------------------
-// Waveform clock – shared timeline that drives one or more track channels
-// ---------------------------------------------------------------------------
-
 type TickCallback = (trimExcess: number) => void;
 
 export type WaveformClock = {
@@ -215,14 +213,12 @@ export function useWaveformClock(paused: boolean): WaveformClock {
         totalTrimmedRef.current += trimExcess;
       }
 
-      // Append new timestamp.
       const now = Date.now() / 1000;
       if (startedAtRef.current === 0) {
         startedAtRef.current = now;
       }
       appendTimestamp(timelineRef.current, now);
 
-      // Notify all subscribers to trim (if needed) and append their sample.
       subscribersRef.current.forEach((cb) => cb(trimExcess));
     }, intervalMs);
 
@@ -234,10 +230,6 @@ export function useWaveformClock(paused: boolean): WaveformClock {
     [subscribe, toIndex, getState, reset],
   );
 }
-
-// ---------------------------------------------------------------------------
-// Per-track streaming waveform
-// ---------------------------------------------------------------------------
 
 export type UseStreamingWaveformReturn = {
   getData: () => WaveformSnapshot;
@@ -321,12 +313,10 @@ export function useStreamingWaveform(
         return;
       }
 
-      // Trim in lockstep with the clock.
       if (trimExcess > 0) {
         trimChannel(channelRef.current, trimExcess);
       }
 
-      // Sample amplitude (or 0 if no analyser available).
       const analyser = analyserRef.current;
       const amp = analyser
         ? peakAmplitude(analyser.analyser, analyser.timeDomainBuf)

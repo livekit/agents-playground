@@ -339,7 +339,7 @@ export function MiniTrendChart({
             x2={width - right}
             y1={tick.y}
             y2={tick.y}
-            stroke="rgba(255, 255, 255, 0.09)"
+            stroke="var(--lk-dbg-border)"
             strokeWidth="1"
           />
           <text
@@ -348,7 +348,7 @@ export function MiniTrendChart({
             fontSize="12"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
             textAnchor="end"
-            fill="rgba(255, 255, 255, 0.52)"
+            fill="var(--lk-dbg-fg5)"
           >
             {formatYAxis(tick.v)}
           </text>
@@ -388,7 +388,7 @@ export function MiniTrendChart({
             x2={width - right}
             y1={hoverSample.y}
             y2={hoverSample.y}
-            stroke="rgba(255, 255, 255, 0.38)"
+            stroke="var(--lk-dbg-fg4)"
             strokeDasharray="3 5"
             strokeWidth="1"
           />
@@ -397,7 +397,7 @@ export function MiniTrendChart({
             x2={hoverSample.x}
             y1={top}
             y2={graphBottom}
-            stroke="rgba(255, 255, 255, 0.38)"
+            stroke="var(--lk-dbg-fg4)"
             strokeDasharray="3 5"
             strokeWidth="1"
           />
@@ -428,7 +428,7 @@ export function MiniTrendChart({
             textAnchor={
               i === 0 ? "start" : i === xTickIdx.length - 1 ? "end" : "middle"
             }
-            fill="rgba(255, 255, 255, 0.52)"
+            fill="var(--lk-dbg-fg5)"
           >
             {formatXAxis(point.t)}
           </text>
@@ -444,15 +444,15 @@ export function MiniTrendChart({
             width={tooltipWidth}
             height={tooltipHeight}
             rx="6"
-            fill="rgb(12, 12, 12)"
-            stroke="rgba(255,255,255,0.28)"
+            fill="var(--lk-dbg-bg)"
+            stroke="var(--lk-dbg-border)"
           />
           <text
             x={tooltipPaddingX}
             y={tooltipTimestampY}
             fontSize="9.5"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-            fill="rgba(255,255,255,0.9)"
+            fill="var(--lk-dbg-fg3)"
           >
             {hoverTimestamp}
           </text>
@@ -469,8 +469,8 @@ export function MiniTrendChart({
             fontSize="9.8"
             fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           >
-            <tspan fill="rgba(255,255,255,0.82)">{tooltipMetricLabel}</tspan>
-            <tspan dx={tooltipValueGap} fill="#fff">
+            <tspan fill="var(--lk-dbg-fg3)">{tooltipMetricLabel}</tspan>
+            <tspan dx={tooltipValueGap} fill="var(--lk-dbg-fg)">
               {tooltipMetricValue}
             </tspan>
           </text>

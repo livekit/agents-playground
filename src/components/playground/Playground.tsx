@@ -58,6 +58,7 @@ export interface PlaygroundProps {
 }
 
 const headerHeight = 56;
+const HIDDEN_STATE_LABELS = new Set(["listening"]);
 
 export default function Playground({
   logo,
@@ -680,6 +681,7 @@ export default function Playground({
           onClearEvents={clearEvents}
           networkLatency={networkLatency}
           uplinkLatency={uplinkLatency}
+          hiddenStateLabels={HIDDEN_STATE_LABELS}
         />
         <RoomAudioRenderer />
         <StartAudio label="Click to enable audio playback" />
