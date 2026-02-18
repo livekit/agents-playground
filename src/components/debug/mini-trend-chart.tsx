@@ -13,7 +13,7 @@ export function MiniTrendChart({
   label,
 }: {
   points: TrendPoint[];
-  unit: "s" | "tok/s";
+  unit: "s" | "tok/s" | "count";
   label: string;
 }) {
   const patternId = useId();
@@ -167,6 +167,9 @@ export function MiniTrendChart({
     if (unit === "tok/s") {
       const d = span < 1 ? 2 : span < 10 ? 1 : 0;
       return `${v.toFixed(d)} tok/s`;
+    }
+    if (unit === "count") {
+      return `${Math.round(v)}`;
     }
     // All values under 1s → format as ms
     if (max < 1) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Track } from "livekit-client";
 
 const SAMPLE_RATE = 100;
@@ -89,6 +89,8 @@ export type WaveformHighlight = {
   label?: string;
   /** Stable identity for caching (e.g. original event created_at before correction). */
   sourceId?: number;
+  /** When true, snap start/end to the nearest speech boundary in the waveform. */
+  snapToWaveform?: boolean;
 };
 
 export type WaveformMarker = {
@@ -98,39 +100,133 @@ export type WaveformMarker = {
   color: string;
   /** Label text rendered in the state label row */
   label: string;
-  /** Which track the marker is drawn on */
-  track: "user" | "agent";
   /** Visual variant: bracket for speaking transitions, line for others */
   variant: "speaking-start" | "speaking-end" | "state-label";
   /** Stable identity for caching (e.g. original event created_at before correction). */
   sourceId?: number;
+  /** When true, snap position to the nearest speech boundary in the waveform. */
+  snapToWaveform?: boolean;
 };
 
 /**
- * A point-in-time view of the waveform buffers.
+ * A point-in-time view of the waveform buffer.
  *
- * **Important:** `userBuffer` and `agentBuffer` are live references to the
- * internal ring buffers. Their contents are mutated in-place by the sampling
- * interval (via `appendSample` and `trimChannel`). Callers must consume the
- * data synchronously within the same frame (e.g. inside a rAF callback).
- * If you need to persist the data, copy with `buffer.slice(0, count)`.
+ * **Important:** `buffer` is a live reference to the internal ring buffer.
+ * Its contents are mutated in-place by the sampling interval. Callers must
+ * consume the data synchronously within the same frame (e.g. inside a rAF
+ * callback). If you need to persist the data, copy with `buffer.slice(0, count)`.
  */
 export type WaveformSnapshot = {
-  userBuffer: Uint8Array;
-  userCount: number;
-  agentBuffer: Uint8Array;
-  agentCount: number;
-  /** Epoch-seconds when the client started recording audio. 0 if not yet started. */
-  startedAt: number;
-  /** Total number of samples trimmed from the front of the buffers. */
-  totalTrimmed: number;
+  buffer: Uint8Array;
+  count: number;
 };
 
-export type UseStreamingWaveformReturn = {
-  sampleRate: number;
+// ---------------------------------------------------------------------------
+// Waveform clock – shared timeline that drives one or more track channels
+// ---------------------------------------------------------------------------
+
+type TickCallback = (trimExcess: number) => void;
+
+export type WaveformClock = {
+  /** Register a callback invoked on every sample tick. Returns unsubscribe fn. */
+  subscribe: (cb: TickCallback) => () => void;
+  /** Convert an epoch-seconds timestamp to a buffer index. */
   toIndex: (timestamp: number) => number;
-  getData: () => WaveformSnapshot;
+  /** Read shared clock state. */
+  getState: () => { startedAt: number; totalTrimmed: number; sampleCount: number; resetGen: number; paused: boolean };
+  /** Reset the clock and all shared state. */
   reset: () => void;
+};
+
+export function useWaveformClock(paused: boolean): WaveformClock {
+  const timelineRef = useRef<TimelineState>(createTimeline());
+  const startedAtRef = useRef(0);
+  const totalTrimmedRef = useRef(0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const resetGenRef = useRef(0);
+  const subscribersRef = useRef<Set<TickCallback>>(new Set());
+
+  const subscribe = useCallback((cb: TickCallback) => {
+    subscribersRef.current.add(cb);
+    return () => { subscribersRef.current.delete(cb); };
+  }, []);
+
+  const toIndex = useCallback((ts: number): number => {
+    const origin = startedAtRef.current;
+    if (origin === 0) return 0;
+
+    const timeline = timelineRef.current;
+    if (timeline.count > 0) {
+      const i = upperBound(timeline.buffer, timeline.count, ts);
+      if (i <= 0) return 0;
+      if (i >= timeline.count) return timeline.count - 1;
+      const prev = timeline.buffer[i - 1];
+      const next = timeline.buffer[i];
+      return ts - prev <= next - ts ? i - 1 : i;
+    }
+
+    const absoluteIndex = (ts - origin) * SAMPLE_RATE;
+    const bufferIndex = absoluteIndex - totalTrimmedRef.current;
+    return Math.max(0, Math.round(bufferIndex));
+  }, []);
+
+  const getState = useCallback(() => ({
+    startedAt: startedAtRef.current,
+    totalTrimmed: totalTrimmedRef.current,
+    sampleCount: timelineRef.current.count,
+    resetGen: resetGenRef.current,
+    paused: pausedRef.current,
+  }), []);
+
+  const reset = useCallback(() => {
+    timelineRef.current = createTimeline();
+    startedAtRef.current = 0;
+    totalTrimmedRef.current = 0;
+    resetGenRef.current += 1;
+    // Synchronously notify subscribers to clear buffers now, before any
+    // rAF draw can see stale data.  -1 is a sentinel meaning "reset".
+    subscribersRef.current.forEach((cb) => cb(-1));
+  }, []);
+
+  useEffect(() => {
+    const intervalMs = 1000 / SAMPLE_RATE;
+    const interval = setInterval(() => {
+      if (pausedRef.current) return;
+      if (subscribersRef.current.size === 0) return;
+
+      // Trim if needed — notify subscribers first so they trim in lockstep.
+      let trimExcess = 0;
+      const count = timelineRef.current.count;
+      if (count > WINDOW_CAPACITY + TRIM_BUFFER) {
+        trimExcess = count - WINDOW_CAPACITY;
+        trimTimeline(timelineRef.current, trimExcess);
+        totalTrimmedRef.current += trimExcess;
+      }
+
+      // Append new timestamp.
+      const now = Date.now() / 1000;
+      if (startedAtRef.current === 0) {
+        startedAtRef.current = now;
+      }
+      appendTimestamp(timelineRef.current, now);
+
+      // Notify all subscribers to trim (if needed) and append their sample.
+      subscribersRef.current.forEach((cb) => cb(trimExcess));
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return useMemo(() => ({ subscribe, toIndex, getState, reset }), [subscribe, toIndex, getState, reset]);
+}
+
+// ---------------------------------------------------------------------------
+// Per-track streaming waveform
+// ---------------------------------------------------------------------------
+
+export type UseStreamingWaveformReturn = {
+  getData: () => WaveformSnapshot;
 };
 
 function peakAmplitude(
@@ -178,135 +274,66 @@ function destroyAnalyser(state: AnalyserState): void {
 }
 
 export function useStreamingWaveform(
-  userTrack: Track | undefined,
-  agentTrack: Track | undefined,
-  paused = false,
+  track: Track | undefined,
+  clock: WaveformClock,
 ): UseStreamingWaveformReturn {
-  const userChannelRef = useRef<ChannelState>(createChannel());
-  const agentChannelRef = useRef<ChannelState>(createChannel());
-  const timelineRef = useRef<TimelineState>(createTimeline());
-  const userAnalyserRef = useRef<AnalyserState | null>(null);
-  const agentAnalyserRef = useRef<AnalyserState | null>(null);
-  const startedAtRef = useRef(0);
-  const totalTrimmedRef = useRef(0);
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
+  const channelRef = useRef<ChannelState>(createChannel());
+  const analyserRef = useRef<AnalyserState | null>(null);
+  const lastResetGenRef = useRef(clock.getState().resetGen);
 
-  const toIndex = useCallback((ts: number): number => {
-    const origin = startedAtRef.current;
-    if (origin === 0) return 0;
+  useEffect(() => {
+    if (!track) return;
+    const state = createAnalyser(track);
+    analyserRef.current = state;
+    return () => {
+      if (state) destroyAnalyser(state);
+      analyserRef.current = null;
+    };
+  }, [track, track?.mediaStream]);
 
-    const timeline = timelineRef.current;
-    if (timeline.count > 0) {
-      // Map by observed sample timestamps for stable, jitter-resistant indexing.
-      const i = upperBound(timeline.buffer, timeline.count, ts);
-      if (i <= 0) return 0;
-      if (i >= timeline.count) return timeline.count - 1;
-      const prev = timeline.buffer[i - 1];
-      const next = timeline.buffer[i];
-      return ts - prev <= next - ts ? i - 1 : i;
+  useEffect(() => {
+    // Pad channel to match current clock position (for late-joining tracks).
+    const { sampleCount, resetGen } = clock.getState();
+    lastResetGenRef.current = resetGen;
+    while (channelRef.current.count < sampleCount) {
+      appendSample(channelRef.current, 0);
     }
 
-    const absoluteIndex = (ts - origin) * SAMPLE_RATE;
-    const bufferIndex = absoluteIndex - totalTrimmedRef.current;
-    return Math.max(0, Math.round(bufferIndex));
-  }, []);
+    return clock.subscribe((trimExcess) => {
+      // Sentinel -1 = synchronous reset from clock.reset().
+      if (trimExcess < 0) {
+        channelRef.current = createChannel();
+        lastResetGenRef.current = clock.getState().resetGen;
+        return;
+      }
+
+      // Trim in lockstep with the clock.
+      if (trimExcess > 0) {
+        trimChannel(channelRef.current, trimExcess);
+      }
+
+      // Sample amplitude (or 0 if no analyser available).
+      const analyser = analyserRef.current;
+      const amp = analyser
+        ? peakAmplitude(analyser.analyser, analyser.timeDomainBuf)
+        : 0;
+      appendSample(channelRef.current, amp);
+    });
+  }, [clock, track]);
+
+  useEffect(() => {
+    if (!track) {
+      channelRef.current = createChannel();
+    }
+  }, [track]);
 
   const getData = useCallback(
     (): WaveformSnapshot => ({
-      userBuffer: userChannelRef.current.buffer,
-      userCount: userChannelRef.current.count,
-      agentBuffer: agentChannelRef.current.buffer,
-      agentCount: agentChannelRef.current.count,
-      startedAt: startedAtRef.current,
-      totalTrimmed: totalTrimmedRef.current,
+      buffer: channelRef.current.buffer,
+      count: channelRef.current.count,
     }),
     [],
   );
 
-  const reset = useCallback(() => {
-    userChannelRef.current = createChannel();
-    agentChannelRef.current = createChannel();
-    timelineRef.current = createTimeline();
-    startedAtRef.current = 0;
-    totalTrimmedRef.current = 0;
-  }, []);
-
-  useEffect(() => {
-    if (!userTrack) return;
-    const state = createAnalyser(userTrack);
-    userAnalyserRef.current = state;
-    return () => {
-      if (state) destroyAnalyser(state);
-      userAnalyserRef.current = null;
-    };
-  }, [userTrack, userTrack?.mediaStream]);
-
-  useEffect(() => {
-    if (!agentTrack) return;
-    const state = createAnalyser(agentTrack);
-    agentAnalyserRef.current = state;
-    return () => {
-      if (state) destroyAnalyser(state);
-      agentAnalyserRef.current = null;
-    };
-  }, [agentTrack, agentTrack?.mediaStream]);
-
-  useEffect(() => {
-    if (!userTrack && !agentTrack) return;
-
-    const intervalMs = 1000 / SAMPLE_RATE;
-    const interval = setInterval(() => {
-      if (pausedRef.current) return;
-
-      const userAnalyser = userAnalyserRef.current;
-      const agentAnalyser = agentAnalyserRef.current;
-
-      if (!userAnalyser && !agentAnalyser) return;
-
-      const sampleTs = Date.now() / 1000;
-      if (startedAtRef.current === 0) {
-        startedAtRef.current = sampleTs;
-      }
-      appendTimestamp(timelineRef.current, sampleTs);
-
-      const userAmp = userAnalyser
-        ? peakAmplitude(userAnalyser.analyser, userAnalyser.timeDomainBuf)
-        : 0;
-      appendSample(userChannelRef.current, userAmp);
-
-      const agentAmp = agentAnalyser
-        ? peakAmplitude(agentAnalyser.analyser, agentAnalyser.timeDomainBuf)
-        : 0;
-      appendSample(agentChannelRef.current, agentAmp);
-
-      const count = userChannelRef.current.count;
-      if (count > WINDOW_CAPACITY + TRIM_BUFFER) {
-        const excess = count - WINDOW_CAPACITY;
-        trimChannel(userChannelRef.current, excess);
-        trimChannel(agentChannelRef.current, excess);
-        trimTimeline(timelineRef.current, excess);
-        totalTrimmedRef.current += excess;
-      }
-    }, intervalMs);
-
-    return () => clearInterval(interval);
-  }, [userTrack, agentTrack]);
-
-  useEffect(() => {
-    if (!userTrack && !agentTrack) {
-      userChannelRef.current = createChannel();
-      agentChannelRef.current = createChannel();
-      timelineRef.current = createTimeline();
-      startedAtRef.current = 0;
-      totalTrimmedRef.current = 0;
-    }
-  }, [userTrack, agentTrack]);
-
-  return {
-    sampleRate: SAMPLE_RATE,
-    toIndex,
-    getData,
-    reset,
-  };
+  return { getData };
 }

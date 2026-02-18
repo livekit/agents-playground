@@ -159,13 +159,31 @@ export type RealtimeModelMetrics = {
   tokens_per_second: number;
 };
 
+export type InterruptionMetrics = {
+  type: "interruption_metrics";
+  model_name: string;
+  model_provider: string;
+  timestamp: number;
+  total_duration: number;
+  prediction_duration: number;
+  detection_delay: number;
+  num_interruptions: number;
+  num_non_interruptions: number;
+  num_requests: number;
+  room: string;
+  pid: number;
+  job_id: string;
+  room_id: string;
+};
+
 export type AgentMetricsData =
   | LLMMetrics
   | STTMetrics
   | TTSMetrics
   | VADMetrics
   | EOUMetrics
-  | RealtimeModelMetrics;
+  | RealtimeModelMetrics
+  | InterruptionMetrics;
 
 export type ClientMetricsCollectedEvent = {
   type: "metrics_collected";
@@ -226,7 +244,18 @@ export type STTModelUsage = {
   audio_duration: number;
 };
 
-export type ModelUsage = LLMModelUsage | TTSModelUsage | STTModelUsage;
+export type InterruptionModelUsage = {
+  type: "interruption_usage";
+  provider: string;
+  model: string;
+  total_requests: number;
+};
+
+export type ModelUsage =
+  | LLMModelUsage
+  | TTSModelUsage
+  | STTModelUsage
+  | InterruptionModelUsage;
 
 export type AgentSessionUsage = {
   model_usage: ModelUsage[];

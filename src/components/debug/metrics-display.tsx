@@ -27,7 +27,7 @@ type TrendCardData = {
   title: string;
   tooltip?: string;
   points: TrendPoint[];
-  seriesUnit: "s" | "tok/s";
+  seriesUnit: "s" | "tok/s" | "count";
 };
 
 type MetricsSection = {
@@ -86,7 +86,7 @@ function trendCard(
   id: string,
   title: string,
   rawPoints: TrendPoint[],
-  unit: "s" | "tok/s",
+  unit: "s" | "tok/s" | "count",
   tooltip?: string,
 ): TrendCardData {
   const smoothedPoints = movingAveragePoints(rawPoints, MOVING_AVERAGE_WINDOW);
@@ -96,6 +96,28 @@ function trendCard(
     title: `AVG ${title}`,
     tooltip,
     points: toSeries(smoothedPoints),
+    seriesUnit: unit,
+  };
+}
+
+function cumulativeCard(
+  id: string,
+  title: string,
+  rawPoints: TrendPoint[],
+  unit: "s" | "tok/s" | "count",
+  tooltip?: string,
+): TrendCardData {
+  let sum = 0;
+  const cumulative = rawPoints.map((p) => {
+    sum += p.v;
+    return { t: p.t, v: sum };
+  });
+  return {
+    kind: "trend",
+    id,
+    title,
+    tooltip,
+    points: toSeries(cumulative),
     seriesUnit: unit,
   };
 }
@@ -135,21 +157,21 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
     cards.push(
       trendCard(
         "llm-ttft",
-        "LLM TTFT",
+        "TTFT",
         llm.map((m) => ({ t: m.timestamp, v: m.ttft })),
         "s",
         "Time to first token from the LLM",
       ),
       trendCard(
         "llm-duration",
-        "LLM Duration",
+        "Duration",
         llm.map((m) => ({ t: m.timestamp, v: m.duration })),
         "s",
         "Total LLM inference time per request",
       ),
       trendCard(
         "llm-speed",
-        "LLM Speed",
+        "Speed",
         llm.map((m) => ({ t: m.timestamp, v: m.tokens_per_second })),
         "tok/s",
         "LLM output token generation rate",
@@ -191,14 +213,14 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
     cards.push(
       trendCard(
         "tts-ttfb",
-        "TTS TTFB",
+        "TTFB",
         tts.map((m) => ({ t: m.timestamp, v: m.ttfb })),
         "s",
         "Time to first byte of audio from the TTS provider",
       ),
       trendCard(
         "tts-audio-duration",
-        "TTS Audio Duration",
+        "Audio Duration",
         tts.map((m) => ({ t: m.timestamp, v: m.audio_duration })),
         "s",
         "Duration of generated speech audio",
@@ -211,27 +233,64 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
     cards.push(
       trendCard(
         "realtime-ttft",
-        "Realtime TTFT",
+        "TTFT",
         rt.map((m) => ({ t: m.timestamp, v: m.ttft })),
         "s",
         "Time to first token from the realtime model",
       ),
       trendCard(
         "realtime-duration",
-        "Realtime Duration",
+        "Duration",
         rt.map((m) => ({ t: m.timestamp, v: m.duration })),
         "s",
         "Total realtime model inference time per request",
       ),
       trendCard(
         "realtime-speed",
-        "Realtime Speed",
+        "Speed",
         rt.map((m) => ({
           t: m.timestamp,
           v: m.tokens_per_second,
         })),
         "tok/s",
         "Realtime model output token generation rate",
+      ),
+    );
+  }
+
+  const interruption = collectMetrics(events, "interruption_metrics");
+  if (interruption.length > 0) {
+    cards.push(
+      trendCard(
+        "interruption-total-duration",
+        "Inference Duration",
+        interruption.map((m) => ({ t: m.timestamp, v: m.total_duration })),
+        "s",
+        "Average of model inference time for each request",
+      ),
+      trendCard(
+        "interruption-num-requests",
+        "Number of Requests",
+        interruption.map((m) => ({ t: m.timestamp, v: m.num_requests })),
+        "count",
+        "Average number of requests sent for an overlap speech",
+      ),
+      cumulativeCard(
+        "interruption-num-interruptions",
+        "Interruptions",
+        interruption.map((m) => ({ t: m.timestamp, v: m.num_interruptions })),
+        "count",
+        "Cumulative number of detected interruptions",
+      ),
+      cumulativeCard(
+        "interruption-num-non-interruptions",
+        "Non-Interruptions",
+        interruption.map((m) => ({
+          t: m.timestamp,
+          v: m.num_non_interruptions,
+        })),
+        "count",
+        "Cumulative number of non-interruption predictions",
       ),
     );
   }
@@ -244,6 +303,7 @@ function sectionTitleFromCardId(id: string): string {
   if (id.startsWith("user-turn-")) return "Turn";
   if (id.startsWith("tts-")) return "TTS";
   if (id.startsWith("realtime-")) return "Realtime";
+  if (id.startsWith("interruption-")) return "Interruption";
   return "Metrics";
 }
 

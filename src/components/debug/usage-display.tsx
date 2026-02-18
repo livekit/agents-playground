@@ -1,5 +1,6 @@
 import type {
   AgentSessionUsage,
+  InterruptionModelUsage,
   LLMModelUsage,
   STTModelUsage,
   TTSModelUsage,
@@ -65,6 +66,9 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
   const ttsUsages = sessionUsage.model_usage.filter(
     (u): u is TTSModelUsage => u.type === "tts_usage",
   );
+  const interruptionUsages = sessionUsage.model_usage.filter(
+    (u): u is InterruptionModelUsage => u.type === "interruption_usage",
+  );
 
   return (
     <div
@@ -118,6 +122,17 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
             <StatCard
               label="Audio Duration"
               value={<DurationValue seconds={u.audio_duration} />}
+            />
+          </ModelSection>
+        ))}
+        {interruptionUsages.map((u) => (
+          <ModelSection
+            key={`interruption-${u.provider}-${u.model}`}
+            label={modelLabel(u.provider, u.model)}
+          >
+            <StatCard
+              label="Total Requests"
+              value={formatNumber(u.total_requests)}
             />
           </ModelSection>
         ))}

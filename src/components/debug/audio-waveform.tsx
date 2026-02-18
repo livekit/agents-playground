@@ -1,14 +1,18 @@
 import type {
+  WaveformClock,
   WaveformHighlight,
   WaveformMarker,
 } from "@/hooks/useStreamingWaveform";
 import { useStreamingWaveform } from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export type AudioWaveformProps = {
-  userTrack?: Track;
-  agentTrack?: Track;
+  track?: Track;
+  clock: WaveformClock;
+  color?: string;
+  label?: string;
+  tickPlacement?: "top" | "bottom" | "hidden";
   highlights?: WaveformHighlight[];
   markers?: WaveformMarker[];
   className?: string;
@@ -21,8 +25,7 @@ const TRACK_HEIGHT = 60;
 const LABEL_WIDTH = 50;
 const AMPLITUDE_SCALE = 0.9;
 
-const USER_COLOR = "#666666";
-const AGENT_COLOR = "#BA1FF9";
+const DEFAULT_COLOR = "#666666";
 const CENTER_LINE_COLOR = "rgba(255, 255, 255, 0.1)";
 const BG_COLOR = "#111";
 const LABEL_COLOR = "#B2B2B2";
@@ -60,7 +63,6 @@ function snapToSpeech(
     const hi = Math.min(count - 1, index + window[1]);
     if (lo > hi) return index;
 
-    // First pass: find earliest speech bar in [lo, hi]
     let onset = -1;
     for (let i = lo; i <= hi; i++) {
       if (buffer[i] >= SPEECH_THRESHOLD) {
@@ -70,7 +72,6 @@ function snapToSpeech(
     }
     if (onset < 0) return index;
 
-    // Widen leftward while onset sits at the boundary and speech continues
     while (onset === lo && lo > hardLo) {
       if (lo === 0 || buffer[lo - 1] < SPEECH_THRESHOLD) break;
       const prevLo = lo;
@@ -90,7 +91,6 @@ function snapToSpeech(
     let hi = Math.min(hardHi, index + window[1]);
     if (lo > hi) return index;
 
-    // First pass: find latest speech bar in [lo, hi]
     let offset = -1;
     for (let i = hi; i >= lo; i--) {
       if (buffer[i] >= SPEECH_THRESHOLD) {
@@ -100,7 +100,6 @@ function snapToSpeech(
     }
     if (offset < 0) return index;
 
-    // Widen rightward while offset sits at the boundary and speech continues
     while (offset === hi && hi < hardHi) {
       if (hi >= count - 1 || buffer[hi + 1] < SPEECH_THRESHOLD) break;
       const prevHi = hi;
@@ -149,21 +148,6 @@ function snapAndTrim(
   return trimToSpeech(buffer, count, index, trimDirection);
 }
 
-const VOICE_ICON_SVG =
-  "M7.75 3.75V20.25M3.75 9.75V14.25M12 7.75V16.25M16.25 5.75V18.25M20.25 9.75V14.25";
-const ROBOT_ICON_SVG =
-  "M9.75 14.75H14.25M12 2.75V4.75M2.25 8.75V11.25M21.75 8.75V11.25M9.25 10C9.25 10.4142 8.91421 10.75 8.5 10.75C8.08579 10.75 7.75 10.4142 7.75 10C7.75 9.58579 8.08579 9.25 8.5 9.25C8.91421 9.25 9.25 9.58579 9.25 10ZM16.25 10C16.25 10.4142 15.9142 10.75 15.5 10.75C15.0858 10.75 14.75 10.4142 14.75 10C14.75 9.58579 15.0858 9.25 15.5 9.25C15.9142 9.25 16.25 9.58579 16.25 10ZM3.25 4.75H20.75V16.25C20.75 17.9069 19.4069 19.25 17.75 19.25H6.25C4.59315 19.25 3.25 17.9069 3.25 16.25V4.75Z";
-let voiceIconPath: Path2D | null = null;
-let robotIconPath: Path2D | null = null;
-function getIconPath(track: "user" | "agent"): Path2D {
-  if (track === "user") {
-    return (voiceIconPath ??= new Path2D(VOICE_ICON_SVG));
-  }
-  return (robotIconPath ??= new Path2D(ROBOT_ICON_SVG));
-}
-const ICON_SCALE = 0.85;
-const ICON_SIZE = 24 * ICON_SCALE;
-
 type IndexedHighlight = {
   startIndex: number;
   endIndex: number;
@@ -175,7 +159,6 @@ type IndexedMarker = {
   index: number;
   color: string;
   label: string;
-  track: "user" | "agent";
   variant: "speaking-start" | "speaking-end" | "state-label";
 };
 
@@ -209,31 +192,19 @@ function drawBracket(
 }
 
 export function AudioWaveform({
-  userTrack,
-  agentTrack,
+  track,
+  clock,
+  color = DEFAULT_COLOR,
+  label,
+  tickPlacement = "top",
   highlights,
   markers,
   className,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [paused, setPaused] = useState(false);
 
-  const { getData, toIndex, reset } = useStreamingWaveform(
-    userTrack,
-    agentTrack,
-    paused,
-  );
-
-  const togglePause = useCallback(() => {
-    setPaused((prev) => {
-      if (prev) {
-        reset(); // unpausing — start fresh
-        snapCacheRef.current.clear();
-      }
-      return !prev;
-    });
-  }, [reset]);
+  const { getData } = useStreamingWaveform(track, clock);
 
   // Mirror props into refs so the long-lived rAF draw closure always reads the
   // latest values without restarting the animation loop.
@@ -241,13 +212,18 @@ export function AudioWaveform({
   highlightsRef.current = highlights;
   const markersRef = useRef(markers);
   markersRef.current = markers;
+  const colorRef = useRef(color);
+  colorRef.current = color;
+  const tickPlacementRef = useRef(tickPlacement);
+  tickPlacementRef.current = tickPlacement;
+  const labelRef = useRef(label);
+  labelRef.current = label;
 
   // Cached absolute snap positions keyed by sourceId, stable across correction changes.
   const snapCacheRef = useRef<Map<string, number>>(new Map());
+  const lastResetGenRef = useRef(clock.getState().resetGen);
 
   useEffect(() => {
-    if (paused) return; // keep canvas frozen with its last frame
-
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -260,24 +236,38 @@ export function AudioWaveform({
     let prevCanvasH = 0;
 
     const draw = () => {
-      const {
-        userBuffer,
-        userCount,
-        agentBuffer,
-        agentCount,
-        totalTrimmed,
-        startedAt,
-      } = getData();
-      const sampleCount = Math.max(userCount, agentCount);
+      const { buffer, count: rawCount } = getData();
+      const { startedAt, totalTrimmed, resetGen, sampleCount, paused } = clock.getState();
+
+      // Skip drawing when paused — canvas retains its last painted frame.
+      if (paused) {
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
+
+      // After a clock reset the channel buffer may still hold stale samples
+      // until the next tick clears it. Clamp to the clock's authoritative count.
+      const count = Math.min(rawCount, sampleCount);
+
+      // Clear snap cache when the clock has been reset (pause→resume).
+      if (resetGen !== lastResetGenRef.current) {
+        snapCacheRef.current.clear();
+        lastResetGenRef.current = resetGen;
+      }
+      const toIndex = clock.toIndex;
+      const barColor = colorRef.current;
+      const ticks = tickPlacementRef.current;
+      const showTicks = ticks !== "hidden";
+      const ticksHeight = showTicks ? TIMELINE_HEIGHT : 0;
 
       const dpr = window.devicePixelRatio || 1;
       const width = container.clientWidth;
       const canvasHeight =
-        TIMELINE_HEIGHT +
+        ticksHeight +
         LABEL_ROW_HEIGHT +
         LABEL_ROW_GAP +
-        TRACK_HEIGHT * 2 +
-        STATE_LABEL_ROW_HEIGHT * 2;
+        TRACK_HEIGHT +
+        STATE_LABEL_ROW_HEIGHT;
 
       const targetW = Math.round(width * dpr);
       const targetH = Math.round(canvasHeight * dpr);
@@ -293,17 +283,29 @@ export function AudioWaveform({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      const labelRowTop = TIMELINE_HEIGHT;
-      const waveTop = TIMELINE_HEIGHT + LABEL_ROW_HEIGHT + LABEL_ROW_GAP;
-      // Layout: User Track | User State Labels | Agent Track | Agent State Labels
-      const userTrackTop = waveTop;
-      const userStateLabelTop = userTrackTop + TRACK_HEIGHT;
-      const agentTrackTop = userStateLabelTop + STATE_LABEL_ROW_HEIGHT;
-      const agentStateLabelTop = agentTrackTop + TRACK_HEIGHT;
+      // Layout depends on tick placement
+      let ticksTop: number;
+      let labelRowTop: number;
+      let trackTop: number;
+      let stateLabelTop: number;
+
+      if (ticks === "bottom") {
+        labelRowTop = 0;
+        trackTop = LABEL_ROW_HEIGHT + LABEL_ROW_GAP;
+        stateLabelTop = trackTop + TRACK_HEIGHT;
+        ticksTop = stateLabelTop + STATE_LABEL_ROW_HEIGHT;
+      } else {
+        // "top" or "hidden"
+        ticksTop = 0;
+        labelRowTop = ticksHeight;
+        trackTop = ticksHeight + LABEL_ROW_HEIGHT + LABEL_ROW_GAP;
+        stateLabelTop = trackTop + TRACK_HEIGHT;
+      }
+
       const waveformWidth = width - LABEL_WIDTH;
       const maxVisible = Math.floor(waveformWidth / TICK_WIDTH);
-      const visibleStart = Math.max(0, sampleCount - maxVisible);
-      const visibleCount = sampleCount - visibleStart;
+      const visibleStart = Math.max(0, count - maxVisible);
+      const visibleCount = count - visibleStart;
 
       // Drop highlights/markers from before the current recording session so
       // they don't pile up at index 0 after a pause→resume reset.
@@ -315,33 +317,35 @@ export function AudioWaveform({
           const endKey = `he_${sid}`;
           let startIndex: number;
           let endIndex: number;
-          const cachedStartAbs = snapCacheRef.current.get(startKey);
-          if (cachedStartAbs !== undefined) {
-            startIndex = Math.min(
-              Math.max(0, cachedStartAbs - totalTrimmed),
-              userCount - 1,
-            );
-          } else {
-            startIndex = toIndex(h.start);
-            if (userCount > 0) {
-              startIndex = snapAndTrim(userBuffer, userCount, startIndex, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
+
+          if (h.snapToWaveform && count > 0) {
+            const cachedStartAbs = snapCacheRef.current.get(startKey);
+            if (cachedStartAbs !== undefined) {
+              startIndex = Math.min(
+                Math.max(0, cachedStartAbs - totalTrimmed),
+                count - 1,
+              );
+            } else {
+              startIndex = toIndex(h.start);
+              startIndex = snapAndTrim(buffer, count, startIndex, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
               snapCacheRef.current.set(startKey, startIndex + totalTrimmed);
             }
-          }
-          const cachedEndAbs = snapCacheRef.current.get(endKey);
-          if (cachedEndAbs !== undefined) {
-            endIndex = cachedEndAbs - totalTrimmed;
-          } else {
-            const rawEnd = toIndex(h.end);
-            endIndex = rawEnd;
-            if (userCount > 0) {
-              endIndex = snapAndTrim(userBuffer, userCount, endIndex, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              const needMore = endIndex < userCount && userBuffer[endIndex] >= SPEECH_THRESHOLD;
-              if (userCount - 1 >= rawEnd + (needMore ? MAX_SNAP : SNAP_SAMPLES)) {
+            const cachedEndAbs = snapCacheRef.current.get(endKey);
+            if (cachedEndAbs !== undefined) {
+              endIndex = cachedEndAbs - totalTrimmed;
+            } else {
+              const rawEnd = toIndex(h.end);
+              endIndex = snapAndTrim(buffer, count, rawEnd, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
+              const needMore = endIndex < count && buffer[endIndex] >= SPEECH_THRESHOLD;
+              if (count - 1 >= rawEnd + (needMore ? MAX_SNAP : SNAP_SAMPLES)) {
                 snapCacheRef.current.set(endKey, endIndex + totalTrimmed);
               }
             }
+          } else {
+            startIndex = toIndex(h.start);
+            endIndex = toIndex(h.end);
           }
+
           return {
             startIndex,
             endIndex,
@@ -350,101 +354,81 @@ export function AudioWaveform({
           };
         });
 
-      drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed);
+      if (showTicks) {
+        drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed, ticksTop);
+      }
 
+      // Center line
       ctx.strokeStyle = CENTER_LINE_COLOR;
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
-      for (const tTop of [userTrackTop, agentTrackTop]) {
-        const centerY = tTop + TRACK_HEIGHT / 2;
-        ctx.beginPath();
-        ctx.moveTo(LABEL_WIDTH, centerY);
-        ctx.lineTo(width, centerY);
-        ctx.stroke();
-      }
+      const centerY = trackTop + TRACK_HEIGHT / 2;
+      ctx.beginPath();
+      ctx.moveTo(LABEL_WIDTH, centerY);
+      ctx.lineTo(width, centerY);
+      ctx.stroke();
       ctx.setLineDash([]);
 
+      // Draw waveform bars
       for (let visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
         const sampleIndex = visibleStart + visibleIndex;
         const x = LABEL_WIDTH + visibleIndex * TICK_WIDTH;
 
-        const userAmp = sampleIndex < userCount ? userBuffer[sampleIndex] : 0;
-        if (userAmp > 0) {
-          const centerY = userTrackTop + TRACK_HEIGHT / 2;
+        const amp = sampleIndex < count ? buffer[sampleIndex] : 0;
+        if (amp > 0) {
           const halfHeight =
-            (userAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
-          ctx.fillStyle = USER_COLOR;
-          ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
-        }
-
-        const agentAmp =
-          sampleIndex < agentCount ? agentBuffer[sampleIndex] : 0;
-        if (agentAmp > 0) {
-          const centerY = agentTrackTop + TRACK_HEIGHT / 2;
-          const halfHeight =
-            (agentAmp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
-          ctx.fillStyle = AGENT_COLOR;
+            (amp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
+          ctx.fillStyle = barColor;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
         }
       }
 
+      // Process markers
       const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
         .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
         .map((m) => {
-          const cacheKey = `m_${m.sourceId ?? m.timestamp}_${m.track}_${m.variant}`;
-          const cnt = m.track === "user" ? userCount : agentCount;
+          const cacheKey = `m_${m.sourceId ?? m.timestamp}_${m.variant}`;
           const cachedAbs = snapCacheRef.current.get(cacheKey);
           let index: number;
-          if (cachedAbs !== undefined) {
-            index = cachedAbs - totalTrimmed;
-            if (cnt > 0 && index > cnt - 1) index = cnt - 1;
+
+          if (m.snapToWaveform && count > 0) {
+            if (cachedAbs !== undefined) {
+              index = cachedAbs - totalTrimmed;
+              if (index > count - 1) index = count - 1;
+            } else {
+              const rawIndex = toIndex(m.timestamp);
+              index = rawIndex;
+              if (m.variant === "speaking-start") {
+                index = snapAndTrim(buffer, count, index, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
+              } else if (m.variant === "speaking-end") {
+                index = snapAndTrim(buffer, count, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
+              }
+              const needMore = index < count && buffer[index] >= SPEECH_THRESHOLD;
+              const minAhead = needMore ? MAX_SNAP : SNAP_SAMPLES;
+              if (count - 1 >= rawIndex + minAhead) {
+                snapCacheRef.current.set(cacheKey, index + totalTrimmed);
+              }
+            }
           } else {
-            const rawIndex = toIndex(m.timestamp);
-            index = rawIndex;
-            // User: VAD fires after uplink delay → look back for onset.
-            // Agent: state event arrives before audio → always look forward.
-            if (m.track === "user" && userCount > 0) {
-              if (m.variant === "speaking-start") {
-                index = snapAndTrim(userBuffer, userCount, index, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
-              } else if (m.variant === "speaking-end") {
-                index = snapAndTrim(userBuffer, userCount, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              }
-            } else if (m.track === "agent" && agentCount > 0) {
-              if (m.variant === "speaking-start") {
-                index = snapAndTrim(agentBuffer, agentCount, index, [0, SNAP_SAMPLES], SNAP_SAMPLES);
-              } else if (m.variant === "speaking-end") {
-                index = snapAndTrim(agentBuffer, agentCount, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              }
-            }
-            // Only cache once the buffer extends past the snap window so the
-            // lookahead had enough data. Require more buffer if the snapped
-            // position still has significant amplitude (speech likely continues).
-            const buf = m.track === "user" ? userBuffer : agentBuffer;
-            const needMore = cnt > 0 && index < cnt && buf[index] >= SPEECH_THRESHOLD;
-            const minAhead = needMore ? MAX_SNAP : SNAP_SAMPLES;
-            if (cnt > 0 && cnt - 1 >= rawIndex + minAhead) {
-              snapCacheRef.current.set(cacheKey, index + totalTrimmed);
-            }
+            index = toIndex(m.timestamp);
           }
+
           return {
             index,
             color: m.color,
             label: m.label,
-            track: m.track,
             variant: m.variant,
           };
         });
 
+      // Draw markers
       for (const mk of indexMarkers) {
         const vi = mk.index - visibleStart;
         if (vi < 0 || vi >= visibleCount) continue;
         const x = Math.round(LABEL_WIDTH + vi * TICK_WIDTH);
         if (x <= LABEL_WIDTH || x >= width) continue;
 
-        const trackTop = mk.track === "user" ? userTrackTop : agentTrackTop;
         const trackBot = trackTop + TRACK_HEIGHT;
-        const labelRowY =
-          mk.track === "user" ? userStateLabelTop : agentStateLabelTop;
 
         ctx.save();
 
@@ -489,25 +473,23 @@ export function AudioWaveform({
           ctx.fillText(
             mk.label.toUpperCase(),
             x,
-            labelRowY + STATE_LABEL_ROW_HEIGHT / 2,
+            stateLabelTop + STATE_LABEL_ROW_HEIGHT / 2,
           );
         }
 
         ctx.restore();
       }
 
+      // Draw highlight labels
       for (const hl of indexHighlights) {
         if (!hl.label) continue;
         const lo = hl.startIndex - visibleStart;
         const hi = hl.endIndex - visibleStart;
         if (hi < 0 || lo >= visibleCount) continue;
 
-        // Use unclamped lo/hi so the center tracks the true midpoint of the
-        // highlight even when part of it has scrolled off-screen.
         const xStart = LABEL_WIDTH + lo * TICK_WIDTH;
         const xEnd = LABEL_WIDTH + (hi + 1) * TICK_WIDTH;
-        // Snap to whole pixels to avoid sub-pixel anti-alias jitter between frames.
-        const centerX = Math.round((xStart + xEnd) / 2);
+        const hlCenterX = Math.round((xStart + xEnd) / 2);
 
         ctx.save();
         const labelText = hl.label.toUpperCase();
@@ -520,7 +502,7 @@ export function AudioWaveform({
         const pillR = 3;
         const labelY = labelRowTop + LABEL_ROW_HEIGHT / 2;
 
-        const rawPillX = centerX - pillW / 2;
+        const rawPillX = hlCenterX - pillW / 2;
         const pillX = Math.round(
           Math.max(LABEL_WIDTH + 2, Math.min(rawPillX, width - pillW - 2)),
         );
@@ -548,50 +530,14 @@ export function AudioWaveform({
         ctx.restore();
       }
 
+      // Draw left label gutter
       ctx.fillStyle = BG_COLOR;
       ctx.fillRect(0, 0, LABEL_WIDTH, canvasHeight);
-      ctx.fillStyle = LABEL_COLOR;
-      ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.fillText("User", 8, userTrackTop + TRACK_HEIGHT / 2);
-      ctx.fillText("Agent", 8, agentTrackTop + TRACK_HEIGHT / 2);
-
-      const now = performance.now();
-      for (const track of ["user", "agent"] as const) {
-        const trackCenterY =
-          track === "user"
-            ? userTrackTop + TRACK_HEIGHT / 2
-            : agentTrackTop + TRACK_HEIGHT / 2;
-        const labelCenterX = 22;
-        const iconX = labelCenterX - ICON_SIZE / 2;
-        const iconY = trackCenterY - TRACK_HEIGHT / 2 - 4;
-        const iconPath = getIconPath(track);
-        const iconColor = track === "user" ? USER_COLOR : AGENT_COLOR;
-
-        let latest: IndexedMarker | undefined;
-        for (let i = indexMarkers.length - 1; i >= 0; i--) {
-          if (indexMarkers[i].track === track) {
-            latest = indexMarkers[i];
-            break;
-          }
-        }
-        const state = latest?.label;
-        let alpha = 0.15;
-        if (state === "speaking") {
-          alpha = Math.floor(now / 250) % 2 === 0 ? 1.0 : 0.15;
-        } else if (state === "thinking") {
-          alpha = 1.0;
-        }
-
-        ctx.save();
-        ctx.translate(iconX, iconY);
-        ctx.scale(ICON_SCALE, ICON_SCALE);
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = iconColor;
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = "square";
-        ctx.stroke(iconPath);
-        ctx.restore();
+      if (labelRef.current) {
+        ctx.fillStyle = LABEL_COLOR;
+        ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelRef.current, 8, trackTop + TRACK_HEIGHT / 2);
       }
 
       rafId = requestAnimationFrame(draw);
@@ -599,36 +545,16 @@ export function AudioWaveform({
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [getData, toIndex, paused]);
+  }, [getData, clock]);
 
   return (
     <div
       ref={containerRef}
       data-slot="audio-waveform"
-      className={`w-full h-full overflow-hidden flex flex-col relative${className ? ` ${className}` : ""}`}
+      className={`w-full overflow-hidden flex flex-col relative${className ? ` ${className}` : ""}`}
       style={{ background: BG_COLOR }}
     >
       <canvas ref={canvasRef} style={{ display: "block" }} />
-      <button
-        onClick={togglePause}
-        className="absolute bottom-2 right-2 h-6 w-6 rounded flex items-center justify-center transition-colors"
-        style={{
-          background: "rgba(255, 255, 255, 0.08)",
-          color: LABEL_COLOR,
-        }}
-        title={paused ? "Resume (clears waveform)" : "Pause"}
-      >
-        {paused ? (
-          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
-            <path d="M0 0l10 6-10 6z" />
-          </svg>
-        ) : (
-          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
-            <rect x="0" y="0" width="3" height="12" />
-            <rect x="7" y="0" width="3" height="12" />
-          </svg>
-        )}
-      </button>
     </div>
   );
 }
@@ -639,15 +565,16 @@ function drawTimeTicks(
   visibleCount: number,
   canvasWidth: number,
   totalTrimmed: number,
+  ticksTop: number,
 ) {
   const samplesPerSec = NOMINAL_SAMPLE_RATE;
-  // Offset by totalTrimmed so labels reflect actual elapsed time, not
-  // buffer-relative indices that jump back after trimming.
   const absoluteStart = visibleStart + totalTrimmed;
   const leftSec = absoluteStart / samplesPerSec;
   const rightSec = (absoluteStart + visibleCount) / samplesPerSec;
   const firstTick =
     Math.ceil(leftSec / MINOR_TICK_INTERVAL) * MINOR_TICK_INTERVAL;
+
+  const tickBottom = ticksTop + TIMELINE_HEIGHT;
 
   ctx.save();
   ctx.setLineDash([]);
@@ -665,8 +592,8 @@ function drawTimeTicks(
     ctx.lineWidth = 1;
     ctx.globalAlpha = isMajor ? 0.8 : 0.4;
     ctx.beginPath();
-    ctx.moveTo(x, TIMELINE_HEIGHT - (isMajor ? 5 : 3));
-    ctx.lineTo(x, TIMELINE_HEIGHT);
+    ctx.moveTo(x, tickBottom - (isMajor ? 5 : 3));
+    ctx.lineTo(x, tickBottom);
     ctx.stroke();
 
     const showLabel = isMajor || visibleCount / samplesPerSec <= 8;
@@ -676,7 +603,7 @@ function drawTimeTicks(
       ctx.font = "9px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.textBaseline = "bottom";
       ctx.textAlign = "center";
-      ctx.fillText(formatTickLabel(sec), x, TIMELINE_HEIGHT - 5);
+      ctx.fillText(formatTickLabel(sec), x, tickBottom - 5);
     }
   }
 

@@ -2,6 +2,7 @@ import type {
   WaveformHighlight,
   WaveformMarker,
 } from "@/hooks/useStreamingWaveform";
+import { useWaveformClock } from "@/hooks/useStreamingWaveform";
 import type { UplinkLatency } from "@/hooks/useUplinkLatency";
 import type {
   AgentSessionUsage,
@@ -89,6 +90,8 @@ export function DebugPanel({
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
   const [collapsed, setCollapsed] = useState(true);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [waveformPaused, setWaveformPaused] = useState(false);
+  const waveformClock = useWaveformClock(waveformPaused);
   const [enabledEventTypes, setEnabledEventTypes] = useState<
     Set<ClientEventType>
   >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
@@ -126,10 +129,11 @@ export function DebugPanel({
       color: evt.is_interruption ? INTERRUPTION_COLOR : BACKCHANNEL_COLOR,
       label: evt.is_interruption ? "Interruption" : "Backchannel",
       sourceId: evt.created_at,
+      snapToWaveform: true,
     }));
   }, [interruptionEvents, networkLatency, uplinkLatency]);
 
-  const stateMarkers = useMemo<WaveformMarker[]>(() => {
+  const { userMarkers, agentMarkers } = useMemo(() => {
     const pipeline = uplinkLatency?.total ?? 0;
     const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
@@ -141,7 +145,8 @@ export function DebugPanel({
     const userCorrection = clockOffset - pipeline;
     const agentCorrection = networkLatency > 0 ? networkLatency : 0;
 
-    const markers: WaveformMarker[] = [];
+    const user: WaveformMarker[] = [];
+    const agent: WaveformMarker[] = [];
     for (const evt of events) {
       if (
         evt.type !== "agent_state_changed" &&
@@ -156,18 +161,19 @@ export function DebugPanel({
         stateEvt.type === "user_state_changed" ? "user" : "agent";
       const color = track === "user" ? USER_STATE_COLOR : AGENT_STATE_COLOR;
       const correction = track === "user" ? userCorrection : agentCorrection;
+      const target = track === "user" ? user : agent;
 
       const timestamp = stateEvt.created_at + correction;
       const prevState = stateEvt.old_state;
       const nextState = stateEvt.new_state;
       const pushMarker = (variant: WaveformMarker["variant"]) => {
-        markers.push({
+        target.push({
           timestamp,
           color,
           label: nextState,
-          track,
           variant,
           sourceId: stateEvt.created_at,
+          snapToWaveform: variant !== "state-label",
         });
       };
 
@@ -186,7 +192,7 @@ export function DebugPanel({
         pushMarker("state-label");
       }
     }
-    return markers;
+    return { userMarkers: user, agentMarkers: agent };
   }, [events, networkLatency, uplinkLatency]);
 
   const onResizeStart = useCallback(
@@ -360,14 +366,50 @@ export function DebugPanel({
               collecting samples while other tabs are active. The rAF draw
               loop becomes a near-no-op when the container has display:none. */}
           <div
-            className={activeTab === "waveform" ? "w-full h-full" : "hidden"}
+            className={activeTab === "waveform" ? "w-full h-full flex flex-col relative" : "hidden"}
           >
             <AudioWaveform
-              userTrack={userTrack}
-              agentTrack={agentTrack}
+              track={userTrack}
+              clock={waveformClock}
+              color={USER_STATE_COLOR}
+              label="User"
+              tickPlacement="top"
               highlights={highlights}
-              markers={stateMarkers}
+              markers={userMarkers}
             />
+            <AudioWaveform
+              track={agentTrack}
+              clock={waveformClock}
+              color={AGENT_STATE_COLOR}
+              label="Agent"
+              tickPlacement="hidden"
+              markers={agentMarkers}
+            />
+            <button
+              onClick={() => {
+                setWaveformPaused((prev) => {
+                  if (prev) waveformClock.reset();
+                  return !prev;
+                });
+              }}
+              className="absolute bottom-2 right-2 h-6 w-6 rounded flex items-center justify-center transition-colors"
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                color: "#B2B2B2",
+              }}
+              title={waveformPaused ? "Resume (clears waveform)" : "Pause"}
+            >
+              {waveformPaused ? (
+                <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+                  <path d="M0 0l10 6-10 6z" />
+                </svg>
+              ) : (
+                <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+                  <rect x="0" y="0" width="3" height="12" />
+                  <rect x="7" y="0" width="3" height="12" />
+                </svg>
+              )}
+            </button>
           </div>
           {activeTab === "events" && (
             <EventLog
