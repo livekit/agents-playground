@@ -211,7 +211,6 @@ export function AudioWaveform({
         lastResetGenRef.current = resetGen;
       }
 
-      // Resolve theme colors from CSS custom properties.
       const bgColor = cssVar(container, "--lk-dbg-bg", "#111");
       const borderColor = cssVar(
         container,

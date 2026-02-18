@@ -60,7 +60,10 @@ function collectMetrics<T extends MetricType>(
     .map((event) => event.metrics);
 }
 
-function toSeries(points: TrendPoint[], maxPoints = MAX_VISIBLE_POINTS): TrendPoint[] {
+function toSeries(
+  points: TrendPoint[],
+  maxPoints = MAX_VISIBLE_POINTS,
+): TrendPoint[] {
   if (points.length <= maxPoints) return points;
   // Keep a stable trailing window for live charts; rebucketing the full
   // history each render causes visible hover/marker jitter while streaming.

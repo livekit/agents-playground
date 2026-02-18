@@ -17,6 +17,7 @@ import type { Track } from "livekit-client";
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -126,12 +127,14 @@ export function DebugPanel({
     Set<ClientEventType>
   >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const tablistId = useId();
 
   const userLabel = trackLabels?.user ?? "User";
   const agentLabel = trackLabels?.agent ?? "Agent";
   const interruptionColor = highlightConfig?.interruptionColor ?? "#FA4C39";
   const backchannelColor = highlightConfig?.backchannelColor ?? "#23DE6B";
-  const interruptionLabel = highlightConfig?.interruptionLabel ?? "Interruption";
+  const interruptionLabel =
+    highlightConfig?.interruptionLabel ?? "Interruption";
   const backchannelLabel = highlightConfig?.backchannelLabel ?? "Backchannel";
   const agentStateColor = trackColors?.agent ?? "#BA1FF9";
   const userStateColor = trackColors?.user ?? "#666666";
@@ -147,20 +150,6 @@ export function DebugPanel({
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     const correction = clockOffset - pipeline;
-
-    if (
-      process.env.NODE_ENV === "development" &&
-      interruptionEvents.length > 0
-    ) {
-      console.log(
-        "[waveform correction] networkLatency=%sms − downlink(%sms) = clockOffset(%sms); clockOffset − pipeline(%sms) = correction(%sms)",
-        (networkLatency * 1000).toFixed(1),
-        (downlinkTransit * 1000).toFixed(1),
-        (clockOffset * 1000).toFixed(1),
-        (pipeline * 1000).toFixed(1),
-        (correction * 1000).toFixed(1),
-      );
-    }
 
     return interruptionEvents.map((evt) => ({
       start: (evt.overlap_speech_started_at ?? evt.created_at) + correction,
@@ -328,12 +317,22 @@ export function DebugPanel({
             </svg>
           )}
         </button>
-        <div className={TAB_ROW_CLASS}>
+        <div
+          className={TAB_ROW_CLASS}
+          role="tablist"
+          aria-label="Debug panel sections"
+        >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
+            const tabId = `${tablistId}-tab-${tab.id}`;
+            const panelId = `${tablistId}-panel-${tab.id}`;
             return (
               <button
                 key={tab.id}
+                id={tabId}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={panelId}
                 onClick={() => {
                   setActiveTab(tab.id);
                   if (collapsed) setCollapsed(false);
@@ -422,6 +421,9 @@ export function DebugPanel({
               collecting samples while other tabs are active. The rAF draw
               loop becomes a near-no-op when the container has display:none. */}
           <div
+            id={`${tablistId}-panel-waveform`}
+            role="tabpanel"
+            aria-labelledby={`${tablistId}-tab-waveform`}
             className={
               activeTab === "waveform"
                 ? "w-full h-full flex flex-col relative"
@@ -460,6 +462,11 @@ export function DebugPanel({
                 color: "var(--lk-dbg-fg5)",
               }}
               title={waveformPaused ? "Resume (clears waveform)" : "Pause"}
+              aria-label={
+                waveformPaused
+                  ? "Resume waveform (clears waveform)"
+                  : "Pause waveform"
+              }
             >
               {waveformPaused ? (
                 <svg
@@ -484,18 +491,39 @@ export function DebugPanel({
             </button>
           </div>
           {activeTab === "events" && (
-            <EventLog
+            <div
+              id={`${tablistId}-panel-events`}
+              role="tabpanel"
+              aria-labelledby={`${tablistId}-tab-events`}
+              className="w-full h-full"
+            >
+              <EventLog
               events={events}
               enabledTypes={enabledEventTypes}
               onEnabledTypesChange={setEnabledEventTypes}
               onClear={onClearEvents}
             />
+            </div>
           )}
           {activeTab === "metrics" && (
-            <MetricsDisplay metricsEvents={metricsEvents} events={events} />
+            <div
+              id={`${tablistId}-panel-metrics`}
+              role="tabpanel"
+              aria-labelledby={`${tablistId}-tab-metrics`}
+              className="w-full h-full"
+            >
+              <MetricsDisplay metricsEvents={metricsEvents} events={events} />
+            </div>
           )}
           {activeTab === "usage" && (
-            <UsageDisplay sessionUsage={sessionUsage} />
+            <div
+              id={`${tablistId}-panel-usage`}
+              role="tabpanel"
+              aria-labelledby={`${tablistId}-tab-usage`}
+              className="w-full h-full"
+            >
+              <UsageDisplay sessionUsage={sessionUsage} />
+            </div>
           )}
         </div>
       )}

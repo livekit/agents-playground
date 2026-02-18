@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 
 export type TrendPoint = {
   t: number;
@@ -246,31 +246,14 @@ export function MiniTrendChart({
           hour12: true,
         })
       : "";
-  const tooltipHeight = 68;
-  const tooltipPaddingX = 14;
-  const tooltipTimestampY = 22;
-  const tooltipValueRowY = 45;
-  const tooltipValueTextX = tooltipPaddingX + 11;
-  const tooltipMetricLabel = `${label}:`;
-  const tooltipMetricValue = hoverLabel;
-  const tooltipValueGap = 8;
-  const tooltipMinWidth = 158;
-  const tooltipMaxWidth = 300;
-  const monoCharWidth = 5.8;
-  const sansCharWidth = 5.2;
-  const timestampTextWidth = hoverTimestamp.length * monoCharWidth;
-  const labelTextWidth = tooltipMetricLabel.length * sansCharWidth;
-  const valueTextWidth = tooltipMetricValue.length * sansCharWidth;
-  const valueRowTextWidth =
-    labelTextWidth + tooltipValueGap + valueTextWidth + 11;
-  const tooltipContentWidth = Math.max(timestampTextWidth, valueRowTextWidth);
-  const tooltipWidth = Math.min(
-    tooltipMaxWidth,
-    Math.max(
-      tooltipMinWidth,
-      Math.ceil(tooltipContentWidth + tooltipPaddingX * 2),
-    ),
-  );
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipSize, setTooltipSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const tooltipRefCb = useCallback((node: HTMLDivElement | null) => {
+    (tooltipRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (node) {
+      setTooltipSize({ w: node.offsetWidth, h: node.offsetHeight });
+    }
+  }, [hoverTimestamp, hoverLabel]);
 
   return (
     <svg
@@ -435,46 +418,69 @@ export function MiniTrendChart({
         );
       })}
       {hoverSample && (
-        <g
-          transform={`translate(${Math.min(width - tooltipWidth, Math.max(left + 8, hoverSample.x + 14))}, ${Math.min(height - tooltipHeight, Math.max(top + 6, hoverSample.y + 8))})`}
+        <foreignObject
+          x={Math.min(width - (tooltipSize.w || 160), Math.max(left + 8, hoverSample.x + 14))}
+          y={Math.min(height - (tooltipSize.h || 60), Math.max(top + 6, hoverSample.y + 8))}
+          width={(tooltipSize.w || 160) + 2}
+          height={(tooltipSize.h || 60) + 2}
+          style={{ overflow: "visible" }}
         >
-          <rect
-            x="0"
-            y="0"
-            width={tooltipWidth}
-            height={tooltipHeight}
-            rx="6"
-            fill="var(--lk-dbg-bg)"
-            stroke="var(--lk-dbg-border)"
-          />
-          <text
-            x={tooltipPaddingX}
-            y={tooltipTimestampY}
-            fontSize="9.5"
-            fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-            fill="var(--lk-dbg-fg3)"
+          <div
+            ref={tooltipRefCb}
+            style={{
+              background: "var(--lk-dbg-bg)",
+              border: "1px solid var(--lk-dbg-border)",
+              borderRadius: 6,
+              padding: "8px 12px",
+              width: "max-content",
+              pointerEvents: "none",
+            }}
           >
-            {hoverTimestamp}
-          </text>
-          <rect
-            x={tooltipPaddingX}
-            y={tooltipValueRowY - 8}
-            width="7"
-            height="7"
-            fill="var(--lk-theme-color, var(--lk-dbg-fg))"
-          />
-          <text
-            x={tooltipValueTextX}
-            y={tooltipValueRowY}
-            fontSize="9.8"
-            fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-          >
-            <tspan fill="var(--lk-dbg-fg3)">{tooltipMetricLabel}</tspan>
-            <tspan dx={tooltipValueGap} fill="var(--lk-dbg-fg)">
-              {tooltipMetricValue}
-            </tspan>
-          </text>
-        </g>
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                color: "var(--lk-dbg-fg3)",
+                whiteSpace: "nowrap",
+                marginBottom: 6,
+              }}
+            >
+              {hoverTimestamp}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  background: "var(--lk-theme-color, var(--lk-dbg-fg))",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 12,
+                  fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+                  color: "var(--lk-dbg-fg3)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}:
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+                  color: "var(--lk-dbg-fg)",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {hoverLabel}
+              </span>
+            </div>
+          </div>
+        </foreignObject>
       )}
     </svg>
   );

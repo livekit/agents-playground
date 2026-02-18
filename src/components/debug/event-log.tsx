@@ -212,7 +212,9 @@ function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       className="p-1 rounded transition-colors hover:bg-[var(--lk-dbg-bg3)]"
-      style={{ color: copied ? "var(--lk-dbg-success, #23DE6B)" : "var(--lk-dbg-fg5)" }}
+      style={{
+        color: copied ? "var(--lk-dbg-success, #23DE6B)" : "var(--lk-dbg-fg5)",
+      }}
       title={copied ? "Copied!" : "Copy JSON"}
     >
       {copied ? <CheckIcon /> : <ClipboardIcon />}

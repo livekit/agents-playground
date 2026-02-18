@@ -289,8 +289,16 @@ export function useStreamingWaveform(
 
   useEffect(() => {
     if (!track) return;
-    const state = createAnalyser(track);
-    analyserRef.current = state;
+    let state: AnalyserState | null = null;
+    try {
+      state = createAnalyser(track);
+      analyserRef.current = state;
+    } catch (e) {
+      analyserRef.current = null;
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[useStreamingWaveform] createAnalyser failed", e);
+      }
+    }
     return () => {
       if (state) destroyAnalyser(state);
       analyserRef.current = null;

@@ -5,11 +5,7 @@ export const CANVAS_FONT_STACK =
   "-apple-system, BlinkMacSystemFont, sans-serif";
 
 /** Resolve a CSS custom property from an element's computed style. */
-export function cssVar(
-  el: Element,
-  name: string,
-  fallback = "",
-): string {
+export function cssVar(el: Element, name: string, fallback = ""): string {
   return getComputedStyle(el).getPropertyValue(name).trim() || fallback;
 }
 

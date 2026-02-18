@@ -125,8 +125,6 @@ type ServerStatsResult = {
   rawJbEmitted: number;
 };
 
-// ---- Helpers to extract fields from either flat (W3C) or nested (Pion) stat shapes ----
-
 /** Try to read a numeric field from the Pion nested candidatePair shape, or a flat shape. */
 function extractCandidatePairRtt(stat: Record<string, unknown>): number | null {
   // Pion nested: { candidatePair: { candidatePair: { currentRoundTripTime, state } } }
@@ -202,14 +200,12 @@ function parseServerStats(
   for (const stat of resp.subscriber_stats) {
     const s = stat as Record<string, unknown>;
 
-    // Jitter buffer (audio inbound-rtp)
     const jb = extractJitterBuffer(s);
     if (jb && jb.kind === "audio") {
       rawJbDelay = jb.jbDelay;
       rawJbEmitted = jb.jbEmitted;
     }
 
-    // Candidate-pair RTT
     if (sfuToAgent === 0) {
       const rtt = extractCandidatePairRtt(s);
       if (rtt !== null) {
@@ -218,7 +214,6 @@ function parseServerStats(
     }
   }
 
-  // Also check publisher_stats for candidate-pair RTT
   if (sfuToAgent === 0) {
     for (const stat of resp.publisher_stats as Record<string, unknown>[]) {
       const rtt = extractCandidatePairRtt(stat);
