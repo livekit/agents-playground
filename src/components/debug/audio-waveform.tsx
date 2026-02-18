@@ -49,103 +49,54 @@ const MAX_SNAP = SNAP_SAMPLES * 5;
 /** Minimum amplitude to qualify as speech for snapping. */
 const SPEECH_THRESHOLD = 5;
 
-/** Snap index to the nearest speech boundary within `window`, widening up to MAX_SNAP if needed. */
-function snapToSpeech(
+/** Find nearest speech sample by expanding outward from index in both directions. */
+function expandToSpeech(
   buffer: Uint8Array,
   count: number,
   index: number,
-  window: [number, number],
 ): number {
-  if (window[0] < 0) {
-    // --- Lookback: find speech onset ---
-    const hardLo = Math.max(0, index - MAX_SNAP);
-    let lo = Math.max(hardLo, index + window[0]);
-    const hi = Math.min(count - 1, index + window[1]);
-    if (lo > hi) return index;
-
-    let onset = -1;
-    for (let i = lo; i <= hi; i++) {
-      if (buffer[i] >= SPEECH_THRESHOLD) {
-        onset = i;
-        break;
-      }
-    }
-    if (onset < 0) return index;
-
-    while (onset === lo && lo > hardLo) {
-      if (lo === 0 || buffer[lo - 1] < SPEECH_THRESHOLD) break;
-      const prevLo = lo;
-      lo = Math.max(hardLo, lo - SNAP_SAMPLES);
-      for (let i = lo; i < prevLo; i++) {
-        if (buffer[i] >= SPEECH_THRESHOLD) {
-          onset = i;
-          break;
-        }
-      }
-    }
-    return onset;
-  } else {
-    // --- Lookahead: find speech offset ---
-    const hardHi = Math.min(count - 1, index + MAX_SNAP);
-    const lo = Math.max(0, index + window[0]);
-    let hi = Math.min(hardHi, index + window[1]);
-    if (lo > hi) return index;
-
-    let offset = -1;
-    for (let i = hi; i >= lo; i--) {
-      if (buffer[i] >= SPEECH_THRESHOLD) {
-        offset = i;
-        break;
-      }
-    }
-    if (offset < 0) return index;
-
-    while (offset === hi && hi < hardHi) {
-      if (hi >= count - 1 || buffer[hi + 1] < SPEECH_THRESHOLD) break;
-      const prevHi = hi;
-      hi = Math.min(hardHi, hi + SNAP_SAMPLES);
-      for (let i = hi; i > prevHi; i--) {
-        if (buffer[i] >= SPEECH_THRESHOLD) {
-          offset = i;
-          break;
-        }
-      }
-    }
-    return offset;
-  }
-}
-
-/** Scan from `index` up to `maxDistance` samples (sign = direction) for the nearest speech bar. */
-function trimToSpeech(
-  buffer: Uint8Array,
-  count: number,
-  index: number,
-  maxDistance: number,
-): number {
-  if (maxDistance > 0) {
-    const end = Math.min(count - 1, index + maxDistance);
-    for (let i = index; i <= end; i++) {
-      if (buffer[i] >= SPEECH_THRESHOLD) return i;
-    }
-  } else {
-    const start = Math.max(0, index + maxDistance);
-    for (let i = index; i >= start; i--) {
-      if (buffer[i] >= SPEECH_THRESHOLD) return i;
-    }
+  for (let d = 0; d <= MAX_SNAP; d++) {
+    if (index + d < count && buffer[index + d] >= SPEECH_THRESHOLD)
+      return index + d;
+    if (index - d >= 0 && buffer[index - d] >= SPEECH_THRESHOLD)
+      return index - d;
   }
   return index;
 }
 
-/** Snap to speech boundary then trim inward to skip remaining silence. */
+/** From a speech sample, walk in `direction` to find the edge of the speech region.
+ *  direction < 0: walk backward to find onset (first speech sample).
+ *  direction > 0: walk forward to find offset (last speech sample). */
+function trimToEdge(
+  buffer: Uint8Array,
+  count: number,
+  index: number,
+  direction: number,
+): number {
+  if (direction < 0) {
+    const limit = Math.max(0, index - MAX_SNAP);
+    for (let i = index - 1; i >= limit; i--) {
+      if (buffer[i] < SPEECH_THRESHOLD) return i + 1;
+    }
+    return limit;
+  } else {
+    const limit = Math.min(count - 1, index + MAX_SNAP);
+    for (let i = index + 1; i <= limit; i++) {
+      if (buffer[i] < SPEECH_THRESHOLD) return i - 1;
+    }
+    return limit;
+  }
+}
+
+/** Expand outward to find speech, then trim to the edge of the speech region. */
 function snapAndTrim(
   buffer: Uint8Array,
   count: number,
   index: number,
-  snapWindow: [number, number],
   trimDirection: number,
 ): number {
-  index = snapToSpeech(buffer, count, index, snapWindow);
-  return trimToSpeech(buffer, count, index, trimDirection);
+  index = expandToSpeech(buffer, count, index);
+  return trimToEdge(buffer, count, index, trimDirection);
 }
 
 type IndexedHighlight = {
@@ -159,7 +110,7 @@ type IndexedMarker = {
   index: number;
   color: string;
   label: string;
-  variant: "speaking-start" | "speaking-end" | "state-label";
+  kind: "state-started" | "state-ended" | "state-changed";
 };
 
 function drawBracket(
@@ -237,7 +188,8 @@ export function AudioWaveform({
 
     const draw = () => {
       const { buffer, count: rawCount } = getData();
-      const { startedAt, totalTrimmed, resetGen, sampleCount, paused } = clock.getState();
+      const { startedAt, totalTrimmed, resetGen, sampleCount, paused } =
+        clock.getState();
 
       // Skip drawing when paused — canvas retains its last painted frame.
       if (paused) {
@@ -327,7 +279,7 @@ export function AudioWaveform({
               );
             } else {
               startIndex = toIndex(h.start);
-              startIndex = snapAndTrim(buffer, count, startIndex, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
+              startIndex = snapAndTrim(buffer, count, startIndex, -1);
               snapCacheRef.current.set(startKey, startIndex + totalTrimmed);
             }
             const cachedEndAbs = snapCacheRef.current.get(endKey);
@@ -335,8 +287,9 @@ export function AudioWaveform({
               endIndex = cachedEndAbs - totalTrimmed;
             } else {
               const rawEnd = toIndex(h.end);
-              endIndex = snapAndTrim(buffer, count, rawEnd, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              const needMore = endIndex < count && buffer[endIndex] >= SPEECH_THRESHOLD;
+              endIndex = snapAndTrim(buffer, count, rawEnd, 1);
+              const needMore =
+                endIndex < count && buffer[endIndex] >= SPEECH_THRESHOLD;
               if (count - 1 >= rawEnd + (needMore ? MAX_SNAP : SNAP_SAMPLES)) {
                 snapCacheRef.current.set(endKey, endIndex + totalTrimmed);
               }
@@ -355,7 +308,14 @@ export function AudioWaveform({
         });
 
       if (showTicks) {
-        drawTimeTicks(ctx, visibleStart, visibleCount, width, totalTrimmed, ticksTop);
+        drawTimeTicks(
+          ctx,
+          visibleStart,
+          visibleCount,
+          width,
+          totalTrimmed,
+          ticksTop,
+        );
       }
 
       // Center line
@@ -376,8 +336,7 @@ export function AudioWaveform({
 
         const amp = sampleIndex < count ? buffer[sampleIndex] : 0;
         if (amp > 0) {
-          const halfHeight =
-            (amp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
+          const halfHeight = (amp / 255) * (TRACK_HEIGHT / 2) * AMPLITUDE_SCALE;
           ctx.fillStyle = barColor;
           ctx.fillRect(x, centerY - halfHeight, BAR_WIDTH, halfHeight * 2);
         }
@@ -387,7 +346,7 @@ export function AudioWaveform({
       const indexMarkers: IndexedMarker[] = (markersRef.current ?? [])
         .filter((m) => startedAt === 0 || m.timestamp >= startedAt)
         .map((m) => {
-          const cacheKey = `m_${m.sourceId ?? m.timestamp}_${m.variant}`;
+          const cacheKey = `m_${m.sourceId ?? m.timestamp}_${m.kind}`;
           const cachedAbs = snapCacheRef.current.get(cacheKey);
           let index: number;
 
@@ -397,13 +356,10 @@ export function AudioWaveform({
               if (index > count - 1) index = count - 1;
             } else {
               const rawIndex = toIndex(m.timestamp);
-              index = rawIndex;
-              if (m.variant === "speaking-start") {
-                index = snapAndTrim(buffer, count, index, [-SNAP_SAMPLES, 0], SNAP_SAMPLES);
-              } else if (m.variant === "speaking-end") {
-                index = snapAndTrim(buffer, count, index, [0, SNAP_SAMPLES], -SNAP_SAMPLES);
-              }
-              const needMore = index < count && buffer[index] >= SPEECH_THRESHOLD;
+              const trimDir = m.snapToWaveform === "start" ? -1 : 1;
+              index = snapAndTrim(buffer, count, rawIndex, trimDir);
+              const needMore =
+                index < count && buffer[index] >= SPEECH_THRESHOLD;
               const minAhead = needMore ? MAX_SNAP : SNAP_SAMPLES;
               if (count - 1 >= rawIndex + minAhead) {
                 snapCacheRef.current.set(cacheKey, index + totalTrimmed);
@@ -417,7 +373,7 @@ export function AudioWaveform({
             index,
             color: m.color,
             label: m.label,
-            variant: m.variant,
+            kind: m.kind,
           };
         });
 
@@ -432,7 +388,7 @@ export function AudioWaveform({
 
         ctx.save();
 
-        if (mk.variant === "speaking-start") {
+        if (mk.kind === "state-started") {
           drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, 1);
 
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
@@ -442,7 +398,7 @@ export function AudioWaveform({
           ctx.globalAlpha = MARKER_GRADIENT_ALPHA;
           ctx.fillStyle = grad;
           ctx.fillRect(x, trackTop, gradW, TRACK_HEIGHT);
-        } else if (mk.variant === "speaking-end") {
+        } else if (mk.kind === "state-ended") {
           drawBracket(ctx, x, trackTop, TRACK_HEIGHT, mk.color, -1);
 
           const gradW = MARKER_GRADIENT_SAMPLES * TICK_WIDTH;
@@ -464,7 +420,7 @@ export function AudioWaveform({
           ctx.setLineDash([]);
         }
 
-        if (mk.variant === "state-label" && mk.label !== "listening") {
+        if (mk.kind === "state-changed" && mk.label !== "listening") {
           ctx.globalAlpha = 0.7;
           ctx.fillStyle = mk.color;
           ctx.font = "bold 7px -apple-system, BlinkMacSystemFont, sans-serif";

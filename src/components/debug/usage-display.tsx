@@ -88,7 +88,10 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
               value={
                 <span className="inline-flex items-center justify-center gap-2">
                   <span>{formatNumber(u.input_tokens)}</span>
-                  <span className="w-px self-stretch bg-gray-500" style={{ marginBlock: "0.15em" }} />
+                  <span
+                    className="w-px self-stretch bg-gray-500"
+                    style={{ marginBlock: "0.15em" }}
+                  />
                   <span>{formatNumber(u.input_cached_tokens)}</span>
                 </span>
               }

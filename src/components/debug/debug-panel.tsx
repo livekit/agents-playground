@@ -166,22 +166,25 @@ export function DebugPanel({
       const timestamp = stateEvt.created_at + correction;
       const prevState = stateEvt.old_state;
       const nextState = stateEvt.new_state;
-      const pushMarker = (variant: WaveformMarker["variant"]) => {
+      const pushMarker = (
+        kind: WaveformMarker["kind"],
+        snapToWaveform?: WaveformMarker["snapToWaveform"],
+      ) => {
         target.push({
           timestamp,
           color,
           label: nextState,
-          variant,
+          kind,
           sourceId: stateEvt.created_at,
-          snapToWaveform: variant !== "state-label",
+          snapToWaveform,
         });
       };
 
       if (prevState === "speaking") {
-        pushMarker("speaking-end");
+        pushMarker("state-ended", "end");
       }
       if (nextState === "speaking") {
-        pushMarker("speaking-start");
+        pushMarker("state-started", "start");
       }
       if (
         prevState !== "thinking" &&
@@ -189,7 +192,7 @@ export function DebugPanel({
         prevState !== "speaking" &&
         nextState !== "speaking"
       ) {
-        pushMarker("state-label");
+        pushMarker("state-changed");
       }
     }
     return { userMarkers: user, agentMarkers: agent };
@@ -366,7 +369,11 @@ export function DebugPanel({
               collecting samples while other tabs are active. The rAF draw
               loop becomes a near-no-op when the container has display:none. */}
           <div
-            className={activeTab === "waveform" ? "w-full h-full flex flex-col relative" : "hidden"}
+            className={
+              activeTab === "waveform"
+                ? "w-full h-full flex flex-col relative"
+                : "hidden"
+            }
           >
             <AudioWaveform
               track={userTrack}
@@ -400,11 +407,21 @@ export function DebugPanel({
               title={waveformPaused ? "Resume (clears waveform)" : "Pause"}
             >
               {waveformPaused ? (
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+                <svg
+                  width="10"
+                  height="12"
+                  viewBox="0 0 10 12"
+                  fill="currentColor"
+                >
                   <path d="M0 0l10 6-10 6z" />
                 </svg>
               ) : (
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+                <svg
+                  width="10"
+                  height="12"
+                  viewBox="0 0 10 12"
+                  fill="currentColor"
+                >
                   <rect x="0" y="0" width="3" height="12" />
                   <rect x="7" y="0" width="3" height="12" />
                 </svg>

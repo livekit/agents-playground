@@ -100,12 +100,12 @@ export type WaveformMarker = {
   color: string;
   /** Label text rendered in the state label row */
   label: string;
-  /** Visual variant: bracket for speaking transitions, line for others */
-  variant: "speaking-start" | "speaking-end" | "state-label";
+  /** Marker kind: state-started/state-ended snap to speech boundaries, state-changed is a point marker. */
+  kind: "state-started" | "state-ended" | "state-changed";
   /** Stable identity for caching (e.g. original event created_at before correction). */
   sourceId?: number;
-  /** When true, snap position to the nearest speech boundary in the waveform. */
-  snapToWaveform?: boolean;
+  /** Snap to nearest speech boundary: "start" trims backward to onset, "end" trims forward to offset. */
+  snapToWaveform?: "start" | "end";
 };
 
 /**
@@ -133,7 +133,13 @@ export type WaveformClock = {
   /** Convert an epoch-seconds timestamp to a buffer index. */
   toIndex: (timestamp: number) => number;
   /** Read shared clock state. */
-  getState: () => { startedAt: number; totalTrimmed: number; sampleCount: number; resetGen: number; paused: boolean };
+  getState: () => {
+    startedAt: number;
+    totalTrimmed: number;
+    sampleCount: number;
+    resetGen: number;
+    paused: boolean;
+  };
   /** Reset the clock and all shared state. */
   reset: () => void;
 };
@@ -149,7 +155,9 @@ export function useWaveformClock(paused: boolean): WaveformClock {
 
   const subscribe = useCallback((cb: TickCallback) => {
     subscribersRef.current.add(cb);
-    return () => { subscribersRef.current.delete(cb); };
+    return () => {
+      subscribersRef.current.delete(cb);
+    };
   }, []);
 
   const toIndex = useCallback((ts: number): number => {
@@ -171,13 +179,16 @@ export function useWaveformClock(paused: boolean): WaveformClock {
     return Math.max(0, Math.round(bufferIndex));
   }, []);
 
-  const getState = useCallback(() => ({
-    startedAt: startedAtRef.current,
-    totalTrimmed: totalTrimmedRef.current,
-    sampleCount: timelineRef.current.count,
-    resetGen: resetGenRef.current,
-    paused: pausedRef.current,
-  }), []);
+  const getState = useCallback(
+    () => ({
+      startedAt: startedAtRef.current,
+      totalTrimmed: totalTrimmedRef.current,
+      sampleCount: timelineRef.current.count,
+      resetGen: resetGenRef.current,
+      paused: pausedRef.current,
+    }),
+    [],
+  );
 
   const reset = useCallback(() => {
     timelineRef.current = createTimeline();
@@ -218,7 +229,10 @@ export function useWaveformClock(paused: boolean): WaveformClock {
     return () => clearInterval(interval);
   }, []);
 
-  return useMemo(() => ({ subscribe, toIndex, getState, reset }), [subscribe, toIndex, getState, reset]);
+  return useMemo(
+    () => ({ subscribe, toIndex, getState, reset }),
+    [subscribe, toIndex, getState, reset],
+  );
 }
 
 // ---------------------------------------------------------------------------
