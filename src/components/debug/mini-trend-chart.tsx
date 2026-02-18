@@ -22,6 +22,15 @@ export function MiniTrendChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
   const [frozenPoints, setFrozenPoints] = useState<TrendPoint[] | null>(null);
+  const [tooltipSize, setTooltipSize] = useState<{ w: number; h: number }>({
+    w: 0,
+    h: 0,
+  });
+  const tooltipRefCb = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setTooltipSize({ w: node.offsetWidth, h: node.offsetHeight });
+    }
+  }, []);
   const displayedPoints = frozenPoints ?? points;
 
   if (displayedPoints.length === 0) {
@@ -246,14 +255,6 @@ export function MiniTrendChart({
           hour12: true,
         })
       : "";
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [tooltipSize, setTooltipSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-  const tooltipRefCb = useCallback((node: HTMLDivElement | null) => {
-    (tooltipRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-    if (node) {
-      setTooltipSize({ w: node.offsetWidth, h: node.offsetHeight });
-    }
-  }, [hoverTimestamp, hoverLabel]);
 
   return (
     <svg
@@ -419,8 +420,14 @@ export function MiniTrendChart({
       })}
       {hoverSample && (
         <foreignObject
-          x={Math.min(width - (tooltipSize.w || 160), Math.max(left + 8, hoverSample.x + 14))}
-          y={Math.min(height - (tooltipSize.h || 60), Math.max(top + 6, hoverSample.y + 8))}
+          x={Math.min(
+            width - (tooltipSize.w || 160),
+            Math.max(left + 8, hoverSample.x + 14),
+          )}
+          y={Math.min(
+            height - (tooltipSize.h || 60),
+            Math.max(top + 6, hoverSample.y + 8),
+          )}
           width={(tooltipSize.w || 160) + 2}
           height={(tooltipSize.h || 60) + 2}
           style={{ overflow: "visible" }}
@@ -439,7 +446,8 @@ export function MiniTrendChart({
             <div
               style={{
                 fontSize: 11,
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                 color: "var(--lk-dbg-fg3)",
                 whiteSpace: "nowrap",
                 marginBottom: 6,
@@ -460,7 +468,8 @@ export function MiniTrendChart({
               <span
                 style={{
                   fontSize: 12,
-                  fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+                  fontFamily:
+                    "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
                   color: "var(--lk-dbg-fg3)",
                   whiteSpace: "nowrap",
                 }}
@@ -470,7 +479,8 @@ export function MiniTrendChart({
               <span
                 style={{
                   fontSize: 12,
-                  fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+                  fontFamily:
+                    "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
                   color: "var(--lk-dbg-fg)",
                   fontWeight: 600,
                   whiteSpace: "nowrap",

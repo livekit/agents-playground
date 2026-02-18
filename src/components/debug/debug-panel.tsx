@@ -99,8 +99,6 @@ export type DebugPanelProps = {
   trackColors?: DebugPanelTrackColors;
   /** Custom labels and colors for interruption/backchannel highlights. */
   highlightConfig?: DebugPanelHighlightConfig;
-  /** Set of agent state labels to hide on the waveform (e.g. `new Set(["listening"])`). */
-  hiddenStateLabels?: Set<string>;
 };
 
 export function DebugPanel({
@@ -116,7 +114,6 @@ export function DebugPanel({
   trackLabels,
   trackColors,
   highlightConfig,
-  hiddenStateLabels,
 }: DebugPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("waveform");
   const [collapsed, setCollapsed] = useState(true);
@@ -226,7 +223,8 @@ export function DebugPanel({
         prevState !== "thinking" &&
         nextState !== "thinking" &&
         prevState !== "speaking" &&
-        nextState !== "speaking"
+        nextState !== "speaking" &&
+        nextState !== "listening"
       ) {
         pushMarker("state-changed");
       }
@@ -438,7 +436,6 @@ export function DebugPanel({
               tickPlacement="top"
               highlights={highlights}
               markers={userMarkers}
-              hiddenStateLabels={hiddenStateLabels}
             />
             <AudioWaveform
               track={agentTrack}
@@ -447,7 +444,6 @@ export function DebugPanel({
               label={agentLabel}
               tickPlacement="hidden"
               markers={agentMarkers}
-              hiddenStateLabels={hiddenStateLabels}
             />
             <button
               onClick={() => {
@@ -498,11 +494,11 @@ export function DebugPanel({
               className="w-full h-full"
             >
               <EventLog
-              events={events}
-              enabledTypes={enabledEventTypes}
-              onEnabledTypesChange={setEnabledEventTypes}
-              onClear={onClearEvents}
-            />
+                events={events}
+                enabledTypes={enabledEventTypes}
+                onEnabledTypesChange={setEnabledEventTypes}
+                onClear={onClearEvents}
+              />
             </div>
           )}
           {activeTab === "metrics" && (

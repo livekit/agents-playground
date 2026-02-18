@@ -19,8 +19,6 @@ export type AudioWaveformProps = {
   tickPlacement?: "top" | "bottom" | "hidden";
   highlights?: WaveformHighlight[];
   markers?: WaveformMarker[];
-  /** Set of marker labels to hide in the state-label row (e.g. `new Set(["listening"])`). */
-  hiddenStateLabels?: Set<string>;
   className?: string;
 };
 
@@ -151,7 +149,6 @@ export function AudioWaveform({
   tickPlacement = "top",
   highlights,
   markers,
-  hiddenStateLabels,
   className,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -171,9 +168,6 @@ export function AudioWaveform({
   tickPlacementRef.current = tickPlacement;
   const labelRef = useRef(label);
   labelRef.current = label;
-  const hiddenStateLabelsRef = useRef(hiddenStateLabels);
-  hiddenStateLabelsRef.current = hiddenStateLabels;
-
   // Cached absolute snap positions keyed by sourceId, stable across correction changes.
   const snapCacheRef = useRef<Map<string, number>>(new Map());
   const lastResetGenRef = useRef(clock.getState().resetGen);
@@ -435,10 +429,7 @@ export function AudioWaveform({
           ctx.setLineDash([]);
         }
 
-        if (
-          mk.kind === "state-changed" &&
-          !hiddenStateLabelsRef.current?.has(mk.label)
-        ) {
+        if (mk.kind === "state-changed") {
           ctx.globalAlpha = 0.7;
           ctx.fillStyle = mk.color;
           ctx.font = `bold 7px ${CANVAS_FONT_STACK}`;
