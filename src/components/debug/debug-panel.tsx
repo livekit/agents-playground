@@ -140,7 +140,12 @@ export function DebugPanel({
   // To place them on the client waveform:
   //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
   //   where clock_offset(client−server) ≈ networkLatency − downlink_transit
-  //   and downlink_transit ≈ transport (clientToSfu * 2)
+  //   and downlink_transit ≈ transport (clientToSfu + sfuToAgent)
+  //
+  // Note: we approximate downlink transit using the measured *uplink* transport
+  // (clientToSfu + sfuToAgent). On asymmetric networks (e.g. mobile) the uplink
+  // and downlink paths can differ, which introduces a small placement error.
+  // In practice the snap-to-speech-boundary logic compensates for this.
   const highlights = useMemo<WaveformHighlight[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
     const downlinkTransit = uplinkLatency?.transport ?? 0;
@@ -292,7 +297,13 @@ export function DebugPanel({
           title={collapsed ? "Expand" : "Collapse"}
         >
           {collapsed ? (
-            <svg width="12" height="12" viewBox="0 0 10 10" fill="currentColor">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 10 10"
+              fill="currentColor"
+              aria-hidden
+            >
               <path
                 d="M1 7L5 3l4 4"
                 stroke="currentColor"
@@ -303,7 +314,13 @@ export function DebugPanel({
               />
             </svg>
           ) : (
-            <svg width="12" height="12" viewBox="0 0 10 10" fill="currentColor">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 10 10"
+              fill="currentColor"
+              aria-hidden
+            >
               <path
                 d="M1 3l4 4 4-4"
                 stroke="currentColor"
@@ -413,19 +430,34 @@ export function DebugPanel({
                   color: "var(--lk-dbg-fg3)",
                 }}
               >
-                <div className="mb-1.5 font-semibold" style={{ color: "var(--lk-dbg-fg2)" }}>
+                <div
+                  className="mb-1.5 font-semibold"
+                  style={{ color: "var(--lk-dbg-fg2)" }}
+                >
                   Transport latency
                 </div>
-                <div className="grid gap-x-4 gap-y-0.5" style={{ gridTemplateColumns: "auto auto" }}>
+                <div
+                  className="grid gap-x-4 gap-y-0.5"
+                  style={{ gridTemplateColumns: "auto auto" }}
+                >
                   <span style={{ color: "var(--lk-dbg-fg5)" }}>Encoding</span>
-                  <span className="text-right">{(uplinkLatency.encoding * 1000).toFixed(0)}ms</span>
+                  <span className="text-right">
+                    {(uplinkLatency.encoding * 1000).toFixed(0)}ms
+                  </span>
                   <span style={{ color: "var(--lk-dbg-fg5)" }}>Transport</span>
-                  <span className="text-right">{(uplinkLatency.transport * 1000).toFixed(0)}ms</span>
+                  <span className="text-right">
+                    {(uplinkLatency.transport * 1000).toFixed(0)}ms
+                  </span>
                   <span style={{ color: "var(--lk-dbg-fg5)" }}>Jitter buf</span>
-                  <span className="text-right">{(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms</span>
+                  <span className="text-right">
+                    {(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms
+                  </span>
                   <span
                     className="mt-1.5 border-t pt-1.5"
-                    style={{ borderColor: "var(--lk-dbg-border)", color: "var(--lk-dbg-fg3)" }}
+                    style={{
+                      borderColor: "var(--lk-dbg-border)",
+                      color: "var(--lk-dbg-fg3)",
+                    }}
                   >
                     Total
                   </span>

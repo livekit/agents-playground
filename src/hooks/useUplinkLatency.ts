@@ -49,17 +49,11 @@ function nextRequestId(): string {
 
 type ClientStatsResult = {
   rttHalf: number;
-  /** Raw cumulative totalPacketSendDelay from the audio outbound-rtp stat (seconds). */
-  rawSendDelay: number;
-  /** Raw cumulative packetsSent from the audio outbound-rtp stat. */
-  rawPacketsSent: number;
 };
 
 /**
- * Extract client-side stats from the publisher RTCPeerConnection:
- *   - Client→SFU RTT/2 from the succeeded candidate-pair
- *   - totalPacketSendDelay / packetsSent from the audio outbound-rtp stat
- *     (cumulative — caller computes deltas across polls)
+ * Extract client-side RTT/2 from the publisher RTCPeerConnection's
+ * succeeded candidate-pair stat.
  *
  * NOTE: accesses the private `room.engine.pcManager.publisher` API.
  * This is not part of the public livekit-client surface and may change
@@ -79,12 +73,10 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
         "[useUplinkLatency] pcManager.publisher not available — client stats will be 0",
       );
     }
-    return { rttHalf: 0, rawSendDelay: 0, rawPacketsSent: 0 };
+    return { rttHalf: 0 };
   }
 
   let rttHalf = 0;
-  let rawSendDelay = 0;
-  let rawPacketsSent = 0;
 
   try {
     const report = await pcTransport.getStats();
@@ -98,21 +90,11 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
       ) {
         rttHalf = (s.currentRoundTripTime as number) / 2;
       }
-
-      if (
-        s.type === "outbound-rtp" &&
-        s.kind === "audio" &&
-        typeof s.totalPacketSendDelay === "number" &&
-        typeof s.packetsSent === "number"
-      ) {
-        rawSendDelay = s.totalPacketSendDelay as number;
-        rawPacketsSent = s.packetsSent as number;
-      }
     });
   } catch {
     // ignore — stats API may be unavailable during reconnection
   }
-  return { rttHalf, rawSendDelay, rawPacketsSent };
+  return { rttHalf };
 }
 
 type ServerStatsResult = {
@@ -276,10 +258,6 @@ export function useUplinkLatency(
 
   const pendingRef = useRef<Map<string, PendingRpc>>(new Map());
   const prevJbRef = useRef<{ jbDelay: number; jbEmitted: number } | null>(null);
-  const prevSendRef = useRef<{
-    delay: number;
-    packets: number;
-  } | null>(null);
   /** Minimum observed RPC round trip (seconds). Used to estimate sfuToAgent
    *  when the server doesn't report candidate-pair RTT. The minimum is the
    *  reading least polluted by server-side processing time. */
@@ -404,31 +382,6 @@ export function useUplinkLatency(
         } = parseServerStats(serverStats, prevJbRef.current);
 
         prevJbRef.current = { jbDelay: rawJbDelay, jbEmitted: rawJbEmitted };
-
-        // Compute delta-based send delay (totalPacketSendDelay is cumulative).
-        // When the stat is unavailable, use OPUS_FRAME_DURATION as a floor:
-        // the encoder must buffer one complete frame before emitting a packet.
-        let sendDelay = OPUS_FRAME_DURATION;
-        const prevSend = prevSendRef.current;
-        if (prevSend && clientStats.rawPacketsSent > prevSend.packets) {
-          sendDelay = Math.max(
-            OPUS_FRAME_DURATION,
-            (clientStats.rawSendDelay - prevSend.delay) /
-              (clientStats.rawPacketsSent - prevSend.packets),
-          );
-        } else if (
-          clientStats.rawPacketsSent > 0 &&
-          clientStats.rawSendDelay > 0
-        ) {
-          sendDelay = Math.max(
-            OPUS_FRAME_DURATION,
-            clientStats.rawSendDelay / clientStats.rawPacketsSent,
-          );
-        }
-        prevSendRef.current = {
-          delay: clientStats.rawSendDelay,
-          packets: clientStats.rawPacketsSent,
-        };
 
         const clientToSfu = clientStats.rttHalf;
 
