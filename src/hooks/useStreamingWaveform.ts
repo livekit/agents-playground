@@ -306,6 +306,8 @@ export function useStreamingWaveform(
   }, [track, track?.mediaStream]);
 
   useEffect(() => {
+    if (!track) return;
+
     // Pad channel to match current clock position (for late-joining tracks).
     const { sampleCount, resetGen } = clock.getState();
     lastResetGenRef.current = resetGen;

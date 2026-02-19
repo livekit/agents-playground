@@ -375,16 +375,11 @@ export function DebugPanel({
         <div className="flex-1" />
         {(uplinkLatency?.total ?? 0) > 0 && (
           <span
-            className="inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums shrink-0"
+            className="group relative inline-flex items-center gap-1 min-w-[66px] px-2 py-0.5 rounded text-[11px] font-mono tabular-nums shrink-0"
             style={{
               color: "var(--lk-dbg-fg5)",
               background: "var(--lk-dbg-bg2)",
             }}
-            title={
-              uplinkLatency
-                ? `Transport latency: ${(uplinkLatency.total * 1000).toFixed(0)}ms (encoding ${(uplinkLatency.encoding * 1000).toFixed(0)}ms + transport ${(uplinkLatency.transport * 1000).toFixed(0)}ms + JB ${(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms)`
-                : ""
-            }
           >
             <svg
               width="12"
@@ -409,6 +404,40 @@ export function DebugPanel({
               />
             </svg>
             {((uplinkLatency?.total ?? 0) * 1000).toFixed(0)}ms
+            {uplinkLatency && (
+              <div
+                className="pointer-events-none absolute bottom-full right-0 z-50 mb-1.5 hidden rounded px-2.5 py-2 text-[11px] whitespace-nowrap group-hover:block"
+                style={{
+                  background: "var(--lk-dbg-bg)",
+                  border: "1px solid var(--lk-dbg-border)",
+                  color: "var(--lk-dbg-fg3)",
+                }}
+              >
+                <div className="mb-1.5 font-semibold" style={{ color: "var(--lk-dbg-fg2)" }}>
+                  Transport latency
+                </div>
+                <div className="grid gap-x-4 gap-y-0.5" style={{ gridTemplateColumns: "auto auto" }}>
+                  <span style={{ color: "var(--lk-dbg-fg5)" }}>Encoding</span>
+                  <span className="text-right">{(uplinkLatency.encoding * 1000).toFixed(0)}ms</span>
+                  <span style={{ color: "var(--lk-dbg-fg5)" }}>Transport</span>
+                  <span className="text-right">{(uplinkLatency.transport * 1000).toFixed(0)}ms</span>
+                  <span style={{ color: "var(--lk-dbg-fg5)" }}>Jitter buf</span>
+                  <span className="text-right">{(uplinkLatency.jitterBuffer * 1000).toFixed(0)}ms</span>
+                  <span
+                    className="mt-1.5 border-t pt-1.5"
+                    style={{ borderColor: "var(--lk-dbg-border)", color: "var(--lk-dbg-fg3)" }}
+                  >
+                    Total
+                  </span>
+                  <span
+                    className="mt-1.5 border-t pt-1.5 text-right"
+                    style={{ borderColor: "var(--lk-dbg-border)" }}
+                  >
+                    {(uplinkLatency.total * 1000).toFixed(0)}ms
+                  </span>
+                </div>
+              </div>
+            )}
           </span>
         )}
       </div>

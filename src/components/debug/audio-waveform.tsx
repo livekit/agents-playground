@@ -6,6 +6,7 @@ import type {
 import {
   SAMPLE_RATE,
   useStreamingWaveform,
+  useWaveformClock,
 } from "@/hooks/useStreamingWaveform";
 import type { Track } from "livekit-client";
 import { useEffect, useRef } from "react";
@@ -13,7 +14,7 @@ import { CANVAS_FONT_STACK, cssVar } from "./shared";
 
 export type AudioWaveformProps = {
   track?: Track;
-  clock: WaveformClock;
+  clock?: WaveformClock;
   color?: string;
   label?: string;
   tickPlacement?: "top" | "bottom" | "hidden";
@@ -154,10 +155,15 @@ export function AudioWaveform({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { getData } = useStreamingWaveform(track, clock);
+  const internalClock = useWaveformClock(false);
+  const activeClock = clock ?? internalClock;
+
+  const { getData } = useStreamingWaveform(track, activeClock);
 
   // Mirror props into refs so the long-lived rAF draw closure always reads the
   // latest values without restarting the animation loop.
+  const trackRef = useRef(track);
+  trackRef.current = track;
   const highlightsRef = useRef(highlights);
   highlightsRef.current = highlights;
   const markersRef = useRef(markers);
@@ -170,7 +176,24 @@ export function AudioWaveform({
   labelRef.current = label;
   // Cached absolute snap positions keyed by sourceId, stable across correction changes.
   const snapCacheRef = useRef<Map<string, number>>(new Map());
-  const lastResetGenRef = useRef(clock.getState().resetGen);
+  const lastResetGenRef = useRef(activeClock.getState().resetGen);
+
+  const prevTrackRef = useRef(track);
+  useEffect(() => {
+    const prevTrack = prevTrackRef.current;
+    prevTrackRef.current = track;
+
+    if (!track) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    } else if (!prevTrack) {
+      // Track reconnected — reset so the time axis starts fresh from zero.
+      activeClock.reset();
+    }
+  }, [track, activeClock]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -187,10 +210,10 @@ export function AudioWaveform({
     const draw = () => {
       const { buffer, count: rawCount } = getData();
       const { startedAt, totalTrimmed, resetGen, sampleCount, paused } =
-        clock.getState();
+        activeClock.getState();
 
-      // Skip drawing when paused — canvas retains its last painted frame.
-      if (paused) {
+      // Skip drawing when paused or no track — canvas retains its last painted frame.
+      if (paused || !trackRef.current) {
         rafId = requestAnimationFrame(draw);
         return;
       }
@@ -219,7 +242,7 @@ export function AudioWaveform({
       );
       const defaultColor = cssVar(container, "--lk-dbg-fg4", "#666666");
 
-      const toIndex = clock.toIndex;
+      const toIndex = activeClock.toIndex;
       const barColor = colorRef.current ?? defaultColor;
       const ticks = tickPlacementRef.current;
       const showTicks = ticks !== "hidden";
@@ -508,7 +531,7 @@ export function AudioWaveform({
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [getData, clock]);
+  }, [getData, activeClock]);
 
   return (
     <div

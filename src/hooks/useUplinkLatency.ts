@@ -36,7 +36,7 @@ export type UplinkLatency = {
   total: number;
   /** Fixed encoding delay in seconds (Opus frame duration). */
   encoding: number;
-  /** Approximate network transport delay in seconds (client→SFU RTT, i.e. clientToSfu * 2). */
+  /** One-way network transport delay in seconds (client→SFU + SFU→agent). */
   transport: number;
   /** Agent jitter buffer delay in seconds. */
   jitterBuffer: number;
@@ -284,8 +284,6 @@ export function useUplinkLatency(
    *  when the server doesn't report candidate-pair RTT. The minimum is the
    *  reading least polluted by server-side processing time. */
   const minRpcRttRef = useRef<number>(Infinity);
-  const loggedServerPayloadRef = useRef(false);
-
   // This hook exclusively owns the lk.agent.response topic.
   useEffect(() => {
     const onResponse = async (
@@ -397,14 +395,6 @@ export function useUplinkLatency(
 
         if (cancelled) return;
 
-        if (
-          process.env.NODE_ENV === "development" &&
-          !loggedServerPayloadRef.current
-        ) {
-          loggedServerPayloadRef.current = true;
-          console.log("[useUplinkLatency] raw server stats:", serverPayload);
-        }
-
         const serverStats: RTCStatsResponse = JSON.parse(serverPayload);
         const {
           jitterBuffer,
@@ -454,23 +444,6 @@ export function useUplinkLatency(
           clientToSfu > 0
         ) {
           sfuToAgent = Math.max(0, minRpcRttRef.current / 2 - clientToSfu);
-        }
-
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            "[useUplinkLatency] send=%sms client→SFU=%sms SFU→agent=%sms (server=%sms) JB=%sms rpcRtt=%sms (min=%sms) total=%sms",
-            (sendDelay * 1000).toFixed(1),
-            (clientToSfu * 1000).toFixed(1),
-            (sfuToAgent * 1000).toFixed(1),
-            (serverSfuToAgent * 1000).toFixed(1),
-            (jitterBuffer * 1000).toFixed(1),
-            (rpcRtt * 1000).toFixed(1),
-            (minRpcRttRef.current * 1000).toFixed(1),
-            (
-              (sendDelay + clientToSfu + sfuToAgent + jitterBuffer) *
-              1000
-            ).toFixed(1),
-          );
         }
 
         const encoding = OPUS_FRAME_DURATION;
