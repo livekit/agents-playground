@@ -67,7 +67,8 @@ export default function Playground({
   const [rpcPayload, setRpcPayload] = useState("");
   const [hasConnected, setHasConnected] = useState(false);
 
-  const [tokenFetchOptions, setTokenFetchOptions] = useState<TokenSourceFetchOptions>();
+  const [tokenFetchOptions, setTokenFetchOptions] =
+    useState<TokenSourceFetchOptions>();
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
@@ -79,7 +80,12 @@ export default function Playground({
       agentName: initialAgentOptions?.agentName ?? "",
       agentMetadata: initialAgentOptions?.metadata ?? "",
     });
-  }, [tokenFetchOptions, initialAgentOptions, initialAgentOptions?.agentName, initialAgentOptions?.metadata]);
+  }, [
+    tokenFetchOptions,
+    initialAgentOptions,
+    initialAgentOptions?.agentName,
+    initialAgentOptions?.metadata,
+  ]);
 
   const session = useSession(tokenSource, tokenFetchOptions);
   const { connectionState } = session;
@@ -113,7 +119,12 @@ export default function Playground({
         config.settings.inputs.mic,
       );
     }
-  }, [config.settings.inputs.camera, config.settings.inputs.mic, session.room.localParticipant, connectionState]);
+  }, [
+    config.settings.inputs.camera,
+    config.settings.inputs.mic,
+    session.room.localParticipant,
+    connectionState,
+  ]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -202,11 +213,7 @@ export default function Playground({
     }
 
     return visualizerContent;
-  }, [
-    agent.microphoneTrack,
-    connectionState,
-    agent.state,
-  ]);
+  }, [agent.microphoneTrack, connectionState, agent.state]);
 
   const chatTileContent = useMemo(() => {
     if (agent.isConnected) {

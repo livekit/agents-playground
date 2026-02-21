@@ -120,7 +120,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return {
       editable: true,
       chat: params.get("chat") === "1",
-      theme_color: params.get("theme_color"),
+      theme_color: params.get("theme_color") || "cyan",
       agent: params.get("agent") || undefined,
       inputs: {
         camera: params.get("cam") === "1",
