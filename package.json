@@ -22,7 +22,7 @@
     "livekit-client": "^2.16.0",
     "livekit-server-sdk": "^2.14.2",
     "lodash": "^4.17.21",
-    "next": "^15.5.6",
+    "next": "^15.5.12",
     "next-plugin-preval": "^1.2.6",
     "qrcode.react": "^4.1.0",
     "react": "^19.0.0",
