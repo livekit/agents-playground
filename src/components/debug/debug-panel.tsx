@@ -10,7 +10,7 @@ import type {
   ClientEvent,
   ClientEventType,
   ClientMetricsCollectedEvent,
-  ClientUserInterruptionEvent,
+  ClientUserOverlappingSpeechEvent,
   ClientUserStateChangedEvent,
 } from "@/lib/types";
 import type { Track } from "livekit-client";
@@ -86,7 +86,7 @@ export type DebugPanelProps = {
   agentTrack: Track | undefined;
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
-  interruptionEvents: ClientUserInterruptionEvent[];
+  overlappingSpeechEvents: ClientUserOverlappingSpeechEvent[];
   sessionUsage: AgentSessionUsage | null;
   onClearEvents: () => void;
   /** One-way server→client network transit in seconds, measured from interruption sent_at. */
@@ -106,7 +106,7 @@ export function DebugPanel({
   agentTrack,
   events,
   metricsEvents,
-  interruptionEvents,
+  overlappingSpeechEvents,
   sessionUsage,
   onClearEvents,
   networkLatency,
@@ -153,8 +153,8 @@ export function DebugPanel({
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
     const correction = clockOffset - pipeline;
 
-    return interruptionEvents.map((evt) => ({
-      start: (evt.overlap_speech_started_at ?? evt.created_at) + correction,
+    return overlappingSpeechEvents.map((evt) => ({
+      start: (evt.overlap_started_at ?? evt.created_at) + correction,
       end: evt.created_at + correction,
       color: evt.is_interruption ? interruptionColor : backchannelColor,
       label: evt.is_interruption ? interruptionLabel : backchannelLabel,
@@ -162,7 +162,7 @@ export function DebugPanel({
       snapToWaveform: true,
     }));
   }, [
-    interruptionEvents,
+    overlappingSpeechEvents,
     networkLatency,
     uplinkLatency,
     interruptionColor,

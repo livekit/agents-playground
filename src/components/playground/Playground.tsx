@@ -18,8 +18,8 @@ import {
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
 import { useClientEvents } from "@/hooks/useClientEvents";
-import { useUplinkLatency } from "@/hooks/useUplinkLatency";
 import { useConfig } from "@/hooks/useConfig";
+import { useUplinkLatency } from "@/hooks/useUplinkLatency";
 import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
@@ -97,7 +97,7 @@ export default function Playground({
 
   const {
     events: clientEvents,
-    interruptionEvents,
+    overlappingSpeechEvents,
     metricsEvents,
     sessionUsage,
     networkLatency,
@@ -143,6 +143,16 @@ export default function Playground({
       clearEvents();
     }
   }, [connectionState, clearEvents]);
+
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  useEffect(() => {
+    if (connectionState === ConnectionState.Disconnected) {
+      setShowDebugPanel(false);
+    } else if (!showDebugPanel && clientEvents.length > 0) {
+      setShowDebugPanel(true);
+    }
+  }, [connectionState, showDebugPanel, clientEvents.length]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -670,17 +680,19 @@ export default function Playground({
             {settingsTileContent}
           </PlaygroundTile>
         </div>
-        <DebugPanel
-          userTrack={session.local.microphoneTrack?.publication?.track}
-          agentTrack={agent.microphoneTrack?.publication?.track}
-          events={clientEvents}
-          metricsEvents={metricsEvents}
-          interruptionEvents={interruptionEvents}
-          sessionUsage={sessionUsage}
-          onClearEvents={clearEvents}
-          networkLatency={networkLatency}
-          uplinkLatency={uplinkLatency}
-        />
+        {showDebugPanel && (
+          <DebugPanel
+            userTrack={session.local.microphoneTrack?.publication?.track}
+            agentTrack={agent.microphoneTrack?.publication?.track}
+            events={clientEvents}
+            metricsEvents={metricsEvents}
+            overlappingSpeechEvents={overlappingSpeechEvents}
+            sessionUsage={sessionUsage}
+            onClearEvents={clearEvents}
+            networkLatency={networkLatency}
+            uplinkLatency={uplinkLatency}
+          />
+        )}
         <RoomAudioRenderer />
         <StartAudio label="Click to enable audio playback" />
       </div>

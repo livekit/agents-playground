@@ -33,7 +33,7 @@ const TYPE_FILTER_STYLE: Record<
     background: "rgba(236, 72, 153, 0.16)",
     color: "#F472B6",
   },
-  user_interruption: {
+  user_overlapping_speech: {
     background: "rgba(245, 158, 11, 0.16)",
     color: "#FBBF24",
   },
@@ -59,7 +59,7 @@ export const ALL_EVENT_TYPES: ClientEventType[] = [
   "user_input_transcribed",
   "function_tools_executed",
   "metrics_collected",
-  "user_interruption",
+  "user_overlapping_speech",
   "error",
   "session_usage",
 ];
@@ -88,7 +88,7 @@ function eventSummary(event: ClientEvent): string {
       return `${event.function_calls.length} function call(s)`;
     case "metrics_collected":
       return `${event.metrics.type}`;
-    case "user_interruption":
+    case "user_overlapping_speech":
       return event.is_interruption ? "interruption" : "backchannel";
     case "error":
       return event.message;

@@ -288,14 +288,14 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
         "Cumulative number of detected interruptions",
       ),
       cumulativeCard(
-        "interruption-num-non-interruptions",
-        "Non-Interruptions",
+        "interruption-num-backchannels",
+        "Backchannels",
         interruption.map((m) => ({
           t: m.timestamp,
-          v: m.num_non_interruptions,
+          v: m.num_backchannels,
         })),
         "count",
-        "Cumulative number of non-interruption predictions",
+        "Cumulative number of backchannel predictions",
       ),
     );
   }

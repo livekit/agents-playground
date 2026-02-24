@@ -3,7 +3,7 @@ import type {
   ClientEvent,
   ClientMetricsCollectedEvent,
   ClientSessionUsageEvent,
-  ClientUserInterruptionEvent,
+  ClientUserOverlappingSpeechEvent,
 } from "@/lib/types";
 import type { Room } from "livekit-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +14,7 @@ const MAX_EVENTS = 1000;
 export type UseClientEventsReturn = {
   events: ClientEvent[];
   metricsEvents: ClientMetricsCollectedEvent[];
-  interruptionEvents: ClientUserInterruptionEvent[];
+  overlappingSpeechEvents: ClientUserOverlappingSpeechEvent[];
   sessionUsage: AgentSessionUsage | null;
   /** Average one-way server→client transit in seconds, measured from interruption `sent_at`. */
   networkLatency: number;
@@ -89,10 +89,11 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     [events],
   );
 
-  const interruptionEvents = useMemo(
+  const overlappingSpeechEvents = useMemo(
     () =>
       events.filter(
-        (e): e is ClientUserInterruptionEvent => e.type === "user_interruption",
+        (e): e is ClientUserOverlappingSpeechEvent =>
+          e.type === "user_overlapping_speech",
       ),
     [events],
   );
@@ -111,7 +112,7 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
   // Compute average one-way network latency from interruption events' sent_at
   const networkLatency = useMemo(() => {
     const deltas: number[] = [];
-    for (const e of interruptionEvents) {
+    for (const e of overlappingSpeechEvents) {
       const receivedAt = receivedAtMap.current.get(e);
       if (receivedAt !== undefined && e.sent_at > 0) {
         const delta = receivedAt - e.sent_at;
@@ -123,12 +124,12 @@ export function useClientEvents(room: Room): UseClientEventsReturn {
     const recent = deltas.slice(-LATENCY_SAMPLE_WINDOW);
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
     return avg;
-  }, [interruptionEvents]);
+  }, [overlappingSpeechEvents]);
 
   return {
     events,
     metricsEvents,
-    interruptionEvents,
+    overlappingSpeechEvents,
     sessionUsage,
     networkLatency,
     clearEvents,

@@ -168,7 +168,7 @@ export type InterruptionMetrics = {
   prediction_duration: number;
   detection_delay: number;
   num_interruptions: number;
-  num_non_interruptions: number;
+  num_backchannels: number;
   num_requests: number;
   room: string;
   pid: number;
@@ -197,12 +197,12 @@ export type ClientErrorEvent = {
   created_at: number;
 };
 
-export type ClientUserInterruptionEvent = {
-  type: "user_interruption";
+export type ClientUserOverlappingSpeechEvent = {
+  type: "user_overlapping_speech";
   is_interruption: boolean;
   created_at: number;
   sent_at: number;
-  overlap_speech_started_at: number | null;
+  overlap_started_at: number | null;
   /** Time from overlap speech onset to interruption prediction (seconds). */
   detection_delay: number;
 };
@@ -275,7 +275,7 @@ export type ClientEvent =
   | ClientFunctionToolsExecutedEvent
   | ClientMetricsCollectedEvent
   | ClientErrorEvent
-  | ClientUserInterruptionEvent
+  | ClientUserOverlappingSpeechEvent
   | ClientSessionUsageEvent;
 
 export type ClientEventType = ClientEvent["type"];
