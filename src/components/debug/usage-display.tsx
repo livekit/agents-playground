@@ -9,7 +9,8 @@ import { InfoTooltip, TITLE_FONT_STACK } from "./shared";
 
 const UNIT_CLASS = "text-[20px] ml-0.5 text-gray-500";
 
-function DurationValue({ seconds }: { seconds: number }) {
+function DurationValue({ seconds }: { seconds: number | undefined | null }) {
+  if (seconds == null) seconds = 0;
   if (seconds < 60) {
     return (
       <>
@@ -30,8 +31,8 @@ function DurationValue({ seconds }: { seconds: number }) {
   );
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString();
+function formatNumber(n: number | undefined | null): string {
+  return (n ?? 0).toLocaleString();
 }
 
 function modelLabel(provider: string, model: string): string {
