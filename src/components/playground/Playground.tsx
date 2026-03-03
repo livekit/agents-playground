@@ -265,9 +265,47 @@ export default function Playground({
     }));
   }, []);
 
+  const handleAgentNameChange = useCallback((value) => {
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      agentName: value,
+    }));
+  }, []);
+
+  const handleParticipantNameChange = useCallback((value) => {
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      participantName: value,
+    }));
+  }, []);
+
+  const handleParticipantIdentityChange = useCallback((value) => {
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      participantIdentity: value,
+    }));
+  }, []);
+
+  const handleMetadataChange = useCallback((metadata) => {
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      participantMetadata: metadata,
+    }));
+  }, []);
+
   const agentAttributes = useParticipantAttributes({
     participant: agent.internal.agentParticipant ?? undefined,
   });
+
+  const participantAttributesArray = useMemo(() => {
+    return Object.entries(
+      tokenFetchOptions?.participantAttributes || {},
+    ).map(([key, value], index) => ({
+      id: `attr-${index}`,
+      key,
+      value: value,
+    }));
+  }, [tokenFetchOptions?.participantAttributes]);
 
   const settingsTileContent = useMemo(() => {
     return (
@@ -314,12 +352,7 @@ export default function Playground({
               name="Agent name"
               value={tokenFetchOptions?.agentName ?? ""}
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
-                  agentName: value,
-                });
-              }}
+              onValueChange={handleAgentNameChange}
               placeholder="None"
               editable={connectionState !== ConnectionState.Connected}
             />
@@ -380,12 +413,7 @@ export default function Playground({
                   : (tokenFetchOptions?.participantName ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
-                  participantName: value,
-                });
-              }}
+              onValueChange={handleParticipantNameChange}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
             />
@@ -397,31 +425,15 @@ export default function Playground({
                   : (tokenFetchOptions?.participantIdentity ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={(value) => {
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
-                  participantIdentity: value,
-                });
-              }}
+              onValueChange={handleParticipantIdentityChange}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
             />
             <AttributesInspector
-              attributes={Object.entries(
-                tokenFetchOptions?.participantAttributes || {},
-              ).map(([key, value]) => ({
-                id: key,
-                key,
-                value: value,
-              }))}
+              attributes={participantAttributesArray}
               onAttributesChange={handleAttributesChange}
               metadata={tokenFetchOptions?.participantMetadata}
-              onMetadataChange={(metadata) => {
-                setTokenFetchOptions((prev) => ({
-                  ...prev,
-                  participantMetadata: metadata,
-                }));
-              }}
+              onMetadataChange={handleMetadataChange}
               themeColor={config.settings.theme_color}
               disabled={false}
               connectionState={connectionState}
@@ -528,6 +540,15 @@ export default function Playground({
     rpcPayload,
     handleRpcCall,
     handleAttributesChange,
+    handleAgentNameChange,
+    handleParticipantNameChange,
+    handleParticipantIdentityChange,
+    handleMetadataChange,
+    participantAttributesArray,
+    tokenFetchOptions?.agentName,
+    tokenFetchOptions?.participantName,
+    tokenFetchOptions?.participantIdentity,
+    tokenFetchOptions?.participantMetadata,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
