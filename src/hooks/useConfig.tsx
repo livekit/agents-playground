@@ -35,6 +35,7 @@ export type UserSettings = {
   editable: boolean;
   theme_color: string;
   chat: boolean;
+  agent?: string;
   inputs: {
     camera: boolean;
     screen: boolean;
@@ -119,7 +120,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return {
       editable: true,
       chat: params.get("chat") === "1",
-      theme_color: params.get("theme_color"),
+      theme_color: params.get("theme_color") || "cyan",
+      agent: params.get("agent") || undefined,
       inputs: {
         camera: params.get("cam") === "1",
         screen: params.get("screen") === "1",
@@ -155,6 +157,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         audio: boolToString(us.outputs.audio),
         chat: boolToString(us.chat),
         theme_color: us.theme_color || "cyan",
+        ...(us.agent ? { agent: us.agent } : {}),
       });
       router.replace("/#" + obj.toString());
     },

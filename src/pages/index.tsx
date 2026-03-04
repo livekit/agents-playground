@@ -83,6 +83,11 @@ export function HomeInner() {
             themeColors={themeColors}
             tokenSource={tokenSource}
             autoConnect={autoConnect}
+            agentOptions={
+              config.settings.agent
+                ? { agentName: config.settings.agent }
+                : config.agent_dispatch
+            }
           />
         ) : (
           <PlaygroundConnect

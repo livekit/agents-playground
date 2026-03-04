@@ -136,7 +136,12 @@ export default function Playground({
         config.settings.inputs.mic,
       );
     }
-  }, [config, session.room.localParticipant, connectionState]);
+  }, [
+    config.settings.inputs.camera,
+    config.settings.inputs.mic,
+    session.room.localParticipant,
+    connectionState,
+  ]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.Disconnected) {
@@ -278,6 +283,20 @@ export default function Playground({
     rpcPayload,
     agent.internal.agentParticipant,
   ]);
+
+  const handleAttributesChange = useCallback((newAttributes) => {
+    const newAttributesMap = newAttributes.reduce(
+      (acc, attr) => {
+        acc[attr.key] = attr.value;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      participantAttributes: newAttributesMap,
+    }));
+  }, []);
 
   const agentAttributes = useParticipantAttributes({
     participant: agent.internal.agentParticipant ?? undefined,
@@ -428,25 +447,13 @@ export default function Playground({
                 key,
                 value: value,
               }))}
-              onAttributesChange={(newAttributes) => {
-                const newAttributesMap = newAttributes.reduce(
-                  (acc, attr) => {
-                    acc[attr.key] = attr.value;
-                    return acc;
-                  },
-                  {} as Record<string, string>,
-                );
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
-                  participantAttributes: newAttributesMap,
-                });
-              }}
+              onAttributesChange={handleAttributesChange}
               metadata={tokenFetchOptions?.participantMetadata}
               onMetadataChange={(metadata) => {
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
                   participantMetadata: metadata,
-                });
+                }));
               }}
               themeColor={config.settings.theme_color}
               disabled={false}
@@ -553,8 +560,7 @@ export default function Playground({
     rpcMethod,
     rpcPayload,
     handleRpcCall,
-    tokenFetchOptions,
-    setTokenFetchOptions,
+    handleAttributesChange,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
