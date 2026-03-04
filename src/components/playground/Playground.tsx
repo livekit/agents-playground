@@ -269,16 +269,6 @@ export default function Playground({
     participant: agent.internal.agentParticipant ?? undefined,
   });
 
-  const participantAttributesArray = useMemo(() => {
-    return Object.entries(
-      tokenFetchOptions?.participantAttributes || {},
-    ).map(([key, value], index) => ({
-      id: `attr-${index}`,
-      key,
-      value: value,
-    }));
-  }, [tokenFetchOptions?.participantAttributes]);
-
   const settingsTileContent = useMemo(() => {
     return (
       <div className="flex flex-col h-full w-full items-start overflow-y-auto">
@@ -325,10 +315,10 @@ export default function Playground({
               value={tokenFetchOptions?.agentName ?? ""}
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                setTokenFetchOptions((prev) => ({
-                  ...prev,
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
                   agentName: value,
-                }));
+                });
               }}
               placeholder="None"
               editable={connectionState !== ConnectionState.Connected}
@@ -391,10 +381,10 @@ export default function Playground({
               }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                setTokenFetchOptions((prev) => ({
-                  ...prev,
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
                   participantName: value,
-                }));
+                });
               }}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
@@ -408,16 +398,22 @@ export default function Playground({
               }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                setTokenFetchOptions((prev) => ({
-                  ...prev,
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
                   participantIdentity: value,
-                }));
+                });
               }}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
             />
             <AttributesInspector
-              attributes={participantAttributesArray}
+              attributes={Object.entries(
+                tokenFetchOptions?.participantAttributes || {},
+              ).map(([key, value], index) => ({
+                id: `attr-${index}`,
+                key,
+                value: value,
+              }))}
               onAttributesChange={handleAttributesChange}
               metadata={tokenFetchOptions?.participantMetadata}
               onMetadataChange={(metadata) => {
@@ -532,7 +528,6 @@ export default function Playground({
     rpcPayload,
     handleRpcCall,
     handleAttributesChange,
-    participantAttributesArray,
     tokenFetchOptions?.agentName,
     tokenFetchOptions?.participantName,
     tokenFetchOptions?.participantIdentity,
