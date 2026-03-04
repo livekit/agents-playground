@@ -3,25 +3,33 @@
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 import { ChatTile } from "@/components/chat/ChatTile";
 import { ColorPicker } from "@/components/colorPicker/ColorPicker";
+import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { AudioInputTile } from "@/components/config/AudioInputTile";
 import { ConfigurationPanelItem } from "@/components/config/ConfigurationPanelItem";
-import { NameValueRow } from "@/components/config/NameValueRow";
+import {
+  EditableNameValueRow,
+  NameValueRow,
+} from "@/components/config/NameValueRow";
+import { DebugPanel } from "@/components/debug";
 import { PlaygroundHeader } from "@/components/playground/PlaygroundHeader";
 import {
   PlaygroundTab,
   PlaygroundTabbedTile,
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
+import { useClientEvents } from "@/hooks/useClientEvents";
 import { useConfig } from "@/hooks/useConfig";
+import { useUplinkLatency } from "@/hooks/useUplinkLatency";
+import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
-  VideoTrack,
-  useParticipantAttributes,
+  RoomAudioRenderer,
   SessionProvider,
   StartAudio,
-  RoomAudioRenderer,
-  useSession,
+  VideoTrack,
   useAgent,
+  useParticipantAttributes,
+  useSession,
   useSessionMessages,
 } from "@livekit/components-react";
 import {
@@ -30,7 +38,7 @@ import {
   TokenSourceFetchOptions,
   Track,
 } from "livekit-client";
-import { PartialMessage } from "@bufbuild/protobuf";
+import { RoomAgentDispatch } from "livekit-server-sdk";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
@@ -38,7 +46,6 @@ import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
 import { AttributeItem } from "@/lib/types";
 import { RpcPanel } from "./RpcPanel";
-import { RoomAgentDispatch } from "livekit-server-sdk";
 
 export interface PlaygroundMeta {
   name: string;
@@ -79,7 +86,6 @@ export default function Playground({
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
-    // set initial options only if they haven't been set yet
     if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
       return;
     }
@@ -99,6 +105,20 @@ export default function Playground({
   const agent = useAgent(session);
   const messages = useSessionMessages(session);
 
+  const {
+    events: clientEvents,
+    overlappingSpeechEvents,
+    metricsEvents,
+    sessionUsage,
+    networkLatency,
+    clearEvents,
+  } = useClientEvents(session.room);
+
+  const uplinkLatency = useUplinkLatency(
+    session.room,
+    agent.internal.agentParticipant?.identity,
+  );
+
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
   );
@@ -109,7 +129,7 @@ export default function Playground({
     }
     session.start();
     setHasConnected(true);
-  }, [session, session.isConnected]);
+  }, [session]);
 
   useEffect(() => {
     if (autoConnect && !hasConnected) {
@@ -132,6 +152,22 @@ export default function Playground({
     session.room.localParticipant,
     connectionState,
   ]);
+
+  useEffect(() => {
+    if (connectionState === ConnectionState.Disconnected) {
+      clearEvents();
+    }
+  }, [connectionState, clearEvents]);
+
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  useEffect(() => {
+    if (connectionState === ConnectionState.Disconnected) {
+      setShowDebugPanel(false);
+    } else if (!showDebugPanel && clientEvents.length > 0) {
+      setShowDebugPanel(true);
+    }
+  }, [connectionState, showDebugPanel, clientEvents.length]);
 
   const videoTileContent = useMemo(() => {
     const videoFitClassName = `object-${config.video_fit || "contain"}`;
@@ -610,8 +646,8 @@ export default function Playground({
           }}
         />
         <div
-          className={`flex gap-4 py-4 grow w-full selection:bg-${config.settings.theme_color}-900`}
-          style={{ height: `calc(100% - ${headerHeight}px)` }}
+          className={`flex gap-4 py-4 grow w-full overflow-hidden selection:bg-${config.settings.theme_color}-900`}
+          style={{ minHeight: 0 }}
         >
           <div className="flex flex-col grow basis-1/2 gap-4 h-full lg:hidden">
             <PlaygroundTabbedTile
@@ -664,6 +700,19 @@ export default function Playground({
             {settingsTileContent}
           </PlaygroundTile>
         </div>
+        {showDebugPanel && (
+          <DebugPanel
+            userTrack={session.local.microphoneTrack?.publication?.track}
+            agentTrack={agent.microphoneTrack?.publication?.track}
+            events={clientEvents}
+            metricsEvents={metricsEvents}
+            overlappingSpeechEvents={overlappingSpeechEvents}
+            sessionUsage={sessionUsage}
+            onClearEvents={clearEvents}
+            networkLatency={networkLatency}
+            uplinkLatency={uplinkLatency}
+          />
+        )}
         <RoomAudioRenderer />
         <StartAudio label="Click to enable audio playback" />
       </div>
