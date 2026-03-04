@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { ConnectionState } from "livekit-client";
 import { AttributeItem } from "@/lib/types";
 import { Button } from "@/components/button/Button";
@@ -135,6 +135,34 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
     }
   };
 
+  // Compute which attribute IDs have duplicate keys (non-empty keys that appear more than once)
+  const duplicateKeyErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    const keyCount: Record<string, string[]> = {};
+
+    // Count occurrences of each non-empty key
+    localAttributes.forEach((attr) => {
+      const trimmedKey = attr.key.trim();
+      if (trimmedKey !== "") {
+        if (!keyCount[trimmedKey]) {
+          keyCount[trimmedKey] = [];
+        }
+        keyCount[trimmedKey].push(attr.id);
+      }
+    });
+
+    // Mark all attributes with duplicate keys as having an error
+    Object.entries(keyCount).forEach(([key, ids]) => {
+      if (ids.length > 1) {
+        ids.forEach((id) => {
+          errors[id] = `Duplicate key "${key}"`;
+        });
+      }
+    });
+
+    return errors;
+  }, [localAttributes]);
+
   return (
     <div>
       <div
@@ -185,6 +213,7 @@ export const AttributesInspector: React.FC<AttributesInspectorProps> = ({
                   onValueChange={handleValueChange}
                   onRemove={handleRemoveAttribute}
                   disabled={disabled}
+                  keyError={duplicateKeyErrors[attribute.id]}
                 />
               ))}
               <div className="flex justify-between items-center">

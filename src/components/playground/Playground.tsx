@@ -36,6 +36,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
 import { EditableNameValueRow } from "@/components/config/NameValueRow";
 import { AttributesInspector } from "@/components/config/AttributesInspector";
+import { AttributeItem } from "@/lib/types";
 import { RpcPanel } from "./RpcPanel";
 import { RoomAgentDispatch } from "livekit-server-sdk";
 
@@ -69,6 +70,12 @@ export default function Playground({
 
   const [tokenFetchOptions, setTokenFetchOptions] =
     useState<TokenSourceFetchOptions>();
+
+  // Store attributes as an array with stable IDs to prevent disappearing while editing
+  // Initialize with one empty attribute so the inspector isn't empty on first open
+  const [attributeItems, setAttributeItems] = useState<AttributeItem[]>([
+    { id: `attr_initial_${Date.now()}`, key: "", value: "" },
+  ]);
 
   // initialize token fetch options from initial values, which can come from config
   useEffect(() => {
@@ -251,10 +258,17 @@ export default function Playground({
     agent.internal.agentParticipant,
   ]);
 
-  const handleAttributesChange = useCallback((newAttributes) => {
+  const handleAttributesChange = useCallback((newAttributes: AttributeItem[]) => {
+    // Store the full array with stable IDs to preserve attributes during editing
+    setAttributeItems(newAttributes);
+
+    // Convert to map for tokenFetchOptions, but only include non-empty keys
+    // Duplicates are handled by keeping the last occurrence (later values overwrite earlier ones)
     const newAttributesMap = newAttributes.reduce(
       (acc, attr) => {
-        acc[attr.key] = attr.value;
+        if (attr.key && attr.key.trim() !== "") {
+          acc[attr.key] = attr.value;
+        }
         return acc;
       },
       {} as Record<string, string>,
@@ -407,13 +421,7 @@ export default function Playground({
               editable={connectionState !== ConnectionState.Connected}
             />
             <AttributesInspector
-              attributes={Object.entries(
-                tokenFetchOptions?.participantAttributes || {},
-              ).map(([key, value], index) => ({
-                id: `attr-${index}`,
-                key,
-                value: value,
-              }))}
+              attributes={attributeItems}
               onAttributesChange={handleAttributesChange}
               metadata={tokenFetchOptions?.participantMetadata}
               onMetadataChange={(metadata) => {
@@ -528,6 +536,7 @@ export default function Playground({
     rpcPayload,
     handleRpcCall,
     handleAttributesChange,
+    attributeItems,
     tokenFetchOptions,
     setTokenFetchOptions,
   ]);
