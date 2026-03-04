@@ -265,34 +265,6 @@ export default function Playground({
     }));
   }, []);
 
-  const handleAgentNameChange = useCallback((value) => {
-    setTokenFetchOptions((prev) => ({
-      ...prev,
-      agentName: value,
-    }));
-  }, []);
-
-  const handleParticipantNameChange = useCallback((value) => {
-    setTokenFetchOptions((prev) => ({
-      ...prev,
-      participantName: value,
-    }));
-  }, []);
-
-  const handleParticipantIdentityChange = useCallback((value) => {
-    setTokenFetchOptions((prev) => ({
-      ...prev,
-      participantIdentity: value,
-    }));
-  }, []);
-
-  const handleMetadataChange = useCallback((metadata) => {
-    setTokenFetchOptions((prev) => ({
-      ...prev,
-      participantMetadata: metadata,
-    }));
-  }, []);
-
   const agentAttributes = useParticipantAttributes({
     participant: agent.internal.agentParticipant ?? undefined,
   });
@@ -352,7 +324,12 @@ export default function Playground({
               name="Agent name"
               value={tokenFetchOptions?.agentName ?? ""}
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={handleAgentNameChange}
+              onValueChange={(value) => {
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  agentName: value,
+                }));
+              }}
               placeholder="None"
               editable={connectionState !== ConnectionState.Connected}
             />
@@ -413,7 +390,12 @@ export default function Playground({
                   : (tokenFetchOptions?.participantName ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={handleParticipantNameChange}
+              onValueChange={(value) => {
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  participantName: value,
+                }));
+              }}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
             />
@@ -425,7 +407,12 @@ export default function Playground({
                   : (tokenFetchOptions?.participantIdentity ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
-              onValueChange={handleParticipantIdentityChange}
+              onValueChange={(value) => {
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  participantIdentity: value,
+                }));
+              }}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
             />
@@ -433,7 +420,12 @@ export default function Playground({
               attributes={participantAttributesArray}
               onAttributesChange={handleAttributesChange}
               metadata={tokenFetchOptions?.participantMetadata}
-              onMetadataChange={handleMetadataChange}
+              onMetadataChange={(metadata) => {
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  participantMetadata: metadata,
+                }));
+              }}
               themeColor={config.settings.theme_color}
               disabled={false}
               connectionState={connectionState}
@@ -540,10 +532,6 @@ export default function Playground({
     rpcPayload,
     handleRpcCall,
     handleAttributesChange,
-    handleAgentNameChange,
-    handleParticipantNameChange,
-    handleParticipantIdentityChange,
-    handleMetadataChange,
     participantAttributesArray,
     tokenFetchOptions?.agentName,
     tokenFetchOptions?.participantName,
