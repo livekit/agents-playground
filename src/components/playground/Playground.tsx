@@ -528,10 +528,8 @@ export default function Playground({
     rpcPayload,
     handleRpcCall,
     handleAttributesChange,
-    tokenFetchOptions?.agentName,
-    tokenFetchOptions?.participantName,
-    tokenFetchOptions?.participantIdentity,
-    tokenFetchOptions?.participantMetadata,
+    tokenFetchOptions,
+    setTokenFetchOptions,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
