@@ -20,6 +20,7 @@ import {
 import { useClientEvents } from "@/hooks/useClientEvents";
 import { useConfig } from "@/hooks/useConfig";
 import { useUplinkLatency } from "@/hooks/useUplinkLatency";
+import { AttributeItem } from "@/lib/types";
 import { PartialMessage } from "@bufbuild/protobuf";
 import {
   BarVisualizer,
@@ -42,9 +43,6 @@ import { RoomAgentDispatch } from "livekit-server-sdk";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
-import { EditableNameValueRow } from "@/components/config/NameValueRow";
-import { AttributesInspector } from "@/components/config/AttributesInspector";
-import { AttributeItem } from "@/lib/types";
 import { RpcPanel } from "./RpcPanel";
 
 export interface PlaygroundMeta {
@@ -294,26 +292,29 @@ export default function Playground({
     agent.internal.agentParticipant,
   ]);
 
-  const handleAttributesChange = useCallback((newAttributes: AttributeItem[]) => {
-    // Store the full array with stable IDs to preserve attributes during editing
-    setAttributeItems(newAttributes);
+  const handleAttributesChange = useCallback(
+    (newAttributes: AttributeItem[]) => {
+      // Store the full array with stable IDs to preserve attributes during editing
+      setAttributeItems(newAttributes);
 
-    // Convert to map for tokenFetchOptions, but only include non-empty keys
-    // Duplicates are handled by keeping the last occurrence (later values overwrite earlier ones)
-    const newAttributesMap = newAttributes.reduce(
-      (acc, attr) => {
-        if (attr.key && attr.key.trim() !== "") {
-          acc[attr.key] = attr.value;
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
-    setTokenFetchOptions((prev) => ({
-      ...prev,
-      participantAttributes: newAttributesMap,
-    }));
-  }, []);
+      // Convert to map for tokenFetchOptions, but only include non-empty keys
+      // Duplicates are handled by keeping the last occurrence (later values overwrite earlier ones)
+      const newAttributesMap = newAttributes.reduce(
+        (acc, attr) => {
+          if (attr.key && attr.key.trim() !== "") {
+            acc[attr.key] = attr.value;
+          }
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+      setTokenFetchOptions((prev) => ({
+        ...prev,
+        participantAttributes: newAttributesMap,
+      }));
+    },
+    [],
+  );
 
   const agentAttributes = useParticipantAttributes({
     participant: agent.internal.agentParticipant ?? undefined,
