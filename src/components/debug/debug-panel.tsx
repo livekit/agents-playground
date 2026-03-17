@@ -138,21 +138,23 @@ export function DebugPanel({
     const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
-    const correction = clockOffset - pipeline;
+    const detectionCorrection = clockOffset - pipeline;
 
-    return overlappingSpeechEvents.map(({ speech: evt, createdAtSeconds }) => {
-      const overlapStart = evt.overlapStartedAt
-        ? timestampToSeconds(evt.overlapStartedAt)
-        : createdAtSeconds;
-      return {
-        start: overlapStart + correction,
-        end: createdAtSeconds + correction,
-        color: evt.isInterruption ? interruptionColor : backchannelColor,
-        label: evt.isInterruption ? interruptionLabel : backchannelLabel,
-        sourceId: createdAtSeconds,
-        snapToWaveform: true,
-      };
-    });
+    return overlappingSpeechEvents.map(
+      ({ speech: evt, detectedAtSeconds }) => {
+        const overlapStart = evt.overlapStartedAt
+          ? timestampToSeconds(evt.overlapStartedAt)
+          : detectedAtSeconds;
+        return {
+          start: overlapStart + clockOffset,
+          end: detectedAtSeconds + detectionCorrection,
+          color: evt.isInterruption ? interruptionColor : backchannelColor,
+          label: evt.isInterruption ? interruptionLabel : backchannelLabel,
+          sourceId: detectedAtSeconds,
+          snapToWaveform: true,
+        };
+      },
+    );
   }, [
     overlappingSpeechEvents,
     networkLatency,

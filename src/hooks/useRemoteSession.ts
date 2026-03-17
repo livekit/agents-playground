@@ -24,8 +24,10 @@ export type OverlappingSpeechEvent = {
   speech: AgentSession.AgentSessionEvent_OverlappingSpeech;
   /** Wrapper event's createdAt (= server send time). Use for aligning with state markers. */
   createdAt: AgentSession.AgentSessionEvent["createdAt"];
-  /** Pre-computed createdAt in seconds for chart alignment. */
+  /** Pre-computed createdAt in seconds. */
   createdAtSeconds: number;
+  /** Pre-computed detectedAt in seconds (falls back to createdAtSeconds). */
+  detectedAtSeconds: number;
   /** Wall-clock time (epoch seconds) when the client received this event. */
   receivedAt: number;
 };
@@ -197,13 +199,19 @@ export function useRemoteSession(room: Room): UseRemoteSessionReturn {
     () =>
       events
         .filter((e) => e.event.case === "overlappingSpeech")
-        .map((e) => ({
-          speech:
-            e.event.value as AgentSession.AgentSessionEvent_OverlappingSpeech,
-          createdAt: e.createdAt,
-          createdAtSeconds: timestampToSeconds(e.createdAt),
-          receivedAt: receivedAtMap.current.get(e) ?? 0,
-        })),
+        .map((e) => {
+          const speech =
+            e.event.value as AgentSession.AgentSessionEvent_OverlappingSpeech;
+          const createdAtSeconds = timestampToSeconds(e.createdAt);
+          return {
+            speech,
+            createdAt: e.createdAt,
+            createdAtSeconds,
+            detectedAtSeconds:
+              timestampToSeconds(speech.detectedAt) || createdAtSeconds,
+            receivedAt: receivedAtMap.current.get(e) ?? 0,
+          };
+        }),
     [events],
   );
 
