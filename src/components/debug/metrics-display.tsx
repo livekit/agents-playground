@@ -1,25 +1,8 @@
-import type {
-  AgentMetricsData,
-  ClientConversationItemAddedEvent,
-  ClientEvent,
-  ClientMetricsCollectedEvent,
-} from "@/lib/types";
+import { timestampToSeconds } from "@/lib/types";
+import { AgentSession } from "@livekit/protocol";
 import { useMemo } from "react";
 import { MiniTrendChart, type TrendPoint } from "./mini-trend-chart";
 import { InfoTooltip, TITLE_FONT_STACK } from "./shared";
-
-type Stat = {
-  label: string;
-  value: string;
-  tooltip?: string;
-};
-
-type SummaryCardData = {
-  kind: "summary";
-  id: string;
-  title: string;
-  stats: Stat[];
-};
 
 type TrendCardData = {
   kind: "trend";
@@ -33,40 +16,17 @@ type TrendCardData = {
 type MetricsSection = {
   id: string;
   title: string;
-  cards: CardData[];
+  cards: TrendCardData[];
 };
-
-type MetricType = AgentMetricsData["type"];
-type MetricByType<T extends MetricType> = Extract<
-  AgentMetricsData,
-  { type: T }
->;
-type CardData = SummaryCardData | TrendCardData;
 
 const MOVING_AVERAGE_WINDOW = 5;
 const MAX_VISIBLE_POINTS = 40;
-
-function collectMetrics<T extends MetricType>(
-  events: ClientMetricsCollectedEvent[],
-  type: T,
-): MetricByType<T>[] {
-  return events
-    .filter(
-      (
-        event,
-      ): event is ClientMetricsCollectedEvent & { metrics: MetricByType<T> } =>
-        event.metrics.type === type,
-    )
-    .map((event) => event.metrics);
-}
 
 function toSeries(
   points: TrendPoint[],
   maxPoints = MAX_VISIBLE_POINTS,
 ): TrendPoint[] {
   if (points.length <= maxPoints) return points;
-  // Keep a stable trailing window for live charts; rebucketing the full
-  // history each render causes visible hover/marker jitter while streaming.
   return points.slice(points.length - maxPoints);
 }
 
@@ -127,173 +87,198 @@ function cumulativeCard(
   };
 }
 
-function summaryCard(
-  id: string,
-  title: string,
-  stats: Stat[],
-): SummaryCardData {
-  return {
-    kind: "summary",
-    id,
-    title,
-    stats,
-  };
+interface MetricsReportWithTimestamp {
+  metrics: AgentSession.MetricsReport;
+  createdAt: number;
 }
 
-/** Extract E2E latency from assistant conversation items (server-computed). */
-function extractE2eDelays(
-  events: ClientConversationItemAddedEvent[],
-): TrendPoint[] {
-  const points: TrendPoint[] = [];
+function extractMetricsReports(
+  events: AgentSession.AgentSessionEvent[],
+): MetricsReportWithTimestamp[] {
+  const reports: MetricsReportWithTimestamp[] = [];
   for (const evt of events) {
-    const metrics = evt.item?.metrics;
-    if (evt.item?.role === "assistant" && metrics?.e2e_latency != null) {
-      points.push({ t: evt.created_at, v: metrics.e2e_latency });
+    if (evt.event.case !== "conversationItemAdded") continue;
+    const item = evt.event.value.item;
+    if (!item || item.item.case !== "message") continue;
+    const msg = item.item.value;
+    if (msg.metrics) {
+      reports.push({
+        metrics: msg.metrics,
+        createdAt: timestampToSeconds(evt.createdAt),
+      });
     }
   }
-  return points;
+  return reports;
 }
 
-function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
-  const cards: CardData[] = [];
+interface OverlappingSpeechWithTimestamp {
+  speech: AgentSession.AgentSessionEvent_OverlappingSpeech;
+  createdAt: number;
+}
 
-  const llm = collectMetrics(events, "llm_metrics");
-  if (llm.length > 0) {
+function extractOverlappingSpeech(
+  events: AgentSession.AgentSessionEvent[],
+): OverlappingSpeechWithTimestamp[] {
+  const result: OverlappingSpeechWithTimestamp[] = [];
+  for (const evt of events) {
+    if (evt.event.case !== "overlappingSpeech") continue;
+    result.push({
+      speech: evt.event.value,
+      createdAt: timestampToSeconds(evt.createdAt),
+    });
+  }
+  return result;
+}
+
+function buildCards(
+  reports: MetricsReportWithTimestamp[],
+  overlaps: OverlappingSpeechWithTimestamp[],
+): TrendCardData[] {
+  const cards: TrendCardData[] = [];
+
+  const e2ePoints: TrendPoint[] = [];
+  const txnDelayPoints: TrendPoint[] = [];
+  const eouDelayPoints: TrendPoint[] = [];
+  const onUserTurnPoints: TrendPoint[] = [];
+  const llmTtftPoints: TrendPoint[] = [];
+  const ttsTtfbPoints: TrendPoint[] = [];
+  const speechDurationPoints: TrendPoint[] = [];
+
+  for (const { metrics: m, createdAt: t } of reports) {
+    if (m.e2eLatency != null) e2ePoints.push({ t, v: m.e2eLatency });
+    if (m.transcriptionDelay != null)
+      txnDelayPoints.push({ t, v: m.transcriptionDelay });
+    if (m.endOfTurnDelay != null)
+      eouDelayPoints.push({ t, v: m.endOfTurnDelay });
+    if (m.onUserTurnCompletedDelay != null)
+      onUserTurnPoints.push({ t, v: m.onUserTurnCompletedDelay });
+    if (m.llmNodeTtft != null) llmTtftPoints.push({ t, v: m.llmNodeTtft });
+    if (m.ttsNodeTtfb != null) ttsTtfbPoints.push({ t, v: m.ttsNodeTtfb });
+    if (m.startedSpeakingAt && m.stoppedSpeakingAt) {
+      const start = timestampToSeconds(m.startedSpeakingAt);
+      const stop = timestampToSeconds(m.stoppedSpeakingAt);
+      if (stop > start) {
+        speechDurationPoints.push({ t, v: stop - start });
+      }
+    }
+  }
+
+  if (e2ePoints.length > 0) {
     cards.push(
       trendCard(
-        "llm-ttft",
-        "TTFT",
-        llm.map((m) => ({ t: m.timestamp, v: m.ttft })),
+        "turn-e2e-delay",
+        "E2E Latency",
+        e2ePoints,
         "s",
-        "Time to first token from the LLM",
+        "End-to-end latency from user stop speaking to agent start speaking",
       ),
+    );
+  }
+  if (speechDurationPoints.length > 0) {
+    cards.push(
       trendCard(
-        "llm-duration",
-        "Duration",
-        llm.map((m) => ({ t: m.timestamp, v: m.duration })),
+        "turn-speech-duration",
+        "Speech Duration",
+        speechDurationPoints,
         "s",
-        "Total LLM inference time per request",
+        "Duration of agent speech per turn",
       ),
+    );
+  }
+  if (txnDelayPoints.length > 0) {
+    cards.push(
       trendCard(
-        "llm-speed",
-        "Speed",
-        llm.map((m) => ({ t: m.timestamp, v: m.tokens_per_second })),
-        "tok/s",
-        "LLM output token generation rate",
+        "turn-txn-delay",
+        "Transcription Delay",
+        txnDelayPoints,
+        "s",
+        "Time between end of speech and final transcript",
+      ),
+    );
+  }
+  if (eouDelayPoints.length > 0) {
+    cards.push(
+      trendCard(
+        "turn-eou-delay",
+        "End of Turn Delay",
+        eouDelayPoints,
+        "s",
+        "Time between end of speech and end-of-turn decision",
+      ),
+    );
+  }
+  if (onUserTurnPoints.length > 0) {
+    cards.push(
+      trendCard(
+        "turn-callback-delay",
+        "on_user_turn_completed Delay",
+        onUserTurnPoints,
+        "s",
+        "Time to invoke the on_user_turn_completed callback",
+      ),
+    );
+  }
+  if (llmTtftPoints.length > 0) {
+    cards.push(
+      trendCard(
+        "llm-node-ttft",
+        "LLM TTFT",
+        llmTtftPoints,
+        "s",
+        "LLM time-to-first-token",
+      ),
+    );
+  }
+  if (ttsTtfbPoints.length > 0) {
+    cards.push(
+      trendCard(
+        "tts-node-ttfb",
+        "TTS TTFB",
+        ttsTtfbPoints,
+        "s",
+        "TTS time-to-first-byte after first text token",
       ),
     );
   }
 
-  const stt = collectMetrics(events, "stt_metrics");
-  const eou = collectMetrics(events, "eou_metrics");
-  if (eou.length > 0 || stt.length > 0) {
-    if (eou.length > 0) {
+  if (overlaps.length > 0) {
+    const detectionDelayPoints: TrendPoint[] = [];
+    const interruptionPoints: TrendPoint[] = [];
+    const backchannelPoints: TrendPoint[] = [];
+
+    for (const { speech: s, createdAt: t } of overlaps) {
+      if (s.detectionDelay > 0) {
+        detectionDelayPoints.push({ t, v: s.detectionDelay });
+      }
+      interruptionPoints.push({ t, v: s.isInterruption ? 1 : 0 });
+      backchannelPoints.push({ t, v: s.isInterruption ? 0 : 1 });
+    }
+
+    if (detectionDelayPoints.length > 0) {
       cards.push(
         trendCard(
-          "turn-txn-delay",
-          "Transcription Delay",
-          eou.map((m) => ({
-            t: m.timestamp,
-            v: m.transcription_delay,
-          })),
+          "interruption-detection-delay",
+          "Detection Delay",
+          detectionDelayPoints,
           "s",
-          "Time between end of speech and final transcript",
-        ),
-        trendCard(
-          "turn-eou-delay",
-          "End of Utterance Delay",
-          eou.map((m) => ({
-            t: m.timestamp,
-            v: m.end_of_utterance_delay,
-          })),
-          "s",
-          "Time between end of speech and end-of-utterance detection",
+          "Time from overlap speech onset to interruption prediction",
         ),
       );
     }
-  }
-
-  const tts = collectMetrics(events, "tts_metrics");
-  if (tts.length > 0) {
     cards.push(
-      trendCard(
-        "tts-ttfb",
-        "TTFB",
-        tts.map((m) => ({ t: m.timestamp, v: m.ttfb })),
-        "s",
-        "Time to first byte of audio from the TTS provider",
-      ),
-      trendCard(
-        "tts-audio-duration",
-        "Audio Duration",
-        tts.map((m) => ({ t: m.timestamp, v: m.audio_duration })),
-        "s",
-        "Duration of generated speech audio",
-      ),
-    );
-  }
-
-  const rt = collectMetrics(events, "realtime_model_metrics");
-  if (rt.length > 0) {
-    cards.push(
-      trendCard(
-        "realtime-ttft",
-        "TTFT",
-        rt.map((m) => ({ t: m.timestamp, v: m.ttft })),
-        "s",
-        "Time to first token from the realtime model",
-      ),
-      trendCard(
-        "realtime-duration",
-        "Duration",
-        rt.map((m) => ({ t: m.timestamp, v: m.duration })),
-        "s",
-        "Total realtime model inference time per request",
-      ),
-      trendCard(
-        "realtime-speed",
-        "Speed",
-        rt.map((m) => ({
-          t: m.timestamp,
-          v: m.tokens_per_second,
-        })),
-        "tok/s",
-        "Realtime model output token generation rate",
-      ),
-    );
-  }
-
-  const interruption = collectMetrics(events, "interruption_metrics");
-  if (interruption.length > 0) {
-    cards.push(
-      trendCard(
-        "interruption-total-duration",
-        "Inference Duration",
-        interruption.map((m) => ({ t: m.timestamp, v: m.total_duration })),
-        "s",
-        "Average of model inference time for each request",
-      ),
-      trendCard(
-        "interruption-num-requests",
-        "Number of Requests",
-        interruption.map((m) => ({ t: m.timestamp, v: m.num_requests })),
-        "count",
-        "Average number of requests sent for an overlap speech",
-      ),
       cumulativeCard(
         "interruption-num-interruptions",
         "Interruptions",
-        interruption.map((m) => ({ t: m.timestamp, v: m.num_interruptions })),
+        interruptionPoints,
         "count",
         "Cumulative number of detected interruptions",
       ),
+    );
+    cards.push(
       cumulativeCard(
         "interruption-num-backchannels",
         "Backchannels",
-        interruption.map((m) => ({
-          t: m.timestamp,
-          v: m.num_backchannels,
-        })),
+        backchannelPoints,
         "count",
         "Cumulative number of backchannel predictions",
       ),
@@ -303,8 +288,6 @@ function buildCards(events: ClientMetricsCollectedEvent[]): CardData[] {
   return cards;
 }
 
-/** Derive a human-readable section title from the card ID prefix.
- *  Splits on the first `-`, uppercases common acronyms, and title-cases the rest. */
 function sectionTitleFromCardId(id: string): string {
   const prefix = id.split("-")[0];
   if (!prefix) return "Metrics";
@@ -313,7 +296,7 @@ function sectionTitleFromCardId(id: string): string {
   return prefix.charAt(0).toUpperCase() + prefix.slice(1);
 }
 
-function buildSections(cards: CardData[]): MetricsSection[] {
+function buildSections(cards: TrendCardData[]): MetricsSection[] {
   const sectionMap = new Map<string, MetricsSection>();
   for (const card of cards) {
     const title = sectionTitleFromCardId(card.id);
@@ -322,47 +305,37 @@ function buildSections(cards: CardData[]): MetricsSection[] {
     section.cards.push(card);
     sectionMap.set(id, section);
   }
-  return Array.from(sectionMap.values());
+
+  const raw = Array.from(sectionMap.values());
+  const multi: MetricsSection[] = [];
+  const singles: TrendCardData[] = [];
+
+  for (const section of raw) {
+    if (section.cards.length === 1) {
+      singles.push(section.cards[0]!);
+    } else {
+      multi.push(section);
+    }
+  }
+
+  if (singles.length > 0) {
+    multi.push({ id: "pipeline", title: "Pipeline", cards: singles });
+  }
+  return multi;
 }
 
 export type MetricsDisplayProps = {
-  metricsEvents: ClientMetricsCollectedEvent[];
-  events: ClientEvent[];
+  events: AgentSession.AgentSessionEvent[];
   className?: string;
 };
 
-export function MetricsDisplay({
-  metricsEvents,
-  events,
-  className,
-}: MetricsDisplayProps) {
-  const conversationItemEvents = useMemo(
-    () =>
-      events.filter(
-        (e): e is ClientConversationItemAddedEvent =>
-          e.type === "conversation_item_added",
-      ),
-    [events],
+export function MetricsDisplay({ events, className }: MetricsDisplayProps) {
+  const reports = useMemo(() => extractMetricsReports(events), [events]);
+  const overlaps = useMemo(() => extractOverlappingSpeech(events), [events]);
+  const cards = useMemo(
+    () => buildCards(reports, overlaps),
+    [reports, overlaps],
   );
-  const e2eDelays = useMemo(
-    () => extractE2eDelays(conversationItemEvents),
-    [conversationItemEvents],
-  );
-  const cards = useMemo(() => {
-    const c = buildCards(metricsEvents);
-    if (e2eDelays.length > 0) {
-      c.push(
-        trendCard(
-          "turn-e2e-delay",
-          "E2E Delay",
-          e2eDelays,
-          "s",
-          "Time from user stopping speech to agent starting speech (server-measured)",
-        ),
-      );
-    }
-    return c;
-  }, [metricsEvents, e2eDelays]);
   const sections = useMemo(() => buildSections(cards), [cards]);
 
   if (cards.length === 0) {
@@ -420,74 +393,35 @@ export function MetricsDisplay({
                 gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
               }}
             >
-              {section.cards.map((card) =>
-                card.kind === "trend" ? (
-                  <div
-                    key={card.id}
-                    className="border rounded-md pt-3"
-                    style={{
-                      background: "var(--lk-dbg-bg)",
-                      borderColor: "var(--lk-dbg-border)",
-                    }}
-                  >
-                    <div className="px-3 pt-1 pb-5 flex items-center gap-1.5">
-                      <h3
-                        className="text-xs font-normal uppercase tracking-wider text-gray-500"
-                        style={{
-                          fontFamily: TITLE_FONT_STACK,
-                        }}
-                      >
-                        {card.title}
-                      </h3>
-                      {card.tooltip && <InfoTooltip content={card.tooltip} />}
-                    </div>
-                    <div className="px-3 pb-3">
-                      <MiniTrendChart
-                        points={card.points}
-                        unit={card.seriesUnit}
-                        label={card.title}
-                      />
-                    </div>
+              {section.cards.map((card) => (
+                <div
+                  key={card.id}
+                  className="border rounded-md pt-3"
+                  style={{
+                    background: "var(--lk-dbg-bg)",
+                    borderColor: "var(--lk-dbg-border)",
+                  }}
+                >
+                  <div className="px-3 pt-1 pb-5 flex items-center gap-1.5">
+                    <h3
+                      className="text-xs font-normal uppercase tracking-wider text-gray-500"
+                      style={{
+                        fontFamily: TITLE_FONT_STACK,
+                      }}
+                    >
+                      {card.title}
+                    </h3>
+                    {card.tooltip && <InfoTooltip content={card.tooltip} />}
                   </div>
-                ) : (
-                  <div key={card.id} className="grid grid-cols-2 gap-2">
-                    {card.stats.map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="border rounded-md px-3 py-2.5 min-h-[84px] flex flex-col justify-between"
-                        style={{
-                          borderColor: "var(--lk-dbg-border)",
-                          background: "var(--lk-dbg-bg2)",
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="text-[10px] font-normal uppercase tracking-wider text-gray-500"
-                            style={{
-                              fontFamily: TITLE_FONT_STACK,
-                            }}
-                          >
-                            {stat.label}
-                          </span>
-                          {stat.tooltip && (
-                            <InfoTooltip content={stat.tooltip} />
-                          )}
-                        </div>
-                        <div className="flex-1 flex items-center justify-center">
-                          <span
-                            className="text-[38px] leading-[1] font-normal tracking-tight text-center w-full"
-                            style={{
-                              color: "var(--lk-theme-color, var(--lk-dbg-fg))",
-                            }}
-                          >
-                            {stat.value}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="px-3 pb-3">
+                    <MiniTrendChart
+                      points={card.points}
+                      unit={card.seriesUnit}
+                      label={card.title}
+                    />
                   </div>
-                ),
-              )}
+                </div>
+              ))}
             </div>
           </details>
         ))}

@@ -1,44 +1,44 @@
-import type {
-  ClientEvent,
-  ClientEventType,
-  ClientMetricsCollectedEvent,
+import {
+  ALL_SESSION_EVENT_TYPES,
+  type SessionEventType,
+  agentStateLabel,
+  eventTypeLabel,
+  timestampToSeconds,
+  userStateLabel,
 } from "@/lib/types";
+import { AgentSession } from "@livekit/protocol";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const TYPE_FILTER_STYLE: Record<
-  ClientEventType,
+  SessionEventType,
   { background: string; color: string }
 > = {
-  agent_state_changed: {
+  agentStateChanged: {
     background: "rgba(6, 182, 212, 0.16)",
     color: "#22D3EE",
   },
-  user_state_changed: {
+  userStateChanged: {
     background: "rgba(59, 130, 246, 0.16)",
     color: "#60A5FA",
   },
-  conversation_item_added: {
+  conversationItemAdded: {
     background: "rgba(16, 185, 129, 0.16)",
     color: "#34D399",
   },
-  user_input_transcribed: {
+  userInputTranscribed: {
     background: "rgba(132, 204, 22, 0.16)",
     color: "#A3E635",
   },
-  function_tools_executed: {
+  functionToolsExecuted: {
     background: "rgba(139, 92, 246, 0.16)",
     color: "#A78BFA",
   },
-  metrics_collected: {
-    background: "rgba(236, 72, 153, 0.16)",
-    color: "#F472B6",
-  },
-  user_overlapping_speech: {
+  error: { background: "rgba(239, 68, 68, 0.2)", color: "#F87171" },
+  overlappingSpeech: {
     background: "rgba(245, 158, 11, 0.16)",
     color: "#FBBF24",
   },
-  error: { background: "rgba(239, 68, 68, 0.2)", color: "#F87171" },
-  session_usage: {
+  sessionUsageUpdated: {
     background: "rgba(148, 163, 184, 0.16)",
     color: "#94A3B8",
   },
@@ -52,21 +52,10 @@ const CONTROL_BUTTON_STYLE = {
   borderRadius: "var(--lk-dbg-radius)",
 } as const;
 
-export const ALL_EVENT_TYPES: ClientEventType[] = [
-  "agent_state_changed",
-  "user_state_changed",
-  "conversation_item_added",
-  "user_input_transcribed",
-  "function_tools_executed",
-  "metrics_collected",
-  "user_overlapping_speech",
-  "error",
-  "session_usage",
-];
+export const ALL_EVENT_TYPES: SessionEventType[] = ALL_SESSION_EVENT_TYPES;
 
-/** Event types that are hidden by default in the filter panel. */
-export const DEFAULT_DISABLED_EVENT_TYPES = new Set<ClientEventType>([
-  "session_usage",
+export const DEFAULT_DISABLED_EVENT_TYPES = new Set<SessionEventType>([
+  "sessionUsageUpdated",
 ]);
 
 const GRID_COLUMNS = "minmax(0px,24ch) minmax(0px,28ch) minmax(0px,1fr)";
@@ -74,26 +63,33 @@ const TABLE_HEADER_HEIGHT = 24;
 const ROW_HEIGHT = 37;
 const TABLE_ROW_CLASS = "grid grid-rows-1 gap-2";
 
-function eventSummary(event: ClientEvent): string {
-  switch (event.type) {
-    case "agent_state_changed":
-      return `${event.old_state} → ${event.new_state}`;
-    case "user_state_changed":
-      return `${event.old_state} → ${event.new_state}`;
-    case "conversation_item_added":
-      return JSON.stringify(event.item).slice(0, 80);
-    case "user_input_transcribed":
-      return `${event.is_final ? "[final]" : "[partial]"} "${event.transcript}"`;
-    case "function_tools_executed":
-      return `${event.function_calls.length} function call(s)`;
-    case "metrics_collected":
-      return `${event.metrics.type}`;
-    case "user_overlapping_speech":
-      return event.is_interruption ? "interruption" : "backchannel";
+function eventSummary(event: AgentSession.AgentSessionEvent): string {
+  switch (event.event.case) {
+    case "agentStateChanged":
+      return `${agentStateLabel(event.event.value.oldState)} → ${agentStateLabel(event.event.value.newState)}`;
+    case "userStateChanged":
+      return `${userStateLabel(event.event.value.oldState)} → ${userStateLabel(event.event.value.newState)}`;
+    case "conversationItemAdded": {
+      const item = event.event.value.item;
+      if (!item) return "";
+      if (item.item.case === "message") {
+        const textParts = item.item.value.content
+          .filter((c) => c.payload.case === "text")
+          .map((c) => c.payload.value);
+        return textParts.join(" ").slice(0, 80);
+      }
+      return item.item.case ?? "";
+    }
+    case "userInputTranscribed":
+      return `${event.event.value.isFinal ? "[final]" : "[partial]"} "${event.event.value.transcript}"`;
+    case "functionToolsExecuted":
+      return `${event.event.value.functionCalls.length} function call(s)`;
     case "error":
-      return event.message;
-    case "session_usage":
-      return `${event.usage.model_usage.length} model(s)`;
+      return event.event.value.message;
+    case "overlappingSpeech":
+      return event.event.value.isInterruption ? "interruption" : "backchannel";
+    case "sessionUsageUpdated":
+      return `${event.event.value.usage?.modelUsage.length ?? 0} model(s)`;
     default:
       return "";
   }
@@ -222,7 +218,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function EventTypeBadge({ type }: { type: ClientEventType }) {
+function EventTypeBadge({ type }: { type: SessionEventType }) {
   const colors = TYPE_FILTER_STYLE[type];
   return (
     <span
@@ -234,41 +230,23 @@ function EventTypeBadge({ type }: { type: ClientEventType }) {
         color: colors.color,
       }}
     >
-      {type.replace(/_/g, " ")}
+      {eventTypeLabel(type)}
     </span>
   );
 }
 
 export type EventLogProps = {
-  events: ClientEvent[];
-  enabledTypes: Set<ClientEventType>;
-  onEnabledTypesChange: (types: Set<ClientEventType>) => void;
+  events: AgentSession.AgentSessionEvent[];
+  enabledTypes: Set<SessionEventType>;
+  onEnabledTypesChange: (types: Set<SessionEventType>) => void;
   onClear?: () => void;
   className?: string;
 };
 
 type EventRow = {
-  event: ClientEvent;
+  event: AgentSession.AgentSessionEvent;
   index: number;
 };
-
-type MetricType = ClientMetricsCollectedEvent["metrics"]["type"];
-const DEFAULT_DISABLED_METRIC_TYPES = new Set<MetricType>([
-  "vad_metrics",
-  "stt_metrics",
-]);
-
-function getDefaultEnabledMetricTypes(
-  availableMetricTypes: readonly MetricType[],
-): Set<MetricType> {
-  const defaults = new Set<MetricType>();
-  for (const metricType of availableMetricTypes) {
-    if (!DEFAULT_DISABLED_METRIC_TYPES.has(metricType)) {
-      defaults.add(metricType);
-    }
-  }
-  return defaults;
-}
 
 export function EventLog({
   events,
@@ -281,54 +259,6 @@ export function EventLog({
   const [showFilter, setShowFilter] = useState(false);
   const allTypes = ALL_EVENT_TYPES;
 
-  const availableMetricTypes = useMemo<MetricType[]>(() => {
-    const seen = new Set<MetricType>();
-    for (const event of events) {
-      if (event.type === "metrics_collected") {
-        seen.add(event.metrics.type);
-      }
-    }
-    return Array.from(seen).sort();
-  }, [events]);
-
-  const [enabledMetricTypes, setEnabledMetricTypes] = useState<Set<MetricType>>(
-    () => new Set(),
-  );
-  const initializedMetricTypesRef = useRef(false);
-  const previousMetricTypesRef = useRef<Set<MetricType>>(new Set());
-
-  // Keep metric subtype filters aligned with available metrics.
-  useEffect(() => {
-    setEnabledMetricTypes((prev) => {
-      if (availableMetricTypes.length === 0) {
-        // Reset refs so the next session re-initializes correctly.
-        initializedMetricTypesRef.current = false;
-        previousMetricTypesRef.current = new Set();
-        return new Set();
-      }
-
-      // First load: enable all except default-disabled metric types.
-      if (!initializedMetricTypesRef.current) {
-        initializedMetricTypesRef.current = true;
-        previousMetricTypesRef.current = new Set(availableMetricTypes);
-        return getDefaultEnabledMetricTypes(availableMetricTypes);
-      }
-
-      const next = new Set<MetricType>();
-      for (const metricType of availableMetricTypes) {
-        const isNewMetricType = !previousMetricTypesRef.current.has(metricType);
-        if (
-          prev.has(metricType) ||
-          (isNewMetricType && !DEFAULT_DISABLED_METRIC_TYPES.has(metricType))
-        ) {
-          next.add(metricType);
-        }
-      }
-      previousMetricTypesRef.current = new Set(availableMetricTypes);
-      return next;
-    });
-  }, [availableMetricTypes]);
-
   const isDefaultTypeFilter = useMemo(() => {
     const defaultEnabled = allTypes.filter(
       (t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t),
@@ -337,12 +267,10 @@ export function EventLog({
     return defaultEnabled.every((t) => enabledTypes.has(t));
   }, [allTypes, enabledTypes]);
 
-  const changedMetricCount =
-    availableMetricTypes.length - enabledMetricTypes.size;
-  const hasActiveFilter = !isDefaultTypeFilter || changedMetricCount > 0;
+  const hasActiveFilter = !isDefaultTypeFilter;
 
   const toggleType = useCallback(
-    (t: ClientEventType) => {
+    (t: SessionEventType) => {
       const next = new Set(enabledTypes);
       if (next.has(t)) {
         next.delete(t);
@@ -358,23 +286,10 @@ export function EventLog({
     onEnabledTypesChange(
       new Set(allTypes.filter((t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t))),
     );
-    setEnabledMetricTypes(getDefaultEnabledMetricTypes(availableMetricTypes));
-  }, [allTypes, onEnabledTypesChange, availableMetricTypes]);
-
-  const toggleMetricType = useCallback((metricType: MetricType) => {
-    setEnabledMetricTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(metricType)) {
-        next.delete(metricType);
-      } else {
-        next.add(metricType);
-      }
-      return next;
-    });
-  }, []);
+  }, [allTypes, onEnabledTypesChange]);
 
   const isolateOrRestoreType = useCallback(
-    (t: ClientEventType) => {
+    (t: SessionEventType) => {
       const isActive = enabledTypes.has(t);
       if (isActive) {
         if (enabledTypes.size === 1) {
@@ -393,17 +308,12 @@ export function EventLog({
     const next: EventRow[] = [];
     for (let index = events.length - 1; index >= 0; index--) {
       const event = events[index];
-      if (!enabledTypes.has(event.type)) continue;
-      if (
-        event.type === "metrics_collected" &&
-        !enabledMetricTypes.has(event.metrics.type)
-      ) {
-        continue;
-      }
+      const eventCase = event.event.case;
+      if (!eventCase || !enabledTypes.has(eventCase)) continue;
       next.push({ event, index });
     }
     return next;
-  }, [events, enabledTypes, enabledMetricTypes]);
+  }, [events, enabledTypes]);
 
   useEffect(() => {
     if (expandedIndex !== null && expandedIndex >= events.length) {
@@ -520,70 +430,13 @@ export function EventLog({
                               : "Click to show only this event type"
                           }
                         >
-                          {t.replace(/_/g, " ")}
+                          {eventTypeLabel(t)}
                         </button>
                         <span
                           className="inline-block w-2 h-2 rounded-full shrink-0"
                           style={{ background: colors.color }}
                         />
                       </div>
-
-                      {t === "metrics_collected" &&
-                        enabled &&
-                        availableMetricTypes.length > 0 && (
-                          <div className="mt-1 mb-1 ml-6 flex flex-col gap-1.5">
-                            {availableMetricTypes.map((metricType) => {
-                              const metricEnabled =
-                                enabledMetricTypes.has(metricType);
-                              return (
-                                <div
-                                  key={metricType}
-                                  className="flex items-center gap-2 px-1 py-1"
-                                >
-                                  <button
-                                    onClick={() => toggleMetricType(metricType)}
-                                    className="h-4 w-4 shrink-0 rounded border inline-flex items-center justify-center transition-colors"
-                                    style={{
-                                      borderColor: "var(--lk-dbg-fg4)",
-                                      color: metricEnabled
-                                        ? "var(--lk-dbg-fg3)"
-                                        : "transparent",
-                                      background: "transparent",
-                                    }}
-                                    title={
-                                      metricEnabled
-                                        ? "Disable metric subtype"
-                                        : "Enable metric subtype"
-                                    }
-                                    aria-label={
-                                      metricEnabled
-                                        ? "Disable metric subtype"
-                                        : "Enable metric subtype"
-                                    }
-                                  >
-                                    <CheckSmallIcon />
-                                  </button>
-                                  <button
-                                    onClick={() => toggleMetricType(metricType)}
-                                    className="flex-1 text-left text-[11px] truncate uppercase tracking-wide"
-                                    style={{
-                                      color: metricEnabled
-                                        ? "var(--lk-dbg-fg)"
-                                        : "var(--lk-dbg-fg5)",
-                                    }}
-                                    title={
-                                      metricEnabled
-                                        ? "Disable metric subtype"
-                                        : "Enable metric subtype"
-                                    }
-                                  >
-                                    {metricType.replace(/_/g, " ")}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
                     </div>
                   );
                 })}
@@ -620,8 +473,11 @@ export function EventLog({
             )}
             {filtered.map(({ event, index }) => {
               const isExpanded = expandedIndex === index;
-              const jsonText = JSON.stringify(event, null, 2);
-              const colors = TYPE_FILTER_STYLE[event.type];
+              const eventCase = event.event.case;
+              if (!eventCase) return null;
+              const jsonText = event.toJsonString({ prettySpaces: 2 });
+              const colors = TYPE_FILTER_STYLE[eventCase];
+              const createdAt = timestampToSeconds(event.createdAt);
               return (
                 <div
                   key={index}
@@ -645,13 +501,13 @@ export function EventLog({
                       minHeight: ROW_HEIGHT,
                     }}
                   >
-                    {formatTimestamp(event.created_at)}
+                    {formatTimestamp(createdAt)}
                   </span>
                   <span
                     className="flex items-center truncate py-2"
                     style={{ minHeight: ROW_HEIGHT }}
                   >
-                    <EventTypeBadge type={event.type} />
+                    <EventTypeBadge type={eventCase} />
                   </span>
                   <span
                     className="flex items-center truncate py-2"
@@ -659,7 +515,7 @@ export function EventLog({
                       color: "var(--lk-dbg-fg3)",
                       minHeight: ROW_HEIGHT,
                     }}
-                    title={event.type}
+                    title={eventCase}
                   >
                     {eventSummary(event)}
                   </span>

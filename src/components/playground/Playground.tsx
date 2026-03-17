@@ -17,7 +17,7 @@ import {
   PlaygroundTabbedTile,
   PlaygroundTile,
 } from "@/components/playground/PlaygroundTile";
-import { useClientEvents } from "@/hooks/useClientEvents";
+import { useRemoteSession } from "@/hooks/useRemoteSession";
 import { useConfig } from "@/hooks/useConfig";
 import { useUplinkLatency } from "@/hooks/useUplinkLatency";
 import { AttributeItem } from "@/lib/types";
@@ -106,15 +106,16 @@ export default function Playground({
   const {
     events: clientEvents,
     overlappingSpeechEvents,
-    metricsEvents,
     sessionUsage,
     networkLatency,
     clearEvents,
-  } = useClientEvents(session.room);
+    sendRequest,
+  } = useRemoteSession(session.room);
 
   const uplinkLatency = useUplinkLatency(
     session.room,
     agent.internal.agentParticipant?.identity,
+    sendRequest,
   );
 
   const localScreenTrack = session.room.localParticipant.getTrackPublication(
@@ -706,7 +707,6 @@ export default function Playground({
             userTrack={session.local.microphoneTrack?.publication?.track}
             agentTrack={agent.microphoneTrack?.publication?.track}
             events={clientEvents}
-            metricsEvents={metricsEvents}
             overlappingSpeechEvents={overlappingSpeechEvents}
             sessionUsage={sessionUsage}
             onClearEvents={clearEvents}

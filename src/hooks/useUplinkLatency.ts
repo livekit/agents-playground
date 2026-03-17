@@ -1,35 +1,7 @@
+import { AgentSession } from "@livekit/protocol";
 import type { Room } from "livekit-client";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-// Must match server-side constants
-const TOPIC_AGENT_REQUEST = "lk.agent.request";
-const TOPIC_AGENT_RESPONSE = "lk.agent.response";
-
-type StreamRequest = {
-  request_id: string;
-  method: string;
-  payload: string;
-};
-
-type StreamResponse = {
-  request_id: string;
-  payload: string;
-  error: string | null;
-};
-
-type RTCStatsResponse = {
-  subscriber_stats: RTCInboundStat[];
-  publisher_stats: unknown[];
-};
-
-/** Subset of WebRTC inbound-rtp stats from the server's perspective. */
-type RTCInboundStat = {
-  kind?: string;
-  jitterBufferDelay?: number;
-  jitterBufferEmittedCount?: number;
-  /** Server-side candidate-pair stats nested under transport. */
-  [key: string]: unknown;
-};
+import { useEffect, useRef, useState } from "react";
+import type { UseRemoteSessionReturn } from "./useRemoteSession";
 
 export type UplinkLatency = {
   /** Total transport pipeline delay in seconds (encoding + transport + jitter buffer). */
@@ -42,11 +14,6 @@ export type UplinkLatency = {
   jitterBuffer: number;
 };
 
-let _reqId = 0;
-function nextRequestId(): string {
-  return `req_${Date.now()}_${++_reqId}_${Math.random().toString(36).slice(2, 6)}`;
-}
-
 type ClientStatsResult = {
   rttHalf: number;
 };
@@ -55,9 +22,8 @@ type ClientStatsResult = {
  * Extract client-side RTT/2 from the publisher RTCPeerConnection's
  * succeeded candidate-pair stat.
  *
- * NOTE: accesses the private `room.engine.pcManager.publisher` API.
- * This is not part of the public livekit-client surface and may change
- * across SDK versions. Guarded so the hook degrades to 0 if unavailable.
+ * Accesses the private `room.engine.pcManager.publisher` API.
+ * Guarded so the hook degrades to 0 if unavailable.
  */
 async function getClientStats(room: Room): Promise<ClientStatsResult> {
   const pcTransport = (
@@ -82,7 +48,6 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
     const report = await pcTransport.getStats();
     report.forEach((stat) => {
       const s = stat as Record<string, unknown>;
-
       if (
         s.type === "candidate-pair" &&
         s.state === "succeeded" &&
@@ -92,24 +57,13 @@ async function getClientStats(room: Room): Promise<ClientStatsResult> {
       }
     });
   } catch {
-    // ignore — stats API may be unavailable during reconnection
+    // stats API may be unavailable during reconnection
   }
   return { rttHalf };
 }
 
-type ServerStatsResult = {
-  /** Current jitter buffer delay in seconds (delta-based, or cumulative avg on first reading). */
-  jitterBuffer: number;
-  sfuToAgent: number;
-  /** Raw cumulative jitterBufferDelay from the inbound-rtp stat. */
-  rawJbDelay: number;
-  /** Raw cumulative jitterBufferEmittedCount from the inbound-rtp stat. */
-  rawJbEmitted: number;
-};
-
 /** Try to read a numeric field from the Pion nested candidatePair shape, or a flat shape. */
 function extractCandidatePairRtt(stat: Record<string, unknown>): number | null {
-  // Pion nested: { candidatePair: { candidatePair: { currentRoundTripTime, state } } }
   const nested = stat.candidatePair as Record<string, unknown> | undefined;
   if (nested) {
     const inner = nested.candidatePair as Record<string, unknown> | undefined;
@@ -117,7 +71,6 @@ function extractCandidatePairRtt(stat: Record<string, unknown>): number | null {
       return inner.currentRoundTripTime;
     }
   }
-  // Flat W3C: { type: "candidate-pair", currentRoundTripTime: ... }
   if (
     stat.type === "candidate-pair" &&
     typeof stat.currentRoundTripTime === "number"
@@ -133,7 +86,6 @@ function extractJitterBuffer(stat: Record<string, unknown>): {
   jbDelay: number;
   jbEmitted: number;
 } | null {
-  // Pion nested: { inboundRtp: { stream: { kind }, inbound: { jitterBufferDelay, jitterBufferEmittedCount } } }
   const nested = stat.inboundRtp as Record<string, unknown> | undefined;
   if (nested) {
     const stream = nested.stream as Record<string, unknown> | undefined;
@@ -145,7 +97,6 @@ function extractJitterBuffer(stat: Record<string, unknown>): {
       if (jbEmitted > 0) return { kind, jbDelay, jbEmitted };
     }
   }
-  // Flat W3C: { kind, jitterBufferDelay, jitterBufferEmittedCount }
   if (
     typeof stat.jitterBufferDelay === "number" &&
     typeof stat.jitterBufferEmittedCount === "number" &&
@@ -160,34 +111,50 @@ function extractJitterBuffer(stat: Record<string, unknown>): {
   return null;
 }
 
+type ServerStatsResult = {
+  jitterBuffer: number;
+  sfuToAgent: number;
+  rawJbDelay: number;
+  rawJbEmitted: number;
+};
+
+type RTCStatsData = {
+  subscriberStats: Record<string, unknown>[];
+  publisherStats: Record<string, unknown>[];
+};
+
 /**
- * Extract jitter buffer delay and server-side RTT from the RTC stats response.
- *
- * Handles two stat formats:
- *   - **Flat (W3C)**: `{ type: "candidate-pair", currentRoundTripTime: ... }`
- *   - **Nested (Pion)**: `{ candidatePair: { candidatePair: { currentRoundTripTime: ... } } }`
- *
- * `jitterBufferDelay` and `jitterBufferEmittedCount` are cumulative counters.
- * To get the *current* jitter buffer delay we compute the delta between
- * consecutive readings. On the first reading we fall back to the cumulative average.
+ * Convert the protobuf `GetRTCStatsResponse` (which uses `google.protobuf.Struct`)
+ * into plain JS objects we can inspect for RTT / jitter buffer fields.
  */
+function responseToStatsData(
+  resp: AgentSession.SessionResponse,
+): RTCStatsData | null {
+  if (resp.response.case !== "getRtcStats") return null;
+  const v = resp.response.value;
+  const subscriberStats = v.subscriberStats.map((s) =>
+    s.toJson() as Record<string, unknown>,
+  );
+  const publisherStats = v.publisherStats.map((s) =>
+    s.toJson() as Record<string, unknown>,
+  );
+  return { subscriberStats, publisherStats };
+}
+
 function parseServerStats(
-  resp: RTCStatsResponse,
+  data: RTCStatsData,
   prev: { jbDelay: number; jbEmitted: number } | null,
 ): ServerStatsResult {
   let rawJbDelay = 0;
   let rawJbEmitted = 0;
   let sfuToAgent = 0;
 
-  for (const stat of resp.subscriber_stats) {
-    const s = stat as Record<string, unknown>;
-
+  for (const s of data.subscriberStats) {
     const jb = extractJitterBuffer(s);
     if (jb && jb.kind === "audio") {
       rawJbDelay = jb.jbDelay;
       rawJbEmitted = jb.jbEmitted;
     }
-
     if (sfuToAgent === 0) {
       const rtt = extractCandidatePairRtt(s);
       if (rtt !== null) {
@@ -197,7 +164,7 @@ function parseServerStats(
   }
 
   if (sfuToAgent === 0) {
-    for (const stat of resp.publisher_stats as Record<string, unknown>[]) {
+    for (const stat of data.publisherStats) {
       const rtt = extractCandidatePairRtt(stat);
       if (rtt !== null) {
         sfuToAgent = rtt / 2;
@@ -222,32 +189,20 @@ function parseServerStats(
 const POLL_INTERVAL_MS = 5_000;
 
 /**
- * Opus frame duration in seconds. When the browser doesn't expose
- * totalPacketSendDelay, we use this as a floor for the send delay because the
- * encoder must buffer at least one complete frame before it can emit a packet.
+ * Opus frame duration in seconds. Used as a floor for the encoding delay.
  */
 const OPUS_FRAME_DURATION = 0.02; // 20ms
 
 /**
  * Measures the uplink pipeline latency: client mic → SFU → agent jitter buffer.
  *
- * Components:
- *   - Send delay: client capture→network-send (encoding, packetization) via outbound-rtp totalPacketSendDelay,
- *     or OPUS_FRAME_DURATION as a floor when the stat is unavailable
- *   - Client→SFU: half the RTT from the client's RTCPeerConnection stats
- *   - SFU→Agent: half the RTT from the server's RTCPeerConnection stats (via text stream RPC),
- *     or estimated from the minimum observed data-channel RPC round trip
- *   - Jitter buffer: delta-based current delay from the server's inbound-rtp stats
+ * Uses the protobuf `SessionRequest.GetRTCStats` via `sendRequest` from
+ * `useRemoteSession` instead of the old text-stream JSON RPC.
  */
-type PendingRpc = {
-  resolve: (v: string) => void;
-  reject: (e: Error) => void;
-  timerId: ReturnType<typeof setTimeout>;
-};
-
 export function useUplinkLatency(
   room: Room,
   agentIdentity: string | undefined,
+  sendRequest: UseRemoteSessionReturn["sendRequest"],
 ): UplinkLatency {
   const [latency, setLatency] = useState<UplinkLatency>({
     total: 0,
@@ -256,103 +211,8 @@ export function useUplinkLatency(
     jitterBuffer: 0,
   });
 
-  const pendingRef = useRef<Map<string, PendingRpc>>(new Map());
   const prevJbRef = useRef<{ jbDelay: number; jbEmitted: number } | null>(null);
-  /** Minimum observed RPC round trip (seconds). Used to estimate sfuToAgent
-   *  when the server doesn't report candidate-pair RTT. The minimum is the
-   *  reading least polluted by server-side processing time. */
   const minRpcRttRef = useRef<number>(Infinity);
-  // This hook exclusively owns the lk.agent.response topic.
-  useEffect(() => {
-    const onResponse = async (
-      reader: { readAll: () => Promise<string> },
-      _participantInfo: { identity: string },
-    ) => {
-      try {
-        const data = await reader.readAll();
-        const resp: StreamResponse = JSON.parse(data);
-        const pending = pendingRef.current.get(resp.request_id);
-        if (pending) {
-          clearTimeout(pending.timerId);
-          pendingRef.current.delete(resp.request_id);
-          if (resp.error) {
-            pending.reject(new Error(resp.error));
-          } else {
-            pending.resolve(resp.payload);
-          }
-        }
-      } catch {
-        // ignore malformed responses
-      }
-    };
-
-    try {
-      room.registerTextStreamHandler(TOPIC_AGENT_RESPONSE, onResponse);
-    } catch (e) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(
-          "[useUplinkLatency] failed to register response handler — RPCs will time out",
-          e,
-        );
-      }
-    }
-
-    return () => {
-      pendingRef.current.forEach((pending, id) => {
-        clearTimeout(pending.timerId);
-        pending.reject(new Error("Hook unmounted"));
-        pendingRef.current.delete(id);
-      });
-
-      try {
-        room.unregisterTextStreamHandler(TOPIC_AGENT_RESPONSE);
-      } catch {
-        // ignore if already unregistered
-      }
-    };
-  }, [room]);
-
-  const callRpc = useCallback(
-    async (method: string, payload: string): Promise<string> => {
-      if (!agentIdentity) throw new Error("No agent identity");
-
-      const requestId = nextRequestId();
-      const request: StreamRequest = {
-        request_id: requestId,
-        method,
-        payload,
-      };
-
-      const promise = new Promise<string>((resolve, reject) => {
-        const RPC_TIMEOUT_MS = 5_000;
-        const timerId = setTimeout(() => {
-          if (pendingRef.current.has(requestId)) {
-            pendingRef.current.delete(requestId);
-            reject(new Error("RPC timeout"));
-          }
-        }, RPC_TIMEOUT_MS);
-
-        pendingRef.current.set(requestId, { resolve, reject, timerId });
-      });
-
-      try {
-        await room.localParticipant.sendText(JSON.stringify(request), {
-          topic: TOPIC_AGENT_REQUEST,
-          destinationIdentities: [agentIdentity],
-        });
-      } catch (e) {
-        const pending = pendingRef.current.get(requestId);
-        if (pending) {
-          clearTimeout(pending.timerId);
-          pendingRef.current.delete(requestId);
-        }
-        throw e;
-      }
-
-      return promise;
-    },
-    [room, agentIdentity],
-  );
 
   useEffect(() => {
     if (!agentIdentity) return;
@@ -361,35 +221,33 @@ export function useUplinkLatency(
 
     const poll = async () => {
       try {
-        // Measure RPC round trip so we can estimate sfuToAgent when server
-        // stats don't include candidate-pair RTT.
         const rpcStart = performance.now();
-        const [serverPayload, clientStats] = await Promise.all([
-          callRpc("get_rtc_stats", "{}"),
+        const [serverResp, clientStats] = await Promise.all([
+          sendRequest(agentIdentity, {
+            case: "getRtcStats",
+            value: new AgentSession.SessionRequest_GetRTCStats(),
+          }),
           getClientStats(room),
         ]);
-        const rpcRtt = (performance.now() - rpcStart) / 1000; // seconds
+        const rpcRtt = (performance.now() - rpcStart) / 1000;
         minRpcRttRef.current = Math.min(minRpcRttRef.current, rpcRtt);
 
         if (cancelled) return;
 
-        const serverStats: RTCStatsResponse = JSON.parse(serverPayload);
+        const statsData = responseToStatsData(serverResp);
+        if (!statsData) return;
+
         const {
           jitterBuffer,
           sfuToAgent: serverSfuToAgent,
           rawJbDelay,
           rawJbEmitted,
-        } = parseServerStats(serverStats, prevJbRef.current);
+        } = parseServerStats(statsData, prevJbRef.current);
 
         prevJbRef.current = { jbDelay: rawJbDelay, jbEmitted: rawJbEmitted };
 
         const clientToSfu = clientStats.rttHalf;
 
-        // If server didn't report candidate-pair RTT, estimate sfuToAgent
-        // from the minimum observed data-channel round trip.
-        // minRpcRtt ≈ 2*(clientToSfu + sfuToAgent) + minServerProcessing
-        // The minimum reading has the least server-processing overhead,
-        // giving the best approximation of actual network latency.
         let sfuToAgent = serverSfuToAgent;
         if (
           sfuToAgent === 0 &&
@@ -422,7 +280,7 @@ export function useUplinkLatency(
       cancelled = true;
       clearInterval(interval);
     };
-  }, [room, agentIdentity, callRpc]);
+  }, [room, agentIdentity, sendRequest]);
 
   return latency;
 }

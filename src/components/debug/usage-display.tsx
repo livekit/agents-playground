@@ -1,11 +1,19 @@
-import type {
-  AgentSessionUsage,
-  InterruptionModelUsage,
-  LLMModelUsage,
-  STTModelUsage,
-  TTSModelUsage,
-} from "@/lib/types";
+import { AgentSession } from "@livekit/protocol";
 import { InfoTooltip, TITLE_FONT_STACK } from "./shared";
+
+type UsageCase = AgentSession.ModelUsage["usage"]["case"];
+type UsageOfCase<C extends UsageCase> = AgentSession.ModelUsage & {
+  usage: Extract<AgentSession.ModelUsage["usage"], { case: C }>;
+};
+
+function filterUsage<C extends UsageCase>(
+  usages: AgentSession.ModelUsage[],
+  caseTag: C,
+): UsageOfCase<C>[] {
+  return usages.filter(
+    (u): u is UsageOfCase<C> => u.usage.case === caseTag,
+  );
+}
 
 const UNIT_CLASS = "text-[20px] ml-0.5 text-gray-500";
 
@@ -41,12 +49,12 @@ function modelLabel(provider: string, model: string): string {
 }
 
 export type UsageDisplayProps = {
-  sessionUsage: AgentSessionUsage | null;
+  sessionUsage: AgentSession.AgentSessionUsage | null;
   className?: string;
 };
 
 export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
-  if (!sessionUsage || sessionUsage.model_usage.length === 0) {
+  if (!sessionUsage || sessionUsage.modelUsage.length === 0) {
     return (
       <div
         data-slot="usage-display"
@@ -58,18 +66,10 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
     );
   }
 
-  const llmUsages = sessionUsage.model_usage.filter(
-    (u): u is LLMModelUsage => u.type === "llm_usage",
-  );
-  const sttUsages = sessionUsage.model_usage.filter(
-    (u): u is STTModelUsage => u.type === "stt_usage",
-  );
-  const ttsUsages = sessionUsage.model_usage.filter(
-    (u): u is TTSModelUsage => u.type === "tts_usage",
-  );
-  const interruptionUsages = sessionUsage.model_usage.filter(
-    (u): u is InterruptionModelUsage => u.type === "interruption_usage",
-  );
+  const llmUsages = filterUsage(sessionUsage.modelUsage, "llm");
+  const sttUsages = filterUsage(sessionUsage.modelUsage, "stt");
+  const ttsUsages = filterUsage(sessionUsage.modelUsage, "tts");
+  const interruptionUsages = filterUsage(sessionUsage.modelUsage, "interruption");
 
   return (
     <div
@@ -80,63 +80,63 @@ export function UsageDisplay({ sessionUsage, className }: UsageDisplayProps) {
       <div className="flex flex-col gap-2 p-3">
         {llmUsages.map((u) => (
           <ModelSection
-            key={`llm-${u.provider}-${u.model}`}
-            label={modelLabel(u.provider, u.model)}
+            key={`llm-${u.usage.value.provider}-${u.usage.value.model}`}
+            label={modelLabel(u.usage.value.provider, u.usage.value.model)}
           >
             <StatCard
               label="Input Tokens"
               tooltip="Input tokens | cached input tokens"
               value={
                 <span className="inline-flex items-center justify-center gap-2">
-                  <span>{formatNumber(u.input_tokens)}</span>
+                  <span>{formatNumber(u.usage.value.inputTokens)}</span>
                   <span
                     className="w-px self-stretch bg-gray-500"
                     style={{ marginBlock: "0.15em" }}
                   />
-                  <span>{formatNumber(u.input_cached_tokens)}</span>
+                  <span>{formatNumber(u.usage.value.inputCachedTokens)}</span>
                 </span>
               }
             />
             <StatCard
               label="Output Tokens"
-              value={formatNumber(u.output_tokens)}
+              value={formatNumber(u.usage.value.outputTokens)}
             />
           </ModelSection>
         ))}
         {sttUsages.map((u) => (
           <ModelSection
-            key={`stt-${u.provider}-${u.model}`}
-            label={modelLabel(u.provider, u.model)}
+            key={`stt-${u.usage.value.provider}-${u.usage.value.model}`}
+            label={modelLabel(u.usage.value.provider, u.usage.value.model)}
           >
             <StatCard
               label="Audio Duration"
-              value={<DurationValue seconds={u.audio_duration} />}
+              value={<DurationValue seconds={u.usage.value.audioDuration} />}
             />
           </ModelSection>
         ))}
         {ttsUsages.map((u) => (
           <ModelSection
-            key={`tts-${u.provider}-${u.model}`}
-            label={modelLabel(u.provider, u.model)}
+            key={`tts-${u.usage.value.provider}-${u.usage.value.model}`}
+            label={modelLabel(u.usage.value.provider, u.usage.value.model)}
           >
             <StatCard
               label="Characters"
-              value={formatNumber(u.characters_count)}
+              value={formatNumber(u.usage.value.charactersCount)}
             />
             <StatCard
               label="Audio Duration"
-              value={<DurationValue seconds={u.audio_duration} />}
+              value={<DurationValue seconds={u.usage.value.audioDuration} />}
             />
           </ModelSection>
         ))}
         {interruptionUsages.map((u) => (
           <ModelSection
-            key={`interruption-${u.provider}-${u.model}`}
-            label={modelLabel(u.provider, u.model)}
+            key={`interruption-${u.usage.value.provider}-${u.usage.value.model}`}
+            label={modelLabel(u.usage.value.provider, u.usage.value.model)}
           >
             <StatCard
               label="Total Requests"
-              value={formatNumber(u.total_requests)}
+              value={formatNumber(u.usage.value.totalRequests)}
             />
           </ModelSection>
         ))}
