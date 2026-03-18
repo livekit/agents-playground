@@ -21,7 +21,7 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@livekit/protocol':
-        specifier: ^1.43.2
+        specifier: ^1.45.0
         version: 1.45.0
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.1.2
