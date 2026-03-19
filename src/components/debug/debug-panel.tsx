@@ -3,16 +3,15 @@ import type {
   WaveformMarker,
 } from "@/hooks/useStreamingWaveform";
 import { useWaveformClock } from "@/hooks/useStreamingWaveform";
+import type { OverlappingSpeechEvent } from "@/hooks/useRemoteSession";
 import type { UplinkLatency } from "@/hooks/useUplinkLatency";
-import type {
-  AgentSessionUsage,
-  ClientAgentStateChangedEvent,
-  ClientEvent,
-  ClientEventType,
-  ClientMetricsCollectedEvent,
-  ClientUserOverlappingSpeechEvent,
-  ClientUserStateChangedEvent,
+import {
+  type SessionEventType,
+  agentStateLabel,
+  timestampToSeconds,
+  userStateLabel,
 } from "@/lib/types";
+import { AgentSession } from "@livekit/protocol";
 import type { Track } from "livekit-client";
 import {
   type MouseEvent as ReactMouseEvent,
@@ -31,7 +30,7 @@ import {
 import { MetricsDisplay } from "./metrics-display";
 import { UsageDisplay } from "./usage-display";
 
-const DEFAULT_ENABLED_EVENT_TYPES = new Set<ClientEventType>(
+const DEFAULT_ENABLED_EVENT_TYPES = new Set<SessionEventType>(
   ALL_EVENT_TYPES.filter((t) => !DEFAULT_DISABLED_EVENT_TYPES.has(t)),
 );
 
@@ -84,12 +83,11 @@ export type DebugPanelTrackColors = {
 export type DebugPanelProps = {
   userTrack: Track | undefined;
   agentTrack: Track | undefined;
-  events: ClientEvent[];
-  metricsEvents: ClientMetricsCollectedEvent[];
-  overlappingSpeechEvents: ClientUserOverlappingSpeechEvent[];
-  sessionUsage: AgentSessionUsage | null;
+  events: AgentSession.AgentSessionEvent[];
+  overlappingSpeechEvents: OverlappingSpeechEvent[];
+  sessionUsage: AgentSession.AgentSessionUsage | null;
   onClearEvents: () => void;
-  /** One-way server→client network transit in seconds, measured from interruption sent_at. */
+  /** One-way server→client network transit in seconds, measured from event createdAt. */
   networkLatency: number;
   /** Measured uplink pipeline latency (client→SFU + SFU→agent + jitter buffer). */
   uplinkLatency?: UplinkLatency;
@@ -105,7 +103,6 @@ export function DebugPanel({
   userTrack,
   agentTrack,
   events,
-  metricsEvents,
   overlappingSpeechEvents,
   sessionUsage,
   onClearEvents,
@@ -121,7 +118,7 @@ export function DebugPanel({
   const [waveformPaused, setWaveformPaused] = useState(false);
   const waveformClock = useWaveformClock(waveformPaused);
   const [enabledEventTypes, setEnabledEventTypes] = useState<
-    Set<ClientEventType>
+    Set<SessionEventType>
   >(() => new Set(DEFAULT_ENABLED_EVENT_TYPES));
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const tablistId = useId();
@@ -136,31 +133,28 @@ export function DebugPanel({
   const agentStateColor = trackColors?.agent ?? "#BA1FF9";
   const userStateColor = trackColors?.user ?? "#666666";
 
-  // Server timestamps are in server clock and delayed by the uplink pipeline.
-  // To place them on the client waveform:
-  //   client_time = server_time + clock_offset(client−server) − uplink_pipeline
-  //   where clock_offset(client−server) ≈ networkLatency − downlink_transit
-  //   and downlink_transit ≈ transport (clientToSfu + sfuToAgent)
-  //
-  // Note: we approximate downlink transit using the measured *uplink* transport
-  // (clientToSfu + sfuToAgent). On asymmetric networks (e.g. mobile) the uplink
-  // and downlink paths can differ, which introduces a small placement error.
-  // In practice the snap-to-speech-boundary logic compensates for this.
   const highlights = useMemo<WaveformHighlight[]>(() => {
     const pipeline = uplinkLatency?.total ?? 0;
     const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
-    const correction = clockOffset - pipeline;
+    const detectionCorrection = clockOffset - pipeline;
 
-    return overlappingSpeechEvents.map((evt) => ({
-      start: (evt.overlap_started_at ?? evt.created_at) + correction,
-      end: evt.created_at + correction,
-      color: evt.is_interruption ? interruptionColor : backchannelColor,
-      label: evt.is_interruption ? interruptionLabel : backchannelLabel,
-      sourceId: evt.created_at,
-      snapToWaveform: true,
-    }));
+    return overlappingSpeechEvents.map(
+      ({ speech: evt, detectedAtSeconds }) => {
+        const overlapStart = evt.overlapStartedAt
+          ? timestampToSeconds(evt.overlapStartedAt)
+          : detectedAtSeconds;
+        return {
+          start: overlapStart + clockOffset,
+          end: detectedAtSeconds + detectionCorrection,
+          color: evt.isInterruption ? interruptionColor : backchannelColor,
+          label: evt.isInterruption ? interruptionLabel : backchannelLabel,
+          sourceId: detectedAtSeconds,
+          snapToWaveform: true,
+        };
+      },
+    );
   }, [
     overlappingSpeechEvents,
     networkLatency,
@@ -176,34 +170,39 @@ export function DebugPanel({
     const downlinkTransit = uplinkLatency?.transport ?? 0;
     const clockOffset =
       networkLatency > 0 ? networkLatency - downlinkTransit : 0;
-    // User state: agent's VAD detects speech after the uplink pipeline, so
-    // subtract pipeline to align with when the user actually spoke.
-    // Agent state: audio travels the downlink before appearing on the client
-    // waveform, so correction = clockOffset + downlink = networkLatency.
     const userCorrection = clockOffset - pipeline;
     const agentCorrection = networkLatency > 0 ? networkLatency : 0;
 
     const user: WaveformMarker[] = [];
     const agent: WaveformMarker[] = [];
     for (const evt of events) {
-      if (
-        evt.type !== "agent_state_changed" &&
-        evt.type !== "user_state_changed"
-      )
+      let oldLabel: string;
+      let newLabel: string;
+      let target: WaveformMarker[];
+      let color: string;
+      let correction: number;
+
+      if (evt.event.case === "agentStateChanged") {
+        const v = evt.event.value;
+        oldLabel = agentStateLabel(v.oldState);
+        newLabel = agentStateLabel(v.newState);
+        target = agent;
+        color = agentStateColor;
+        correction = agentCorrection;
+      } else if (evt.event.case === "userStateChanged") {
+        const v = evt.event.value;
+        oldLabel = userStateLabel(v.oldState);
+        newLabel = userStateLabel(v.newState);
+        target = user;
+        color = userStateColor;
+        correction = userCorrection;
+      } else {
         continue;
+      }
 
-      const stateEvt = evt as
-        | ClientAgentStateChangedEvent
-        | ClientUserStateChangedEvent;
-      const track: "user" | "agent" =
-        stateEvt.type === "user_state_changed" ? "user" : "agent";
-      const color = track === "user" ? userStateColor : agentStateColor;
-      const correction = track === "user" ? userCorrection : agentCorrection;
-      const target = track === "user" ? user : agent;
+      const createdAt = timestampToSeconds(evt.createdAt);
+      const timestamp = createdAt + correction;
 
-      const timestamp = stateEvt.created_at + correction;
-      const prevState = stateEvt.old_state;
-      const nextState = stateEvt.new_state;
       const pushMarker = (
         kind: WaveformMarker["kind"],
         snapToWaveform?: WaveformMarker["snapToWaveform"],
@@ -211,25 +210,21 @@ export function DebugPanel({
         target.push({
           timestamp,
           color,
-          label: nextState,
+          label: newLabel,
           kind,
-          sourceId: stateEvt.created_at,
+          sourceId: createdAt,
           snapToWaveform,
         });
       };
 
-      if (prevState === "speaking") {
-        pushMarker("state-ended", "end");
-      }
-      if (nextState === "speaking") {
-        pushMarker("state-started", "start");
-      }
+      if (oldLabel === "speaking") pushMarker("state-ended", "end");
+      if (newLabel === "speaking") pushMarker("state-started", "start");
       if (
-        prevState !== "thinking" &&
-        nextState !== "thinking" &&
-        prevState !== "speaking" &&
-        nextState !== "speaking" &&
-        nextState !== "listening"
+        oldLabel !== "thinking" &&
+        newLabel !== "thinking" &&
+        oldLabel !== "speaking" &&
+        newLabel !== "speaking" &&
+        newLabel !== "listening"
       ) {
         pushMarker("state-changed");
       }
@@ -476,9 +471,6 @@ export function DebugPanel({
 
       {!collapsed && (
         <div className="flex-1 overflow-hidden">
-          {/* AudioWaveform is always mounted so useStreamingWaveform keeps
-              collecting samples while other tabs are active. The rAF draw
-              loop becomes a near-no-op when the container has display:none. */}
           <div
             id={`${tablistId}-panel-waveform`}
             role="tabpanel"
@@ -569,7 +561,7 @@ export function DebugPanel({
               aria-labelledby={`${tablistId}-tab-metrics`}
               className="w-full h-full"
             >
-              <MetricsDisplay metricsEvents={metricsEvents} events={events} />
+              <MetricsDisplay events={events} />
             </div>
           )}
           {activeTab === "usage" && (
