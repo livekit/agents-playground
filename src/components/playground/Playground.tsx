@@ -332,14 +332,22 @@ export default function Playground({
 
         <ConfigurationPanelItem title="Room">
           <div className="flex flex-col gap-2">
-            <NameValueRow
+            <EditableNameValueRow
               name="Room name"
               value={
                 connectionState === ConnectionState.Connected
                   ? session.room.name
-                  : ""
+                  : (tokenFetchOptions?.roomName ?? "")
               }
               valueColor={`${config.settings.theme_color}-500`}
+              onValueChange={(value) => {
+                setTokenFetchOptions({
+                  ...tokenFetchOptions,
+                  roomName: value,
+                });
+              }}
+              placeholder="Auto"
+              editable={connectionState !== ConnectionState.Connected}
             />
             <NameValueRow
               name="Status"
