@@ -343,7 +343,7 @@ export default function Playground({
               onValueChange={(value) => {
                 setTokenFetchOptions({
                   ...tokenFetchOptions,
-                  roomName: value,
+                  roomName: value || undefined,
                 });
               }}
               placeholder="Auto"
