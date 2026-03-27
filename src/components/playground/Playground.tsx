@@ -60,6 +60,10 @@ export interface PlaygroundProps {
 
 const headerHeight = 56;
 
+function generateRandomRoomName() {
+  return `room-${crypto.randomUUID().substring(0, 8)}`;
+}
+
 export default function Playground({
   logo,
   themeColors,
@@ -73,29 +77,28 @@ export default function Playground({
   const [rpcPayload, setRpcPayload] = useState("");
   const [hasConnected, setHasConnected] = useState(false);
 
+  // User-entered room name. When empty, a random name is generated
+  // in tokenFetchOptions for each session.
+  const [userRoomName, setUserRoomName] = useState("");
+
   const [tokenFetchOptions, setTokenFetchOptions] =
-    useState<TokenSourceFetchOptions>();
+    useState<TokenSourceFetchOptions>(() => {
+      // Always initialize with a roomName so the SDK's token cache
+      // has a non-empty key set for future equality comparisons.
+      const opts: TokenSourceFetchOptions = {
+        roomName: generateRandomRoomName(),
+      };
+      if (initialAgentOptions) {
+        opts.agentName = initialAgentOptions.agentName ?? "";
+        opts.agentMetadata = initialAgentOptions.metadata ?? "";
+      }
+      return opts;
+    });
 
   // Store attributes as an array with stable IDs to prevent disappearing while editing
   // Initialize with one empty attribute so the inspector isn't empty on first open
   const [attributeItems, setAttributeItems] = useState<AttributeItem[]>([
     { id: `attr_initial_${Date.now()}`, key: "", value: "" },
-  ]);
-
-  // initialize token fetch options from initial values, which can come from config
-  useEffect(() => {
-    if (tokenFetchOptions !== undefined || initialAgentOptions === undefined) {
-      return;
-    }
-    setTokenFetchOptions({
-      agentName: initialAgentOptions?.agentName ?? "",
-      agentMetadata: initialAgentOptions?.metadata ?? "",
-    });
-  }, [
-    tokenFetchOptions,
-    initialAgentOptions,
-    initialAgentOptions?.agentName,
-    initialAgentOptions?.metadata,
   ]);
 
   const session = useSession(tokenSource, tokenFetchOptions);
@@ -337,14 +340,15 @@ export default function Playground({
               value={
                 connectionState === ConnectionState.Connected
                   ? session.room.name
-                  : (tokenFetchOptions?.roomName ?? "")
+                  : userRoomName
               }
               valueColor={`${config.settings.theme_color}-500`}
               onValueChange={(value) => {
-                setTokenFetchOptions({
-                  ...tokenFetchOptions,
-                  roomName: value || undefined,
-                });
+                setUserRoomName(value);
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  roomName: value || generateRandomRoomName(),
+                }));
               }}
               placeholder="Auto"
               editable={connectionState !== ConnectionState.Connected}
@@ -585,6 +589,7 @@ export default function Playground({
     attributeItems,
     tokenFetchOptions,
     setTokenFetchOptions,
+    userRoomName,
   ]);
 
   let mobileTabs: PlaygroundTab[] = [];
@@ -652,6 +657,14 @@ export default function Playground({
               startSession();
             } else if (connectionState === ConnectionState.Connected) {
               session.end();
+              // Generate a new random room name for next connect so the
+              // SDK fetches a fresh token. User-set names are preserved.
+              if (!userRoomName) {
+                setTokenFetchOptions((prev) => ({
+                  ...prev,
+                  roomName: generateRandomRoomName(),
+                }));
+              }
             }
           }}
         />
