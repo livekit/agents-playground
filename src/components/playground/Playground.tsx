@@ -61,7 +61,7 @@ export interface PlaygroundProps {
 const headerHeight = 56;
 
 function generateRandomRoomName() {
-  return `room-${crypto.randomUUID().substring(0, 8)}`;
+  return `room-${Math.random().toString(36).substring(2, 10)}`;
 }
 
 export default function Playground({
