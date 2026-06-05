@@ -31,7 +31,6 @@ const settingsDropdown: SettingValue[] = [
     type: "outputs",
     key: "audio",
   },
-
   {
     title: "---",
     type: "separator",
@@ -60,8 +59,9 @@ export const SettingsDropdown = () => {
   const isEnabled = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color")
       return false;
+
     if (setting.type === "chat") {
-      return config.settings[setting.type];
+      return config.settings.chat;
     }
 
     if (setting.type === "inputs") {
@@ -77,6 +77,7 @@ export const SettingsDropdown = () => {
 
   const toggleSetting = (setting: SettingValue) => {
     if (setting.type === "separator" || setting.type === "theme_color") return;
+
     const newValue = !isEnabled(setting);
     const newSettings = { ...config.settings };
 
@@ -87,6 +88,7 @@ export const SettingsDropdown = () => {
     } else if (setting.type === "outputs") {
       newSettings.outputs[setting.key as "video" | "audio"] = newValue;
     }
+
     setUserSettings(newSettings);
   };
 
@@ -96,6 +98,7 @@ export const SettingsDropdown = () => {
         Settings
         <ChevronIcon />
       </DropdownMenu.Trigger>
+
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           className="z-50 flex w-60 flex-col gap-0 overflow-hidden rounded text-gray-100 border border-gray-800 bg-gray-900 py-2 text-sm"
@@ -113,16 +116,20 @@ export const SettingsDropdown = () => {
             }
 
             return (
-              <DropdownMenu.Label
+              <DropdownMenu.CheckboxItem
                 key={setting.key}
-                onClick={() => toggleSetting(setting)}
+                checked={isEnabled(setting)}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  toggleSetting(setting);
+                }}
                 className="flex max-w-full flex-row items-end gap-2 px-3 py-2 text-xs hover:bg-gray-800 cursor-pointer"
               >
-                <div className="w-4 h-4 flex items-center">
-                  {isEnabled(setting) && <CheckIcon />}
-                </div>
+                <DropdownMenu.ItemIndicator className="w-4 h-4 flex items-center">
+                  <CheckIcon />
+                </DropdownMenu.ItemIndicator>
                 <span>{setting.title}</span>
-              </DropdownMenu.Label>
+              </DropdownMenu.CheckboxItem>
             );
           })}
         </DropdownMenu.Content>
