@@ -77,9 +77,22 @@ export default async function handleToken(
   options.participant_identity =
     options.participant_identity ?? options.participantName ?? `user-${suffix}`;
 
+  const requestedUrl = req.query.server_url;
+  const overrideUrl =
+    typeof requestedUrl === "string" && /^wss?:\/\//.test(requestedUrl)
+      ? requestedUrl
+      : undefined;
+  const serverUrl = overrideUrl ?? process.env.NEXT_PUBLIC_LIVEKIT_URL;
+
+  if (!serverUrl) {
+    res.statusMessage = "No LiveKit server URL configured";
+    res.status(500).end();
+    return;
+  }
+
   try {
     res.status(200).json({
-      server_url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+      server_url: serverUrl,
       participant_token: await createToken(options),
     });
   } catch (err) {
