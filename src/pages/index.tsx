@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Inter } from "next/font/google";
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PlaygroundConnect } from "@/components/PlaygroundConnect";
 import Playground from "@/components/playground/Playground";
@@ -37,6 +37,9 @@ export function HomeInner() {
   const { config } = useConfig();
   const { toastMessage, setToastMessage } = useToast();
   const [autoConnect, setAutoConnect] = useState(false);
+  const [agentNameOverride, setAgentNameOverride] = useState<string | null>(
+    null,
+  );
   const [tokenSource, setTokenSource] = useState<
     TokenSourceConfigurable | undefined
   >(() => {
@@ -45,6 +48,24 @@ export function HomeInner() {
     }
     return undefined;
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const linkSandboxId = sp.get("sandboxId");
+    const linkUrl = sp.get("url");
+    const linkAgent = sp.get("agent");
+
+    if (linkSandboxId) {
+      setTokenSource(TokenSource.sandboxTokenServer(linkSandboxId));
+    } else if (linkUrl && /^wss?:\/\//.test(linkUrl)) {
+      const endpoint = `/api/token?server_url=${encodeURIComponent(linkUrl)}`;
+      setTokenSource(TokenSource.endpoint(endpoint));
+    }
+    if (linkAgent) {
+      setAgentNameOverride(linkAgent);
+    }
+  }, []);
 
   return (
     <>
@@ -84,9 +105,11 @@ export function HomeInner() {
             tokenSource={tokenSource}
             autoConnect={autoConnect}
             agentOptions={
-              config.settings.agent
-                ? { agentName: config.settings.agent }
-                : config.agent_dispatch
+              agentNameOverride
+                ? { agentName: agentNameOverride }
+                : config.settings.agent
+                  ? { agentName: config.settings.agent }
+                  : config.agent_dispatch
             }
           />
         ) : (
