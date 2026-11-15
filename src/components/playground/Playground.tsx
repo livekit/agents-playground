@@ -95,6 +95,22 @@ export default function Playground({
       return opts;
     });
 
+  // The config is loaded after the first render (settings live in cookies and
+  // the URL hash), so the agent to dispatch can arrive after the state above
+  // was initialized. Apply it once it is known.
+  const initialAgentName = initialAgentOptions?.agentName;
+  const initialAgentMetadata = initialAgentOptions?.metadata;
+  useEffect(() => {
+    if (initialAgentName === undefined && initialAgentMetadata === undefined) {
+      return;
+    }
+    setTokenFetchOptions((prev) => ({
+      ...prev,
+      agentName: initialAgentName ?? "",
+      agentMetadata: initialAgentMetadata ?? "",
+    }));
+  }, [initialAgentName, initialAgentMetadata]);
+
   // Store attributes as an array with stable IDs to prevent disappearing while editing
   // Initialize with one empty attribute so the inspector isn't empty on first open
   const [attributeItems, setAttributeItems] = useState<AttributeItem[]>([
